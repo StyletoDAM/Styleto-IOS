@@ -1,0 +1,14 @@
+import Foundation
+
+enum APIConstants {
+    static let baseURL = URL(string: "http://localhost:3000")!
+    static let signupPath = "/auth/signup"
+    static let signinPath = "/auth/signin"
+    static let googleAuthPath = "/auth/google"
+    static let appleAuthPath = "/auth/apple"
+    static let verifyEmailPath = "/auth/verify-email"
+    static let forgotPasswordPath = "/auth/forgot-password"
+    static let verifyOtpPath = "/auth/verify-otp"
+    static let resetPasswordPath = "/auth/reset-password"
+    static let jsonContentType = "application/json"
+}
