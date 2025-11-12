@@ -421,6 +421,7 @@
 				CODE_SIGN_ENTITLEMENTS = Labasniios/Labasniios.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = KB2NZ987BG;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Labasniios/Info.plist;
@@ -450,6 +451,7 @@
 				CODE_SIGN_ENTITLEMENTS = Labasniios/Labasniios.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = KB2NZ987BG;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Labasniios/Info.plist;

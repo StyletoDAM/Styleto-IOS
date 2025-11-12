@@ -36,7 +36,7 @@ final class ForgotPasswordViewModel: ObservableObject {
         clearFlashMessages()
 
         guard isValidEmail(email) else {
-            errorMessage = "Adresse email invalide."
+            errorMessage = "Invalid email address."
             return
         }
 
@@ -67,7 +67,7 @@ final class ForgotPasswordViewModel: ObservableObject {
         clearFlashMessages()
 
         guard otpCode.count == 6 else {
-            errorMessage = "Le code doit contenir 6 chiffres."
+            errorMessage = "The code must be 6 digits."
             return
         }
 
@@ -96,17 +96,17 @@ final class ForgotPasswordViewModel: ObservableObject {
         clearFlashMessages()
 
         guard let resetToken else {
-            errorMessage = "Veuillez valider le code avant de définir un nouveau mot de passe."
+            errorMessage = "Please verify the code before setting a new password."
             return
         }
 
         guard isStrongPassword(newPassword) else {
-            errorMessage = "Le mot de passe doit contenir au moins 6 caractères, une majuscule et un caractère spécial."
+            errorMessage = "Password must be at least 6 characters, include an uppercase letter and a special character."
             return
         }
 
         guard newPassword == confirmPassword else {
-            errorMessage = "Les mots de passe ne correspondent pas."
+            errorMessage = "Passwords do not match."
             return
         }
 

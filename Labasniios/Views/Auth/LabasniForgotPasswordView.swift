@@ -117,11 +117,11 @@ struct LabasniForgotPasswordView: View {
 
     private var description: some View {
         VStack(spacing: 8) {
-            Text("Mot de passe oublié ?")
+            Text("Forgot password?")
                 .font(.system(size: 26, weight: .heavy))
                 .foregroundColor(.ca3c66)
 
-            Text("Entrez votre email. Nous vous enverrons un code SMS sur le numéro associé à votre compte.")
+            Text("Enter your email. We will send you an SMS code to the phone number associated with your account.")
                 .multilineTextAlignment(.center)
                 .font(.system(size: 15, weight: .medium))
                 .foregroundColor(._4aa3a2)
@@ -131,13 +131,13 @@ struct LabasniForgotPasswordView: View {
 
     private var emailField: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Text("Adresse email")
+            Text("Email address")
                 .font(.system(size: 16, weight: .semibold))
                 .foregroundColor(._4aa3a2)
                 .padding(.top, 6)
 
             IconField(systemName: "envelope",
-                      placeholder: "votre@email.com",
+                      placeholder: "your@email.com",
                       text: $viewModel.email)
         }
         .padding(.horizontal, 22)
@@ -151,7 +151,7 @@ struct LabasniForgotPasswordView: View {
                 if viewModel.isLoading {
                     ProgressView().progressViewStyle(.circular)
                 } else {
-                    Text("Recevoir le code par SMS")
+                    Text("Receive code via SMS")
                         .font(.system(size: 17, weight: .semibold))
                 }
             }
@@ -166,7 +166,7 @@ struct LabasniForgotPasswordView: View {
 
     private var secondaryButton: some View {
         Button(action: { dismiss() }) {
-            Text("Retour à la connexion")
+            Text("Back to Login")
                 .font(.system(size: 16, weight: .semibold))
                 .foregroundColor(._4aa3a2)
         }

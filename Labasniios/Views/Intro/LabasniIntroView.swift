@@ -48,7 +48,7 @@ struct LabasniIntroView: View {
                             .foregroundColor(.white.opacity(0.96))
                             .shadow(color: .black.opacity(0.08), radius: 4, x: 0, y: 2)
 
-                        Text("Votre styliste intelligent")
+                        Text("Your Smart Stylist")
                             .font(.system(size: 16, weight: .medium))
                             .foregroundColor(.white.opacity(0.85))
                     }
@@ -60,7 +60,7 @@ struct LabasniIntroView: View {
                         NavigationLink {
                             LabasniLoginView()
                         } label: {
-                            Text("Se connecter")
+                            Text("Log In")
                                 .font(.system(size: 17, weight: .semibold))
                                 .frame(maxWidth: .infinity)
                                 .padding(.vertical, 16)
@@ -73,7 +73,7 @@ struct LabasniIntroView: View {
                         NavigationLink {
                             LabasniSignupView()
                         } label: {
-                            Text("Créer un compte")
+                            Text("Sign Up")
                                 .font(.system(size: 17, weight: .semibold))
                                 .frame(maxWidth: .infinity)
                                 .padding(.vertical, 16)

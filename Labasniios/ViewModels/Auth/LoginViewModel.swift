@@ -11,7 +11,7 @@ final class LoginViewModel: ObservableObject {
     @Published private(set) var signedInUser: User?
     @Published private(set) var accessToken: String?
 
-    private let authService: AuthService  // ← juste AuthService, pas AuthService.shared
+    private let authService: AuthService  
 
     init(authService: AuthService = AuthService.shared) { // utilise le singleton par défaut
         self.authService = authService
@@ -35,7 +35,7 @@ final class LoginViewModel: ObservableObject {
             accessToken = response.accessToken
             TokenManager.shared.saveToken(response.accessToken)
         } catch let networkError as NetworkError {
-            errorMessage = networkError.errorDescription ?? "Une erreur est survenue."
+            errorMessage = networkError.errorDescription ?? "An error occurred."
             debugPrint("[LoginViewModel] Network error: \(errorMessage ?? "")")
         } catch {
             errorMessage = error.localizedDescription
@@ -51,12 +51,12 @@ final class LoginViewModel: ObservableObject {
 
     private func validateFields() -> Bool {
         guard isValidEmail(email) else {
-            errorMessage = "Adresse email invalide."
+            errorMessage = "Invalid email address."
             return false
         }
 
         guard password.count >= 6 else {
-            errorMessage = "Mot de passe trop court."
+            errorMessage = "Password is too short."
             return false
         }
 

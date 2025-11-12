@@ -18,24 +18,24 @@ struct ResetPasswordSheet: View {
                 .frame(width: 50, height: 4)
                 .padding(.top, 8)
 
-            Text("Nouveau mot de passe")
+            Text("New password")
                 .font(.title2).bold()
                 .foregroundColor(.ca3c66)
 
             VStack(alignment: .leading, spacing: 14) {
                 SecureInputField(
-                    title: "Mot de passe",
+                    title: "Password",
                     text: $newPassword,
                     isHidden: $isPasswordHidden
                 )
 
                 SecureInputField(
-                    title: "Confirmer le mot de passe",
+                    title: "Confirm password",
                     text: $confirmPassword,
                     isHidden: $isConfirmationHidden
                 )
 
-                Text("Minimum 6 caractères, au moins une majuscule et un caractère spécial.")
+                Text("Minimum 6 characters, at least one uppercase letter and one special character.")
                     .font(.footnote)
                     .foregroundColor(._4aa3a2)
             }
@@ -56,7 +56,7 @@ struct ResetPasswordSheet: View {
                     if isLoading {
                         ProgressView().progressViewStyle(.circular)
                     } else {
-                        Text("Réinitialiser le mot de passe")
+                        Text("Reset Password")
                             .font(.headline)
                     }
                 }
@@ -66,7 +66,7 @@ struct ResetPasswordSheet: View {
             .buttonStyle(PillButtonStyle(background: .ca3c66, foreground: .white))
             .disabled(isLoading)
 
-            Button("Annuler", action: onCancel)
+            Button("Cancel", action: onCancel)
                 .foregroundColor(._4aa3a2)
                 .font(.subheadline)
         }

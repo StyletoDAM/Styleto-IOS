@@ -3,7 +3,9 @@ import UIKit
 
 // MARK: - Vue principale
 struct LabasniSignupView: View {
-    private enum GenderOption: String, CaseIterable { case femme = "Femme", homme = "Homme" }
+    private enum GenderOption: String, CaseIterable {
+        case female = "Female", male = "Male"
+    }
 
     @StateObject private var viewModel = SignupViewModel()
     @State private var selectedGender: GenderOption?
@@ -25,11 +27,11 @@ struct LabasniSignupView: View {
 
                     // Titre
                     VStack(alignment: .leading, spacing: 6) {
-                        Text("Créer un compte")
+                        Text("Create Account")
                             .font(.system(size: 28, weight: .heavy))
                             .foregroundColor(.ca3c66)
 
-                        Text("Rejoignez Labasni et découvrez votre style")
+                        Text("Join Labasni and discover your style")
                             .font(.system(size: 15, weight: .medium))
                             .foregroundColor(._4aa3a2)
                     }
@@ -37,25 +39,25 @@ struct LabasniSignupView: View {
 
                     // Formulaire
                     Group {
-                        Label("Nom complet", systemImage: "person")
+                        Label("Full Name", systemImage: "person")
                             .labelStyle(LeftAlignedLabelStyle(color: ._4aa3a2))
                         IconField(systemName: "person",
-                                  placeholder: "Entrez votre nom",
+                                  placeholder: "Enter your name",
                                   text: $viewModel.fullName)
                         if shouldShowFullNameWarning {
-                            ValidationMessage("Veuillez renseigner votre nom complet.")
+                            ValidationMessage("Please enter your full name.")
                         }
 
                         Label("Email", systemImage: "envelope")
                             .labelStyle(LeftAlignedLabelStyle(color: ._4aa3a2))
                         IconField(systemName: "envelope",
-                                  placeholder: "votre@email.com",
+                                  placeholder: "your@email.com",
                                   text: $viewModel.email)
                         if shouldShowEmailWarning {
-                            ValidationMessage("Adresse email invalide.")
+                            ValidationMessage("Invalid email address.")
                         }
 
-                        Label("Numéro de téléphone", systemImage: "phone")
+                        Label("Phone Number", systemImage: "phone")
                             .labelStyle(LeftAlignedLabelStyle(color: ._4aa3a2))
                         PhoneInputField(
                             selectedDialCode: $viewModel.selectedDialCode,
@@ -63,10 +65,10 @@ struct LabasniSignupView: View {
                             options: viewModel.dialCodes
                         )
                         if shouldShowPhoneWarning {
-                            ValidationMessage("Veuillez renseigner un numéro de téléphone.")
+                            ValidationMessage("Please enter a phone number.")
                         }
 
-                        Label("Mot de passe", systemImage: "lock")
+                        Label("Password", systemImage: "lock")
                             .labelStyle(LeftAlignedLabelStyle(color: ._4aa3a2))
                         IconSecureField(systemName: "lock",
                                         placeholder: "••••••••",
@@ -76,7 +78,7 @@ struct LabasniSignupView: View {
 
                     // Sexe – chips
                     VStack(alignment: .leading, spacing: 12) {
-                        Text("Sexe")
+                        Text("Gender")
                             .font(.system(size: 16, weight: .semibold))
                             .foregroundColor(._4aa3a2)
 
@@ -97,7 +99,7 @@ struct LabasniSignupView: View {
                             Spacer(minLength: 0)
                         }
                         if shouldShowGenderWarning {
-                            ValidationMessage("Veuillez sélectionner un sexe.")
+                            ValidationMessage("Please select your gender.")
                         }
                     }
 
@@ -111,7 +113,7 @@ struct LabasniSignupView: View {
                         attemptedSubmit = true
                         viewModel.resetMessages()
                         if hasBlockingValidationError {
-                            viewModel.pushBlockingError("Veuillez vérifier les champs requis.")
+                            viewModel.pushBlockingError("Please check the required fields.")
                             return
                         }
                         viewModel.attemptSignup()
@@ -124,7 +126,7 @@ struct LabasniSignupView: View {
                                 ProgressView()
                                     .progressViewStyle(.circular)
                             } else {
-                                Text("Créer mon compte")
+                                Text("Create my account")
                                     .font(.system(size: 17, weight: .semibold))
                             }
                         }
@@ -141,7 +143,7 @@ struct LabasniSignupView: View {
                         NavigationLink {
                             LabasniLoginView()
                         } label: {
-                            Text("Déjà un compte ? Se connecter")
+                            Text("Already have an account? Sign in")
                                 .font(.system(size: 16, weight: .semibold))
                                 .foregroundColor(._4aa3a2)
                         }
@@ -177,7 +179,7 @@ struct LabasniSignupView: View {
                 },
                 onDecline: {
                     showTermsSheet = false
-                    viewModel.pushBlockingError("Termes non acceptés.")
+                    viewModel.pushBlockingError("Terms not accepted.")
                 }
             )
         }
@@ -217,9 +219,9 @@ struct LabasniSignupView: View {
 
     private func userGender(for option: GenderOption) -> User.Gender? {
         switch option {
-        case .femme:
+        case .female:
             return .female
-        case .homme:
+        case .male:
             return .male
         }
     }
@@ -473,7 +475,7 @@ private struct PasswordHint: View {
 
     var body: some View {
         let color: Color = isValid || !attempted ? ._4aa3a2.opacity(0.7) : .ca3c66
-        Text("Minimum 6 caractères, une majuscule et un caractère spécial.")
+        Text("Minimum 6 characters, one uppercase letter, and one special character.")
             .font(.system(size: 13, weight: .medium))
             .foregroundColor(color)
     }
@@ -491,19 +493,20 @@ private struct TermsSheetView: View {
                 .padding(.top, 8)
                 .frame(maxWidth: .infinity)
 
-            Text("Conditions d'utilisation")
+            Text("Terms of Use")
                 .font(.system(size: 20, weight: .bold))
                 .foregroundColor(.ca3c66)
 
             ScrollView {
                 VStack(alignment: .leading, spacing: 12) {
-                    Text("En créant un compte Labasni, vous acceptez :")
+                    Text("By creating a Labasni account, you agree to:")
                         .font(.system(size: 16, weight: .semibold))
                         .foregroundColor(.ca3c66)
 
-                    TermsBullet("Le traitement de vos données afin de personnaliser vos recommandations de style.")
-                    TermsBullet("La réception éventuelle de notifications liées à votre activité et à nos nouveautés.")
-                    TermsBullet("L’utilisation sécurisée de vos informations conformément à notre politique de confidentialité.")
+                    TermsBullet("The processing of your data to personalize your style recommendations.")
+                    TermsBullet("The possible receipt of notifications related to your activity and our updates.")
+                    TermsBullet("The secure use of your information in accordance with our privacy policy.")
+
                 }
                 .foregroundColor(._4aa3a2)
                 .font(.system(size: 14))
@@ -511,7 +514,7 @@ private struct TermsSheetView: View {
 
             VStack(spacing: 12) {
                 Button(action: onAccept) {
-                    Text("Accepter et créer mon compte")
+                    Text("Accept and create my account")
                         .font(.system(size: 16, weight: .semibold))
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 14)
@@ -519,7 +522,7 @@ private struct TermsSheetView: View {
                 .buttonStyle(PillButtonStyle(background: .ca3c66, foreground: .white))
 
                 Button(action: onDecline) {
-                    Text("Refuser")
+                    Text("Decline")
                         .font(.system(size: 16, weight: .semibold))
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 14)

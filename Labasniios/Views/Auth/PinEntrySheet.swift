@@ -49,12 +49,12 @@ struct PinEntrySheet: View {
                 .padding(.top, 8)
 
             VStack(spacing: 16) {
-                Text("Vérification requise")
+                Text("Verification Required")
                     .font(.title2).bold()
                     .foregroundColor(.ca3c66)
 
                 VStack(spacing: 8) {
-                    Text("Un code à 6 chiffres a été envoyé à")
+                    Text("A 6-digit code has been sent to")
                         .font(.subheadline)
                         .foregroundColor(._4aa3a2)
 
@@ -98,7 +98,7 @@ struct PinEntrySheet: View {
                     if isLoading {
                         ProgressView().progressViewStyle(.circular)
                     } else {
-                        Text("Vérifier le code")
+                        Text("Verify code")
                             .font(.headline)
                     }
                 }
@@ -112,7 +112,7 @@ struct PinEntrySheet: View {
                 Button {
                     onResend()
                 } label: {
-                    Text(canResend ? "Renvoyer le code" : "Renvoyer le code (\(resendSecondsRemaining)s)")
+                    Text(canResend ? "Resend code" : "Resend code (\(resendSecondsRemaining)s)")
                         .font(.subheadline)
                         .fontWeight(.semibold)
                 }
@@ -121,7 +121,7 @@ struct PinEntrySheet: View {
                 .disabled(!canResend)
             }
 
-            Button("Annuler", action: onCancel)
+            Button("Cancel", action: onCancel)
                 .foregroundColor(._4aa3a2)
                 .font(.subheadline)
         }

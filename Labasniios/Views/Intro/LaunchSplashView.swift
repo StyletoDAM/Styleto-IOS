@@ -23,7 +23,7 @@ struct LaunchSplashView: View {
                     .foregroundColor(.white)
                     .shadow(color: .black.opacity(0.1), radius: 6, x: 0, y: 3)
 
-                Text("Votre styliste intelligent")
+                Text("Your Smart Stylist")
                     .font(.system(size: 16, weight: .semibold))
                     .foregroundColor(.white.opacity(0.85))
             }

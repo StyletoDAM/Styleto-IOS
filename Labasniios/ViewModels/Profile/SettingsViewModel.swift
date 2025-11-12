@@ -7,6 +7,7 @@
 
 import Foundation
 import UIKit
+import _PhotosUI_SwiftUI
 
 @MainActor
 final class SettingsViewModel: ObservableObject {
@@ -15,6 +16,7 @@ final class SettingsViewModel: ObservableObject {
     @Published private(set) var successMessage: String?
     @Published var updatedUser: User?
     @Published var profileImage: UIImage?
+    @Published var selectedPhoto: PhotosPickerItem?
 
     private let profileService: ProfileService
 
@@ -22,38 +24,94 @@ final class SettingsViewModel: ObservableObject {
         self.profileService = profileService
     }
 
-    func updateProfile(
+    // MARK: - Update Text Profile (fullName, phone, gender, password)
+    func updateProfileText(
         fullName: String?,
         phoneNumber: String?,
         gender: String?,
         password: String?,
-        profileImage: UIImage?
+        preferences: [String]? = nil
     ) async {
         resetFeedback()
         isLoading = true
         defer { isLoading = false }
 
         do {
-            let updatedUser = try await profileService.updateProfile(
+            let updatedUser = try await profileService.updateProfileText(
                 fullName: fullName,
                 phoneNumber: phoneNumber,
                 gender: gender,
-                password: password,
-                profileImage: profileImage
+                preferences: preferences,
+                password: password
             )
             self.updatedUser = updatedUser
-            self.profileImage = profileImage
-            successMessage = "Profil mis à jour avec succès."
-            debugPrint("[SettingsViewModel] Profile updated successfully")
+            successMessage = "Profile information updated."
+            debugPrint("[SettingsViewModel] Text profile updated")
         } catch let networkError as NetworkError {
-            errorMessage = networkError.errorDescription ?? "Une erreur est survenue."
-            debugPrint("[SettingsViewModel] Network error: \(errorMessage ?? "")")
+            errorMessage = networkError.errorDescription ?? "An error occurred."
+            debugPrint("[SettingsViewModel] Text update error: \(errorMessage ?? "")")
         } catch {
             errorMessage = error.localizedDescription
             debugPrint("[SettingsViewModel] Unexpected error: \(error.localizedDescription)")
         }
     }
 
+    // MARK: - Update Profile Photo Only
+    func updateProfilePhoto(image: UIImage?) async {
+        guard let image = image else { return }
+
+        resetFeedback()
+        isLoading = true
+        defer { isLoading = false }
+
+        do {
+            let updatedUser = try await profileService.updateProfilePhoto(image: image)
+            self.updatedUser = updatedUser
+            self.profileImage = image
+            
+            if let newURL = updatedUser.profilePicture {
+                UserDefaults.standard.set(newURL, forKey: "cachedProfilePicture")
+            }
+            
+            successMessage = "Profile photo updated."
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    // MARK: - Delete Profile
+    func deleteProfile() async {
+        resetFeedback()
+        isLoading = true
+        defer { isLoading = false }
+
+        do {
+            let success = try await profileService.deleteProfile()
+            if success {
+                successMessage = "Account deleted successfully."
+                updatedUser = nil
+                profileImage = nil
+
+                // Optionally clear the auth token
+                TokenManager.shared.clearToken()
+                
+                // Optionally remove cached profile photo
+                UserDefaults.standard.removeObject(forKey: "cachedProfilePicture")
+                
+                debugPrint("[SettingsViewModel] Profile deleted successfully")
+            } else {
+                errorMessage = "Unable to delete account."
+            }
+        } catch let networkError as NetworkError {
+            errorMessage = networkError.errorDescription ?? "An error occurred."
+            debugPrint("[SettingsViewModel] Delete profile error: \(errorMessage ?? "")")
+        } catch {
+            errorMessage = error.localizedDescription
+            debugPrint("[SettingsViewModel] Unexpected error: \(error.localizedDescription)")
+        }
+    }
+
+    // MARK: - Reset Feedback
     func resetFeedback() {
         errorMessage = nil
         successMessage = nil

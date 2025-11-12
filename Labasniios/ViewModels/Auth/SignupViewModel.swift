@@ -67,7 +67,7 @@ final class SignupViewModel: ObservableObject {
         pinCode = ""
 
         guard !formattedPhoneNumber.isEmpty else {
-            errorMessage = "Numéro de téléphone invalide."
+            errorMessage = "Invalid phone number."
             return
         }
 
@@ -153,7 +153,7 @@ final class SignupViewModel: ObservableObject {
         } catch let network as NetworkError {
             pinError = network.errorDescription
         } catch {
-            pinError = "Code invalide ou expiré."
+            pinError = "Invalid or expired code."
         }
     }
 
@@ -174,27 +174,27 @@ final class SignupViewModel: ObservableObject {
 
     private func validateFields() -> Bool {
         guard !trimmed(fullName).isEmpty else {
-            errorMessage = "Le nom complet est requis."
+            errorMessage = "Full name is required."
             return false
         }
 
         guard isValidEmail(email) else {
-            errorMessage = "Adresse email invalide."
+            errorMessage = "Invalid email address."
             return false
         }
 
         guard isStrongPassword(password) else {
-            errorMessage = "Le mot de passe doit contenir au moins 6 caractères, une majuscule et un caractère spécial."
+            errorMessage = "Password must be at least 6 characters long, contain an uppercase letter and a special character."
             return false
         }
 
         guard sanitizedPhoneDigits().count >= 6 else {
-            errorMessage = "Le numéro de téléphone est requis (6 chiffres minimum)."
+            errorMessage = "Phone number is required (minimum 6 digits)."
             return false
         }
 
         guard selectedGender != nil else {
-            errorMessage = "Veuillez sélectionner un sexe."
+            errorMessage = "Please select a gender."
             return false
         }
 
@@ -263,9 +263,9 @@ final class SignupViewModel: ObservableObject {
         var message: String {
             switch self {
             case .missingGender:
-                return "Veuillez sélectionner un sexe."
+                return "Please select a gender."
             case .invalidPhone:
-                return "Numéro de téléphone invalide."
+                return "Invalid phone number."
             }
         }
     }
@@ -277,12 +277,12 @@ struct CountryDialCode: Identifiable, Hashable {
     let dialCode: String
 
     static let presets: [CountryDialCode] = [
-        CountryDialCode(id: "tn", name: "Tunisie (+216)", dialCode: "+216"),
+        CountryDialCode(id: "tn", name: "Tunisia (+216)", dialCode: "+216"),
         CountryDialCode(id: "fr", name: "France (+33)", dialCode: "+33"),
-        CountryDialCode(id: "ma", name: "Maroc (+212)", dialCode: "+212"),
-        CountryDialCode(id: "dz", name: "Algérie (+213)", dialCode: "+213"),
+        CountryDialCode(id: "ma", name: "Morocco (+212)", dialCode: "+212"),
+        CountryDialCode(id: "dz", name: "Algeria (+213)", dialCode: "+213"),
     ]
 
     static let `default`: CountryDialCode =
-        presets.first ?? CountryDialCode(id: "tn", name: "Tunisie (+216)", dialCode: "+216")
+        presets.first ?? CountryDialCode(id: "tn", name: "Tunisia (+216)", dialCode: "+216")
 }

@@ -19,11 +19,11 @@ struct OtpEntrySheet: View {
                 .padding(.top, 8)
 
             VStack(spacing: 12) {
-                Text("Vérifiez votre identité")
+                Text("Verify Your Identity")
                     .font(.title2).bold()
                     .foregroundColor(.ca3c66)
 
-                Text("Un code à 6 chiffres a été envoyé au numéro \(maskedPhone).")
+                Text("A 6-digit code has been sent to the number \(maskedPhone).")
                     .font(.subheadline)
                     .foregroundColor(._4aa3a2)
                     .multilineTextAlignment(.center)
@@ -60,7 +60,7 @@ struct OtpEntrySheet: View {
                     if isLoading {
                         ProgressView().progressViewStyle(.circular)
                     } else {
-                        Text("Valider le code")
+                        Text("Validate Code")
                             .font(.headline)
                     }
                 }
@@ -73,7 +73,7 @@ struct OtpEntrySheet: View {
             Button {
                 onResend()
             } label: {
-                Text(canResend ? "Renvoyer le code SMS" : "Renvoyer le code (\(resendSecondsRemaining)s)")
+                Text(canResend ? "Resend SMS Code" : "Resend Code (\(resendSecondsRemaining)s)")
                     .font(.subheadline)
                     .fontWeight(.semibold)
             }
@@ -81,7 +81,7 @@ struct OtpEntrySheet: View {
             .foregroundColor(canResend ? .ca3c66 : .gray)
             .disabled(!canResend)
 
-            Button("Annuler", action: onCancel)
+            Button("Cancel", action: onCancel)
                 .foregroundColor(._4aa3a2)
                 .font(.subheadline)
         }

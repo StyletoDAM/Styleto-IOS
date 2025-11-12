@@ -38,7 +38,7 @@ struct TenuesView: View {
     }
 
     private var header: some View {
-        Text("Mes Tenues")
+        Text("My Outfits")
             .font(.system(size: 36, weight: .bold))
             .foregroundColor(.themePrimary)
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -46,13 +46,13 @@ struct TenuesView: View {
 
     private var suggestionCard: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Suggestion du jour")
+            Text("Today's Suggestion")
                 .font(.system(size: 22, weight: .bold))
                 .foregroundColor(.white)
-            Text("Il fait beau aujourd'hui ! Pourquoi ne pas essayer une tenue légère et colorée ?")
+            Text("The weather is nice today! Why not try a light and colorful outfit?")
                 .foregroundColor(.white.opacity(0.95))
             Button(action: {}) {
-                Text("Voir la suggestion")
+                Text("See suggestion")
                     .font(.system(size: 16, weight: .semibold))
                     .padding(.horizontal, 20)
                     .padding(.vertical, 12)
@@ -71,7 +71,7 @@ struct TenuesView: View {
     }
 
     private var sectionHeader: some View {
-        Text("Tenues récentes")
+        Text("Recent Outfits")
             .font(.system(size: 22, weight: .semibold))
             .foregroundColor(.themeTeal)
     }

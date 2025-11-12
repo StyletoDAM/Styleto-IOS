@@ -79,7 +79,7 @@ struct StoreView: View {
             Image(systemName: "magnifyingglass")
                 .font(.system(size: 18, weight: .semibold))
                 .foregroundColor(.themeSecondary)
-            TextField("Rechercher un article...", text: .constant(""))
+            TextField("Search for an item...", text: .constant(""))
                 .textInputAutocapitalization(.never)
                 .autocorrectionDisabled(true)
                 .disabled(true)
@@ -96,7 +96,7 @@ struct StoreView: View {
     }
 
     private var sectionHeader: some View {
-        Text("Articles populaires")
+        Text("Popular Items")
             .font(.system(size: 22, weight: .semibold))
             .foregroundColor(.themeTeal)
             .padding(.top, 4)

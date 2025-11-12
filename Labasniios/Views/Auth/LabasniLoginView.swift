@@ -46,7 +46,7 @@ struct LabasniLoginView: View {
                         .font(.system(size: 28, weight: .bold))
                         .foregroundColor(.ca3c66)
 
-                    Text("Bienvenue ! Connectez-vous")
+                    Text("Welcome! Please log in")
                         .font(.system(size: 15, weight: .medium))
                         .foregroundColor(._4aa3a2.opacity(0.95))
                 }
@@ -60,12 +60,12 @@ struct LabasniLoginView: View {
                             .foregroundColor(._4aa3a2)
 
                         IconField(systemName: "envelope",
-                                  placeholder: "votre@email.com",
+                                  placeholder: "your@email.com",
                                   text: $viewModel.email)
                     }
 
                     Group {
-                        Text("Mot de passe")
+                        Text("Password")
                             .font(.system(size: 16, weight: .semibold))
                             .foregroundColor(._4aa3a2)
 
@@ -79,7 +79,7 @@ struct LabasniLoginView: View {
                         NavigationLink {
                             LabasniForgotPasswordView()
                         } label: {
-                            Text("Mot de passe oublié ?")
+                            Text("Forgot password?")
                                 .font(.system(size: 15, weight: .semibold))
                                 .foregroundColor(._4aa3a2)
                         }
@@ -107,7 +107,7 @@ struct LabasniLoginView: View {
                             ProgressView()
                                 .progressViewStyle(.circular)
                         } else {
-                            Text("Se connecter")
+                            Text("Log In")
                                 .font(.system(size: 17, weight: .semibold))
                         }
                     }
@@ -141,7 +141,7 @@ struct LabasniLoginView: View {
                     Button {
                         guard let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
                               let rootVC = windowScene.windows.first?.rootViewController else {
-                            displaySnackbar("Impossible d'ouvrir Google Sign-In")
+                            displaySnackbar("Unable to open Google Sign-In")
                             return
                         }
                         googleSignInHelper.signInWithGoogle(presenting: rootVC)
@@ -152,7 +152,7 @@ struct LabasniLoginView: View {
                                 .foregroundColor(._4aa3a2)
                                 .frame(width: 24, height: 24)
                             
-                            Text("Continuer avec Google")
+                            Text("Continue with Google")
                                 .font(.system(size: 16, weight: .semibold))
                                 .foregroundColor(._4aa3a2)
                         }
@@ -174,7 +174,7 @@ struct LabasniLoginView: View {
                         HStack {
                             Image(systemName: "applelogo")
                                 .font(.system(size: 18, weight: .semibold))
-                            Text("Continuer avec Apple")
+                            Text("Continue with Apple")
                                 .font(.system(size: 16, weight: .semibold))
                         }
                         .frame(maxWidth: .infinity)
@@ -193,7 +193,7 @@ struct LabasniLoginView: View {
                 NavigationLink {
                     LabasniSignupView()
                 } label: {
-                    Text("Pas encore de compte ? Créer un compte")
+                    Text("Don't have an account yet? Sign up")
                         .font(.system(size: 16, weight: .semibold))
                         .foregroundColor(._4aa3a2.opacity(0.95))
                 }

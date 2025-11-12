@@ -19,24 +19,6 @@ final class ProfileService {
         return formatter
     }()
     
-    private struct UpdateProfilePayload: Encodable {
-        let fullName: String?
-        let email: String?
-        let phoneNumber: String?
-        let gender: String?
-        let preferences: [String]?
-        let password: String?
-        
-        enum CodingKeys: String, CodingKey {
-            case fullName
-            case email
-            case phoneNumber
-            case gender
-            case preferences
-            case password
-        }
-    }
-    
     private struct ErrorResponse: Decodable {
         let statusCode: Int
         let message: String
@@ -61,77 +43,88 @@ final class ProfileService {
         }
     }
     
-    /// Met à jour le profil avec champs + image optionnelle
-    func updateProfile(
+    // MARK: - Update Text Profile (JSON)
+    func updateProfileText(
         fullName: String? = nil,
-        email: String? = nil,
         phoneNumber: String? = nil,
         gender: String? = nil,
         preferences: [String]? = nil,
-        password: String? = nil,
-        profileImage: UIImage? = nil
+        password: String? = nil
     ) async throws -> User {
         guard let token = TokenManager.shared.getToken() else {
             throw NetworkError.serverMessage("Token d'authentification manquant.")
         }
         
-        var request = try makeRequest()
+        let url = APIConstants.baseURL.appendingPathComponent("auth/profile")
+        var request = URLRequest(url: url)
+        request.httpMethod = "PATCH"
+        request.addValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        request.addValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.addValue(APIConstants.jsonContentType, forHTTPHeaderField: "Accept")
+        
+        // Construire le body JSON
+        var body: [String: Any] = [:]
+        if let fullName = fullName, !fullName.trimmingCharacters(in: .whitespaces).isEmpty {
+            body["fullName"] = fullName
+        }
+        if let phoneNumber = phoneNumber, !phoneNumber.trimmingCharacters(in: .whitespaces).isEmpty {
+            body["phoneNumber"] = phoneNumber
+        }
+        if let gender = gender { body["gender"] = gender }
+        if let password = password, !password.isEmpty { body["password"] = password }
+        if let preferences = preferences, !preferences.isEmpty {
+                body["preferences"] = preferences
+            }
+        if body.isEmpty {
+            throw NetworkError.invalidData
+        }
+        
+        request.httpBody = try JSONSerialization.data(withJSONObject: body)
+        
+        debugPrint("[ProfileService] PATCH /auth/profile (text)")
+        
+        return try await performRequest(request)
+    }
+    
+    // MARK: - Update Profile Photo (multipart)
+    func updateProfilePhoto(image: UIImage) async throws -> User {
+        guard let token = TokenManager.shared.getToken() else {
+            throw NetworkError.serverMessage("Token d'authentification manquant.")
+        }
+        
+        guard let imageData = image.jpegData(compressionQuality: 0.8) else {
+            throw NetworkError.invalidData
+        }
+        
+        let url = APIConstants.baseURL.appendingPathComponent("auth/profile/photo")
+        var request = URLRequest(url: url)
+        request.httpMethod = "PATCH"
         request.addValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         
-        // Si image → multipart/form-data
-        if let image = profileImage, let imageData = image.jpegData(compressionQuality: 0.8) {
-            let boundary = "Boundary-\(UUID().uuidString)"
-            request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
-            
-            var body = Data()
-            
-            // Ajouter les champs texte (seulement s’ils sont non-nil)
-            let fields: [String: Any?] = [
-                "fullName": fullName,
-                "email": email,
-                "phoneNumber": phoneNumber,
-                "gender": gender,
-                "preferences": preferences,
-                "password": password
-            ]
-            
-            for (key, value) in fields {
-                if let value = value {
-                    body.append("--\(boundary)\r\n")
-                    body.append("Content-Disposition: form-data; name=\"\(key)\"\r\n\r\n")
-                    body.append("\(value)\r\n")
-                }
-            }
-            
-            // Ajouter l'image
-            body.append("--\(boundary)\r\n")
-            body.append("Content-Disposition: form-data; name=\"image\"; filename=\"profile.jpg\"\r\n")
-            body.append("Content-Type: image/jpeg\r\n\r\n")
-            body.append(imageData)
-            body.append("\r\n")
-            body.append("--\(boundary)--\r\n")
-            
-            request.httpBody = body
-            
-            debugPrint("[ProfileService] PATCH \(request.url?.absoluteString ?? "") avec image")
-            debugPrint("[ProfileService] Image size: \(imageData.count) bytes")
-        }
-        // Sinon → JSON classique
-        else {
-            let payload = UpdateProfilePayload(
-                fullName: fullName,
-                email: email,
-                phoneNumber: phoneNumber,
-                gender: gender,
-                preferences: preferences,
-                password: password
-            )
-            request.httpBody = try encoder.encode(payload)
-            debugPrint("[ProfileService] PATCH \(request.url?.absoluteString ?? "") sans image")
-            debugPrint("[ProfileService] Payload: \(payload)")
-        }
+        let boundary = "Boundary-\(UUID().uuidString)"
+        request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
         
+        var body = Data()
+        
+        // Image
+        body.append("--\(boundary)\r\n")
+        body.append("Content-Disposition: form-data; name=\"image\"; filename=\"profile.jpg\"\r\n")
+        body.append("Content-Type: image/jpeg\r\n\r\n")
+        body.append(imageData)
+        body.append("\r\n")
+        body.append("--\(boundary)--\r\n")
+        
+        request.httpBody = body
+        
+        debugPrint("[ProfileService] PATCH /auth/profile/photo (image: \(imageData.count) bytes)")
+        
+        return try await performRequest(request)
+    }
+    
+    // MARK: - Helper: Perform Request
+    private func performRequest(_ request: URLRequest) async throws -> User {
         let (data, response) = try await session.data(for: request)
+        
         guard let httpResponse = response as? HTTPURLResponse else {
             throw NetworkError.noData
         }
@@ -149,12 +142,12 @@ final class ProfileService {
                 throw NetworkError.decodingFailed
             }
         case 401:
-            throw NetworkError.serverMessage("Token d'authentification invalide.")
+            throw NetworkError.serverMessage("Token invalide.")
         case 409:
             if let serverError = try? decoder.decode(ErrorResponse.self, from: data) {
                 throw NetworkError.serverMessage(serverError.message)
             }
-            throw NetworkError.serverMessage("Email déjà utilisé.")
+            throw NetworkError.serverMessage("Conflit.")
         default:
             if let serverError = try? decoder.decode(ErrorResponse.self, from: data) {
                 throw NetworkError.serverMessage(serverError.message)
@@ -162,17 +155,47 @@ final class ProfileService {
             throw NetworkError.requestFailed(httpResponse.statusCode)
         }
     }
-    
-    private func makeRequest() throws -> URLRequest {
-        guard let url = URL(string: "/auth/profile", relativeTo: APIConstants.baseURL) else {
-            throw NetworkError.invalidURL
+    // MARK: - Delete Profile
+    func deleteProfile() async throws -> Bool {
+        guard let token = TokenManager.shared.getToken() else {
+            throw NetworkError.serverMessage("Token d'authentification manquant.")
         }
+        
+        let url = APIConstants.baseURL.appendingPathComponent("auth/profile")
         var request = URLRequest(url: url)
-        request.httpMethod = "PATCH"
-        request.addValue(APIConstants.jsonContentType, forHTTPHeaderField: "Accept")
-        return request
+        request.httpMethod = "DELETE"
+        request.addValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        request.addValue("application/json", forHTTPHeaderField: "Accept")
+        
+        debugPrint("[ProfileService] DELETE /auth/profile")
+        
+        let (data, response) = try await session.data(for: request)
+        
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw NetworkError.noData
+        }
+        
+        let responseBodyString = String(data: data, encoding: .utf8) ?? "<non UTF-8>"
+        debugPrint("[ProfileService] Status: \(httpResponse.statusCode)")
+        debugPrint("[ProfileService] Body: \(responseBodyString)")
+        
+        switch httpResponse.statusCode {
+        case 200:
+            return true
+        case 401:
+            throw NetworkError.serverMessage("Token invalide ou expiré.")
+        case 404:
+            throw NetworkError.serverMessage("Utilisateur introuvable.")
+        default:
+            if let serverError = try? decoder.decode(ErrorResponse.self, from: data) {
+                throw NetworkError.serverMessage(serverError.message)
+            }
+            throw NetworkError.requestFailed(httpResponse.statusCode)
+        }
     }
+
 }
+
 
 // Extension pour append String → Data
 private extension Data {

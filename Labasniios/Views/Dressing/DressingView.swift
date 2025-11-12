@@ -27,36 +27,41 @@ private struct ClothingItem: Identifiable {
 struct DressingView: View {
     @ObservedObject private var themeManager = ThemeManager.shared
     private let clothes = ClothingItem.samples
-    private let categories = ["Tous", "Hauts", "Bas", "Robes", "Chaussures", "Accessoires"]
+    private let categories = ["All", "Tops", "Bottoms", "Dresses", "Shoes", "Accessories"]
     private let columns: [GridItem] = [
         GridItem(.flexible(), spacing: 16),
         GridItem(.flexible(), spacing: 16)
     ]
 
     var body: some View {
-        ZStack(alignment: .topTrailing) {
-            ScrollView {
-                VStack(alignment: .leading, spacing: 18) {
-                    header
-                    searchAndFilter
-                    categoryChips
-                    clothesGrid
-                }
-                .padding(.horizontal, 16)
-                .padding(.top, 12)
-                .padding(.bottom, 32)
+        ScrollView {
+            VStack(alignment: .leading, spacing: 18) {
+                header
+                searchAndFilter
+                categoryChips
+                clothesGrid
             }
-            .background(Color.themeSoftPink.opacity(0.18).ignoresSafeArea())
-
-            floatingAddButton
+            .padding(.horizontal, 16)
+            .padding(.top, 12)
+            .padding(.bottom, 80) // Espace pour le bouton flottant
         }
+        .background(Color.themeSoftPink.opacity(0.18).ignoresSafeArea())
         .navigationBarBackButtonHidden(true)
         .toolbar(.hidden, for: .navigationBar)
+        .safeAreaInset(edge: .bottom) {
+            HStack {
+                Spacer() // Pousse le bouton à droite
+                floatingAddButton
+                    .padding(.trailing, 16)
+                    .padding(.bottom, 16)
+            }
+            .background(Color.clear) // Transparent pour éviter le fond blanc
+        }
     }
 
     private var header: some View {
         HStack(alignment: .center) {
-            Text("Mon Dressing")
+            Text("My Dressing")
                 .font(.system(size: 36, weight: .bold))
                 .foregroundColor(.themePrimary)
             Spacer()
@@ -69,7 +74,7 @@ struct DressingView: View {
             HStack(spacing: 10) {
                 Image(systemName: "magnifyingglass")
                     .foregroundColor(.themeSecondary)
-                TextField("Rechercher...", text: .constant(""))
+                TextField("Search...", text: .constant(""))
                     .textInputAutocapitalization(.never)
                     .autocorrectionDisabled(true)
                     .disabled(true)

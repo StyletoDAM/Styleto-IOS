@@ -14,6 +14,35 @@ private enum Gender: String, CaseIterable {
     case female = "Female"
 }
 
+private enum StylePreference: String, CaseIterable {
+    case casual = "Casual"
+    case chic = "Chic"
+    case sport = "Sport"
+    case boheme = "Bohème"
+    case minimal = "Minimal"
+}
+
+private struct StyleChip: View {
+    let title: String
+    let isSelected: Bool
+    
+    var body: some View {
+        Text(title)
+            .font(.system(size: 15, weight: .semibold))
+            .foregroundColor(isSelected ? .white : Color.themeTeal)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 10)
+            .background(
+                Capsule()
+                    .fill(isSelected ? Color.themePrimary : Color.themeSoftPink.opacity(0.6))
+            )
+            .overlay(
+                Capsule()
+                    .stroke(Color.themeTeal.opacity(0.3), lineWidth: isSelected ? 0 : 1)
+            )
+    }
+}
+
 private struct SettingsSection: Identifiable {
     let id = UUID()
     let icon: String
@@ -44,14 +73,24 @@ struct SettingsView: View {
     @State private var showSuccessAlert = false
     @State private var showErrorAlert = false
     @State private var showLogoutConfirmation = false
+    @State private var showPhotoConfirmation = false
+    @State private var pendingPhoto: UIImage?
+    @State private var showDeleteConfirmation = false
     
     // Edit Profile State
     @State private var fullName: String = ""
     @State private var email: String = ""
     @State private var phone: String = ""
     @State private var gender: Gender = .female
+    @State private var selectedStyles: Set<StylePreference> = []
+    @State private var originalStyles: Set<StylePreference> = []
+    
+    // Security State
     @State private var password: String = ""
     @State private var showPasswordUpdate: Bool = false
+    
+    @State private var selectedPhoto: PhotosPickerItem?
+    @State private var profileImage: UIImage?
     
     // Original values for cancel
     @State private var originalFullName: String = ""
@@ -73,10 +112,27 @@ struct SettingsView: View {
             }
         }()
         
+        // Chargement des préférences de style depuis `preferences`
+        let userStyles = user?.preferences ?? []
+        let mapped = userStyles.compactMap { s -> StylePreference? in
+            switch s.lowercased() {
+            case "casual": return .casual
+            case "chic": return .chic
+            case "sport": return .sport
+            case "boheme", "bohème": return .boheme
+            case "minimal": return .minimal
+            default: return nil
+            }
+        }
+        let styleSet = Set(mapped)
+        
         _fullName = State(initialValue: resolvedFullName)
         _email = State(initialValue: resolvedEmail)
         _phone = State(initialValue: resolvedPhone)
         _gender = State(initialValue: resolvedGender)
+        _selectedStyles = State(initialValue: styleSet)
+        _originalStyles = State(initialValue: styleSet)
+        
         _originalFullName = State(initialValue: resolvedFullName)
         _originalPhone = State(initialValue: resolvedPhone)
         _originalGender = State(initialValue: resolvedGender)
@@ -115,10 +171,8 @@ struct SettingsView: View {
             icon: "lock.shield",
             title: "Security",
             options: [
-                SettingsOption(icon: "faceid", title: "Face ID", hasToggle: true, toggleValue: true, hasChevron: false),
-                SettingsOption(icon: "key", title: "Two-Factor Authentication", hasToggle: true, toggleValue: false, hasChevron: false),
-                SettingsOption(icon: "eye.slash", title: "Privacy Mode", hasToggle: true, toggleValue: false, hasChevron: false),
-                SettingsOption(icon: "hand.raised", title: "Data Protection", hasToggle: false, toggleValue: false, hasChevron: true)
+                SettingsOption(icon: "key", title: "Change Password", hasToggle: false, toggleValue: false, hasChevron: true),
+                SettingsOption(icon: "trash", title: "Delete Account", hasToggle: false, toggleValue: false, hasChevron: true)
             ],
             isEditProfile: false
         ),
@@ -139,6 +193,56 @@ struct SettingsView: View {
         NavigationStack {
             ScrollView {
                 VStack(spacing: 16) {
+                    // Profile Photo
+                    VStack(spacing: 12) {
+                        ZStack {
+                            Circle()
+                                .fill(Color.themePrimary.opacity(0.15))
+                                .frame(width: 80, height: 80)
+                            
+                            if let img = profileImage ?? viewModel.profileImage {
+                                Image(uiImage: img)
+                                    .resizable()
+                                    .scaledToFill()
+                                    .frame(width: 80, height: 80)
+                                    .clipShape(Circle())
+                            } else if let pic = user?.profilePicture, !pic.isEmpty, let url = URL(string: pic) {
+                                AsyncImage(url: url) { image in
+                                    image
+                                        .resizable()
+                                        .scaledToFill()
+                                } placeholder: {
+                                    Text(initials(from: fullName))
+                                        .font(.system(size: 28, weight: .bold))
+                                        .foregroundColor(.themePrimary)
+                                }
+                                .frame(width: 80, height: 80)
+                                .clipShape(Circle())
+                            } else {
+                                Text(initials(from: fullName))
+                                    .font(.system(size: 28, weight: .bold))
+                                    .foregroundColor(.themePrimary)
+                            }
+                        }
+                        
+                        PhotosPicker(selection: $selectedPhoto, matching: .images) {
+                            Text("Change photo")
+                                .font(.system(size: 15, weight: .semibold))
+                                .foregroundColor(.themePrimary)
+                        }
+                        .onChange(of: selectedPhoto) { newItem in
+                            Task {
+                                if let data = try? await newItem?.loadTransferable(type: Data.self),
+                                   let uiImage = UIImage(data: data) {
+                                    pendingPhoto = uiImage
+                                    showPhotoConfirmation = true
+                                }
+                            }
+                        }
+                    }
+                    .padding(.top, 20)
+                    
+                    // Sections
                     ForEach(sections) { section in
                         if section.isEditProfile {
                             EditProfileSectionCard(
@@ -156,17 +260,14 @@ struct SettingsView: View {
                                 email: $email,
                                 phone: $phone,
                                 gender: $gender,
-                                password: $password,
-                                showPasswordUpdate: $showPasswordUpdate,
+                                selectedStyles: $selectedStyles,
                                 viewModel: viewModel,
                                 onSave: { showSaveConfirmation = true },
                                 onCancel: {
                                     fullName = originalFullName
                                     phone = originalPhone
                                     gender = originalGender
-                                    password = ""
-                                    showPasswordUpdate = false
-                                    viewModel.profileImage = nil
+                                    selectedStyles = originalStyles
                                 },
                                 hasChanges: hasChanges,
                                 user: user
@@ -185,10 +286,36 @@ struct SettingsView: View {
                                     }
                                 },
                                 themeManager: themeManager,
-                                showThemePicker: $showThemePicker
+                                showThemePicker: $showThemePicker,
+                                showPasswordUpdate: $showPasswordUpdate,
+                                password: $password,
+                                onPasswordChange: { showPasswordUpdate = true },
+                                onDeleteAccount: { showDeleteConfirmation = true },
+                                viewModel: viewModel
                             )
                         }
                     }
+                    
+                    // Logout Button
+                    Button {
+                        showLogoutConfirmation = true
+                    } label: {
+                        Group {
+                            if viewModel.isLoading {
+                                ProgressView()
+                                    .progressViewStyle(.circular)
+                            } else {
+                                Text("Logout")
+                                    .font(.system(size: 17, weight: .semibold))
+                            }
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 16)
+                    }
+                    .buttonStyle(PillButtonStyle(background: .themePrimary, foreground: .white))
+                    .padding(.horizontal, 22)
+                    .padding(.top, 32)
+                    .padding(.bottom, 20)
                 }
                 .padding(.horizontal, 20)
                 .padding(.vertical, 16)
@@ -197,15 +324,6 @@ struct SettingsView: View {
             .navigationTitle("Settings")
             .navigationBarTitleDisplayMode(.large)
             .navigationBarBackButtonHidden(true)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button { showLogoutConfirmation = true } label: {
-                        Image(systemName: "rectangle.portrait.and.arrow.right")
-                            .font(.system(size: 18, weight: .semibold))
-                            .foregroundColor(.themePrimary)
-                    }
-                }
-            }
             .sheet(isPresented: $showThemePicker) {
                 ThemePickerSheet(themeManager: themeManager)
             }
@@ -222,13 +340,26 @@ struct SettingsView: View {
                         fullName = updatedUser.fullName
                         phone = updatedUser.phoneNumber ?? ""
                         gender = updatedUser.gender == .male ? .male : .female
+                        
+                        // Mise à jour des styles
+                        let mapped = updatedUser.preferences.compactMap { s -> StylePreference? in
+                            switch s.lowercased() {
+                            case "casual": return .casual
+                            case "chic": return .chic
+                            case "sport": return .sport
+                            case "boheme", "bohème": return .boheme
+                            case "minimal": return .minimal
+                            default: return nil
+                            }
+                        }
+                        originalStyles = Set(mapped)
+                        selectedStyles = originalStyles
                     } else {
                         originalFullName = fullName
                         originalPhone = phone
                         originalGender = gender
+                        originalStyles = selectedStyles
                     }
-                    password = ""
-                    showPasswordUpdate = false
                 }
             } message: { Text(viewModel.successMessage ?? "Profil mis à jour avec succès.") }
             .alert("Erreur", isPresented: $showErrorAlert) {
@@ -240,6 +371,38 @@ struct SettingsView: View {
                 Button("Annuler", role: .cancel) {}
                 Button("Déconnexion", role: .destructive) { performLogout() }
             } message: { Text("Voulez-vous vraiment vous déconnecter ?") }
+            .alert("Confirmer le changement de photo", isPresented: $showPhotoConfirmation) {
+                Button("Annuler", role: .cancel) {
+                    selectedPhoto = nil
+                    pendingPhoto = nil
+                }
+                Button("Confirmer") {
+                    withAnimation(.easeInOut) {
+                        profileImage = pendingPhoto
+                        viewModel.profileImage = pendingPhoto
+                    }
+                    pendingPhoto = nil
+                    selectedPhoto = nil
+                    Task {
+                        await viewModel.updateProfilePhoto(image: profileImage)
+                    }
+                }
+            } message: {
+                Text("Voulez-vous vraiment changer votre photo de profil ?")
+            }
+            .alert("Supprimer le compte", isPresented: $showDeleteConfirmation) {
+                Button("Annuler", role: .cancel) {}
+                Button("Supprimer", role: .destructive) {
+                    Task {
+                        await viewModel.deleteProfile()
+                        if viewModel.errorMessage == nil {
+                            performLogout()
+                        }
+                    }
+                }
+            } message: {
+                Text("Voulez-vous vraiment supprimer votre compte ? Cette action est irréversible.")
+            }
         }
     }
     
@@ -247,8 +410,7 @@ struct SettingsView: View {
         fullName != originalFullName ||
         phone != originalPhone ||
         gender != originalGender ||
-        !password.isEmpty ||
-        viewModel.profileImage != nil
+        selectedStyles != originalStyles
     }
     
     private func performLogout() {
@@ -259,16 +421,20 @@ struct SettingsView: View {
     
     private func saveProfile() async {
         let genderString: String? = gender == .male ? "male" : "female"
-        let passwordToUpdate: String? = password.isEmpty ? nil : password
+        let styleStrings = selectedStyles.map { $0.rawValue.lowercased() }
         
-        await viewModel.updateProfile(
+        await viewModel.updateProfileText(
             fullName: fullName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? nil : fullName.trimmingCharacters(in: .whitespacesAndNewlines),
             phoneNumber: phone.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? nil : phone.trimmingCharacters(in: .whitespacesAndNewlines),
             gender: genderString,
-            password: passwordToUpdate,
-            profileImage: viewModel.profileImage
+            password: nil,
+            preferences: styleStrings.isEmpty ? nil : styleStrings
         )
     }
+}
+
+private func initials(from name: String) -> String {
+    name.split(separator: " ").prefix(2).compactMap { $0.first }.map(String.init).joined().uppercased()
 }
 
 // MARK: - Theme Picker Sheet
@@ -317,13 +483,8 @@ private struct EditProfileSectionCard: View {
     @Binding var email: String
     @Binding var phone: String
     @Binding var gender: Gender
-    @Binding var password: String
-    @Binding var showPasswordUpdate: Bool
+    @Binding var selectedStyles: Set<StylePreference>
     @ObservedObject var viewModel: SettingsViewModel
-    
-    @State private var selectedPhoto: PhotosPickerItem?
-    @State private var profileImage: UIImage?
-    
     let onSave: () -> Void
     let onCancel: () -> Void
     let hasChanges: Bool
@@ -331,7 +492,6 @@ private struct EditProfileSectionCard: View {
     
     var body: some View {
         VStack(spacing: 0) {
-            // Header
             Button(action: onToggle) {
                 HStack(spacing: 16) {
                     ZStack {
@@ -356,61 +516,8 @@ private struct EditProfileSectionCard: View {
             }
             .buttonStyle(.plain)
             
-            // Expanded content
             if isExpanded {
                 VStack(spacing: 24) {
-                    // Avatar
-                    VStack(spacing: 12) {
-                        ZStack {
-                            Circle()
-                                .fill(Color.themePrimary.opacity(0.15))
-                                .frame(width: 80, height: 80)
-                            
-                            if let img = profileImage ?? viewModel.profileImage {
-                                Image(uiImage: img)
-                                    .resizable()
-                                    .scaledToFill()
-                                    .frame(width: 80, height: 80)
-                                    .clipShape(Circle())
-                            } else if let pic = user?.profilePicture, !pic.isEmpty, let url = URL(string: pic) {
-                                AsyncImage(url: url) { image in
-                                    image
-                                        .resizable()
-                                        .scaledToFill()
-                                } placeholder: {
-                                    Text(initials(from: fullName))
-                                        .font(.system(size: 28, weight: .bold))
-                                        .foregroundColor(.themePrimary)
-                                }
-                                .frame(width: 80, height: 80)
-                                .clipShape(Circle())
-                            } else {
-                                Text(initials(from: fullName))
-                                    .font(.system(size: 28, weight: .bold))
-                                    .foregroundColor(.themePrimary)
-                            }
-                        }
-                        
-                        PhotosPicker(selection: $selectedPhoto, matching: .images) {
-                            Text("Change photo")
-                                .font(.system(size: 15, weight: .semibold))
-                                .foregroundColor(.themePrimary)
-                        }
-                        .onChange(of: selectedPhoto) { newItem in
-                            Task {
-                                if let data = try? await newItem?.loadTransferable(type: Data.self),
-                                   let uiImg = UIImage(data: data) {
-                                    profileImage = uiImg
-                                    viewModel.profileImage = uiImg
-                                }
-                            }
-                        }
-                    }
-                    .padding(.top, 20)
-                    
-                    Divider().padding(.horizontal, 20)
-                    
-                    // Fields
                     VStack(spacing: 20) {
                         // Full Name
                         VStack(alignment: .leading, spacing: 8) {
@@ -421,7 +528,7 @@ private struct EditProfileSectionCard: View {
                                 .textFieldStyle(CustomTextFieldStyle())
                         }
                         
-                        // Email (read-only)
+                        // Email
                         VStack(alignment: .leading, spacing: 8) {
                             Text("Email")
                                 .font(.system(size: 14, weight: .medium))
@@ -456,31 +563,36 @@ private struct EditProfileSectionCard: View {
                             .tint(.themePrimary)
                         }
                         
-                        // Password
+                        // Préférences de style
                         VStack(alignment: .leading, spacing: 12) {
-                            if showPasswordUpdate {
-                                VStack(alignment: .leading, spacing: 8) {
-                                    Text("New Password")
-                                        .font(.system(size: 14, weight: .medium))
-                                        .foregroundColor(.themeSecondaryText)
-                                    SecureField("New Password", text: $password)
-                                        .textFieldStyle(CustomTextFieldStyle())
+                            Text("Style Preferences")
+                                .font(.system(size: 14, weight: .medium))
+                                .foregroundColor(.themeSecondaryText)
+                            
+                            LazyVGrid(columns: [
+                                GridItem(.flexible()), GridItem(.flexible())
+                            ], spacing: 12) {
+                                ForEach(StylePreference.allCases, id: \.self) { style in
+                                    StyleChip(
+                                        title: style.rawValue,
+                                        isSelected: selectedStyles.contains(style)
+                                    )
+                                    .onTapGesture {
+                                        if selectedStyles.contains(style) {
+                                            selectedStyles.remove(style)
+                                        } else {
+                                            selectedStyles.insert(style)
+                                        }
+                                    }
                                 }
                             }
-                            Button {
-                                withAnimation { showPasswordUpdate.toggle() }
-                            } label: {
-                                Text(showPasswordUpdate ? "Cancel password update" : "Update password")
-                                    .font(.system(size: 15, weight: .semibold))
-                                    .foregroundColor(.themePrimary)
-                            }
                         }
+                        .padding(.top, 8)
                     }
                     .padding(.horizontal, 20)
                     
                     Divider().padding(.horizontal, 20)
                     
-                    // Buttons
                     HStack(spacing: 12) {
                         Button(action: onCancel) {
                             Text("Cancel")
@@ -513,10 +625,6 @@ private struct EditProfileSectionCard: View {
                 .shadow(color: .black.opacity(0.06), radius: 12, x: 0, y: 4)
         )
     }
-    
-    private func initials(from name: String) -> String {
-        name.split(separator: " ").prefix(2).compactMap { $0.first }.map(String.init).joined().uppercased()
-    }
 }
 
 // MARK: - Custom Text Field Style
@@ -540,6 +648,11 @@ private struct SettingsSectionCard: View {
     let onToggle: () -> Void
     @ObservedObject var themeManager: ThemeManager
     @Binding var showThemePicker: Bool
+    @Binding var showPasswordUpdate: Bool
+    @Binding var password: String
+    var onPasswordChange: (() -> Void)?
+    var onDeleteAccount: (() -> Void)?
+    @ObservedObject var viewModel: SettingsViewModel
     
     var body: some View {
         VStack(spacing: 0) {
@@ -578,9 +691,46 @@ private struct SettingsSectionCard: View {
     private var optionsView: some View {
         VStack(spacing: 0) {
             ForEach(Array(section.options.enumerated()), id: \.element.id) { index, option in
-                SettingsOptionRow(option: option, themeManager: themeManager, showThemePicker: option.title == "Theme" ? $showThemePicker : nil)
+                if option.title == "Change Password" && showPasswordUpdate {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("New Password")
+                            .font(.system(size: 14, weight: .medium))
+                            .foregroundColor(.themeSecondaryText)
+                        SecureField("Enter new password", text: $password)
+                            .textFieldStyle(CustomTextFieldStyle())
+                        Button("Save Password") {
+                            Task {
+                                await viewModel.updateProfileText(
+                                    fullName: nil,
+                                    phoneNumber: nil,
+                                    gender: nil,
+                                    password: password,
+                                    preferences: nil
+                                )
+                                showPasswordUpdate = false
+                                password = ""
+                            }
+                        }
+                        .font(.system(size: 15, weight: .semibold))
+                        .foregroundColor(.white)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 12)
+                        .background(RoundedRectangle(cornerRadius: 12).fill(Color.themePrimary))
+                        .padding(.top, 8)
+                    }
+                    .padding(.horizontal, 20)
+                } else {
+                    SettingsOptionRow(
+                        option: option,
+                        themeManager: themeManager,
+                        showThemePicker: option.title == "Theme" ? $showThemePicker : nil,
+                        onPasswordChange: option.title == "Change Password" ? onPasswordChange : nil,
+                        onDeleteAccount: option.title == "Delete Account" ? onDeleteAccount : nil
+                    )
+                }
+                
                 if index < section.options.count - 1 {
-                    //Divider().padding(.leading: 80)
+                    Divider().padding(.leading, 80)
                 }
             }
         }
@@ -600,18 +750,34 @@ private struct SettingsOptionRow: View {
     let option: SettingsOption
     @ObservedObject var themeManager: ThemeManager
     var showThemePicker: Binding<Bool>?
+    var onPasswordChange: (() -> Void)?
+    var onDeleteAccount: (() -> Void)?
     @State private var toggleValue: Bool
-    
-    init(option: SettingsOption, themeManager: ThemeManager, showThemePicker: Binding<Bool>? = nil) {
+
+    init(
+        option: SettingsOption,
+        themeManager: ThemeManager,
+        showThemePicker: Binding<Bool>? = nil,
+        onPasswordChange: (() -> Void)? = nil,
+        onDeleteAccount: (() -> Void)? = nil
+    ) {
         self.option = option
         self.themeManager = themeManager
         self.showThemePicker = showThemePicker
+        self.onPasswordChange = onPasswordChange
+        self.onDeleteAccount = onDeleteAccount
         _toggleValue = State(initialValue: option.toggleValue)
     }
-    
+
     var body: some View {
         Button {
-            if option.title == "Theme" { showThemePicker?.wrappedValue = true }
+            if option.title == "Theme" {
+                showThemePicker?.wrappedValue = true
+            } else if option.title == "Change Password" {
+                onPasswordChange?()
+            } else if option.title == "Delete Account" {
+                onDeleteAccount?()
+            }
         } label: {
             HStack(spacing: 16) {
                 Image(systemName: option.icon)

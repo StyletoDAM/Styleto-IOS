@@ -15,10 +15,10 @@ struct MainTabView: View {
     
     enum Tab: String {
         case dressing = "Dressing"
-        case tenues = "Tenues"
+        case tenues = "Outfits"
         case avatar = "Avatar"
         case store = "Store"
-        case profil = "Profil"
+        case profil = "Profile"
     }
     
     var body: some View {
