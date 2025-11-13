@@ -29,7 +29,7 @@ struct MainTabView: View {
                 case .dressing:
                     DressingView()
                 case .tenues:
-                    TenuesView()
+                    OutfitsView()
                 case .avatar:
                     // Placeholder pour Avatar (statique pour le moment)
                     ZStack {
@@ -75,7 +75,7 @@ struct MainTabView: View {
                 // Tenues
                 tabButton(
                     icon: selectedTab == .tenues ? "person.2.fill" : "person.2",
-                    label: "Tenues",
+                    label: "Outfits",
                     isSelected: selectedTab == .tenues,
                     action: { selectedTab = .tenues }
                 )

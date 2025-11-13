@@ -18,5 +18,9 @@
             </array>
         </dict>
     </array>
+    <key>NSCameraUsageDescription</key>
+    <string>We need camera access to scan your clothes</string>
+    <key>NSPhotoLibraryAddUsageDescription</key>
+    <string>We need to save the photo to your library</string>
 </dict>
 </plist>

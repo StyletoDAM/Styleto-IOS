@@ -1,66 +1,53 @@
-//
-//  DressingView.swift
-//  Labasniios
-//
-//  Created by MacBook on 2/11/2025.
-//
-
+// Views/Dressing/DressingView.swift
 import SwiftUI
 
-private struct ClothingItem: Identifiable {
-    let id = UUID()
-    let title: String
-    let category: String
-    let fillColor: Color
-    let emoji: String
-
-    static let samples: [ClothingItem] = [
-        .init(title: "T-shirt blanc", category: "Hauts", fillColor: .white, emoji: "👕"),
-        .init(title: "Jean bleu", category: "Bas", fillColor: Color(hex: "#4D5F8F"), emoji: "👖"),
-        .init(title: "Robe rose", category: "Robes", fillColor: .db6a8f, emoji: "👗"),
-        .init(title: "Baskets", category: "Chaussures", fillColor: Color(.darkGray), emoji: "👟"),
-        .init(title: "Chemise", category: "Hauts", fillColor: .a7e0e0, emoji: "👔"),
-        .init(title: "Short", category: "Bas", fillColor: .e8aabe, emoji: "🩳")
-    ]
-}
-
 struct DressingView: View {
+    @StateObject private var viewModel = DressingViewModel()
     @ObservedObject private var themeManager = ThemeManager.shared
-    private let clothes = ClothingItem.samples
-    private let categories = ["All", "Tops", "Bottoms", "Dresses", "Shoes", "Accessories"]
+    
     private let columns: [GridItem] = [
         GridItem(.flexible(), spacing: 16),
         GridItem(.flexible(), spacing: 16)
     ]
-
+    
+    private let categories = ["All", "Tshirt", "Pants", "Dress", "Shoes", "Accessory"]
+    
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 18) {
-                header
-                searchAndFilter
-                categoryChips
-                clothesGrid
+        ZStack {
+            // Scrollable Content
+            ScrollView {
+                VStack(alignment: .leading, spacing: 18) {
+                    header
+                    searchAndFilter  // ← RETOUR À L'ANCIEN
+                    categoryChips
+                    clothesGrid
+                }
+                .padding(.horizontal, 16)
+                .padding(.top, 12)
+                .padding(.bottom, 80)
             }
-            .padding(.horizontal, 16)
-            .padding(.top, 12)
-            .padding(.bottom, 80) // Espace pour le bouton flottant
+            .background(Color.themeSoftPink.opacity(0.18).ignoresSafeArea())
+            .refreshable { viewModel.fetchClothes() }
+            
+            // Bouton flottant EN BAS À DROITE
+            VStack {
+                Spacer()
+                HStack {
+                    Spacer()
+                    floatingAddButton
+                        .padding(.trailing, 20)
+                        .padding(.bottom, 20)
+                }
+            }
         }
-        .background(Color.themeSoftPink.opacity(0.18).ignoresSafeArea())
         .navigationBarBackButtonHidden(true)
         .toolbar(.hidden, for: .navigationBar)
-        .safeAreaInset(edge: .bottom) {
-            HStack {
-                Spacer() // Pousse le bouton à droite
-                floatingAddButton
-                    .padding(.trailing, 16)
-                    .padding(.bottom, 16)
-            }
-            .background(Color.clear) // Transparent pour éviter le fond blanc
-        }
+        .onAppear { viewModel.fetchClothes() }
     }
-
+    
+    // MARK: - Header
     private var header: some View {
-        HStack(alignment: .center) {
+        HStack {
             Text("My Dressing")
                 .font(.system(size: 36, weight: .bold))
                 .foregroundColor(.themePrimary)
@@ -68,13 +55,14 @@ struct DressingView: View {
         }
         .padding(.top, 8)
     }
-
+    
+    // MARK: - Search & Filter
     private var searchAndFilter: some View {
         HStack(spacing: 12) {
             HStack(spacing: 10) {
                 Image(systemName: "magnifyingglass")
                     .foregroundColor(.themeSecondary)
-                TextField("Search...", text: .constant(""))
+                TextField("Rechercher...", text: .constant(""))
                     .textInputAutocapitalization(.never)
                     .autocorrectionDisabled(true)
                     .disabled(true)
@@ -100,54 +88,73 @@ struct DressingView: View {
                 .shadow(color: .black.opacity(0.1), radius: 6, x: 0, y: 4)
         }
     }
-
+    
+    // MARK: - Category Chips
     private var categoryChips: some View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 12) {
-                ForEach(Array(categories.enumerated()), id: \.offset) { index, category in
-                    CategoryChip(label: category, selected: index == 0)
+                ForEach(categories, id: \.self) { category in
+                    CategoryChip(
+                        label: category,
+                        selected: viewModel.selectedCategory == category
+                    )
+                    .onTapGesture {
+                        viewModel.selectCategory(category)
+                    }
                 }
             }
             .padding(.vertical, 4)
         }
     }
-
+    
+    // MARK: - Clothes Grid
     private var clothesGrid: some View {
-        LazyVGrid(columns: columns, spacing: 16) {
-            ForEach(clothes) { item in
-                ClothingCard(item: item)
+        Group {
+            if viewModel.isLoading {
+                ProgressView()
+                    .frame(maxWidth: .infinity, maxHeight: 200)
+            } else if viewModel.filteredClothes.isEmpty {
+                Text("No clothes found")
+                    .foregroundColor(.gray)
+                    .frame(maxWidth: .infinity, maxHeight: 200)
+            } else {
+                LazyVGrid(columns: columns, spacing: 16) {
+                    ForEach(viewModel.filteredClothes) { clothe in
+                        ClothingCard(clothe: clothe)
+                    }
+                }
             }
         }
         .padding(.bottom, 22)
     }
-
+    
+    // MARK: - Floating Add Button
     private var floatingAddButton: some View {
-        Button(action: {}) {
+        Button(action: {
+            // Ouvre la modale d'ajout
+        }) {
             Image(systemName: "plus")
-                .font(.system(size: 22, weight: .bold))
+                .font(.system(size: 24, weight: .bold))
                 .foregroundColor(.white)
-                .frame(width: 54, height: 54)
+                .frame(width: 60, height: 60)
                 .background(
                     Circle()
                         .fill(Color.themePrimary)
-                        .shadow(color: .black.opacity(0.15), radius: 10, x: 0, y: 6)
+                        .shadow(color: .black.opacity(0.2), radius: 12, x: 0, y: 6)
                 )
         }
-        .padding(.trailing, 16)
-        .padding(.top, 20)
-        .accessibilityIdentifier("add-clothing-button")
     }
 }
 
+// MARK: - Category Chip
 private struct CategoryChip: View {
-    @ObservedObject private var themeManager = ThemeManager.shared
     let label: String
     let selected: Bool
-
+    
     var body: some View {
         Text(label)
             .font(.system(size: 15, weight: .semibold))
-            .foregroundColor(selected ? .white : Color.themeTeal)
+            .foregroundColor(selected ? .white : .themeTeal)
             .padding(.horizontal, 16)
             .padding(.vertical, 10)
             .background(
@@ -157,41 +164,48 @@ private struct CategoryChip: View {
     }
 }
 
+// MARK: - Clothing Card
 private struct ClothingCard: View {
-    @ObservedObject private var themeManager = ThemeManager.shared
-    let item: ClothingItem
-
+    let clothe: Clothe
+    
+    private var fillColor: Color {
+        CategoryColors.color(for: clothe.category ?? "")
+    }
+    
     var body: some View {
         VStack(spacing: 0) {
-            // Partie supérieure avec fond coloré et emoji centré
-            ZStack {
-                item.fillColor
-                Text(item.emoji)
-                    .font(.system(size: 50))
+            AsyncImage(url: URL(string: clothe.imageURL)) { image in
+                image
+                    .resizable()
+                    .scaledToFill()
+            } placeholder: {
+                Rectangle()
+                    .fill(fillColor.opacity(0.3))
+                    .overlay(ProgressView().tint(.white))
             }
             .frame(height: 140)
-            .frame(maxWidth: .infinity)
+            .clipped()
             
-            // Partie inférieure avec texte aligné à gauche
             VStack(alignment: .leading, spacing: 4) {
-                Text(item.title)
+                Text(clothe.category?.capitalized ?? "Unknown")
                     .font(.system(size: 16, weight: .semibold))
-                    .foregroundColor(Color.themeTeal)
-                Text(item.category)
-                    .font(.system(size: 13, weight: .medium))
-                    .foregroundColor(Color.themeTeal.opacity(0.7))
+                    .foregroundColor(.themeTeal)
+                
+                if let season = clothe.season {
+                    Text(season)
+                        .font(.system(size: 13))
+                        .foregroundColor(.themeTeal.opacity(0.7))
+                }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.horizontal, 12)
-            .padding(.vertical, 12)
-            .background(item.fillColor)
+            .padding(12)
+            .background(fillColor.opacity(0.1))
         }
         .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
-        .shadow(color: .black.opacity(0.08), radius: 8, x: 0, y: 4)
+        .shadow(color: .black.opacity(0.08), radius: 8)
     }
 }
 
 #Preview {
     DressingView()
 }
-

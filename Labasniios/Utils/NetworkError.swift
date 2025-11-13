@@ -7,9 +7,11 @@ struct ErrorResponse: Decodable {
 
 enum NetworkError: LocalizedError {
     case invalidURL
+    case unauthorized
     case requestFailed(Int)
     case decodingFailed
     case noData
+    case serverError           
     case serverMessage(String)
     case transport(Error)
     case invalidData
@@ -17,19 +19,23 @@ enum NetworkError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case .invalidURL:
-            return "Invalid URL."
+            return "URL invalide."
+        case .unauthorized:
+            return "Non autorisé. Veuillez vous reconnecter."
         case .requestFailed(let status):
-            return "Request failed (\(status))."
+            return "Échec de la requête (\(status))."
         case .decodingFailed:
-            return "Invalid response."
+            return "Réponse invalide."
         case .noData:
-            return "No data received."
+            return "Aucune donnée reçue."
+        case .serverError:
+            return "Erreur du serveur. Réessayez plus tard."
         case .serverMessage(let message):
             return message
         case .transport(let error):
             return error.localizedDescription
         case .invalidData:
-            return "Invalid data."
+            return "Données invalides."
         }
     }
 }
