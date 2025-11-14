@@ -34,71 +34,31 @@ class StoreService {
             .receive(on: DispatchQueue.main)
             .eraseToAnyPublisher()
     }
-
-    // MARK: - Create Store Item
-    func createStore(_ store: Store) -> AnyPublisher<Store, NetworkError> {
+    // MARK: - Fetch All Store Items
+    func fetchAllStoreItems() -> AnyPublisher<[Store], NetworkError> {
         guard let url = URL(string: "/store", relativeTo: baseURL) else {
             return Fail(error: .invalidURL).eraseToAnyPublisher()
         }
 
         var request = URLRequest(url: url)
-        request.httpMethod = "POST"
+        request.httpMethod = "GET"
         request.setValue("Bearer \(tokenManager.getToken() ?? "")", forHTTPHeaderField: "Authorization")
-        request.setValue(APIConstants.jsonContentType, forHTTPHeaderField: "Content-Type")
-
-        let body: [String: Any] = [
-            "clothesId": store.clothesId.id,
-            "price": store.price,
-            "status": store.status
-        ]
-        request.httpBody = try? JSONSerialization.data(withJSONObject: body)
 
         return URLSession.shared.dataTaskPublisher(for: request)
             .map(\.data)
-            .decode(type: Store.self, decoder: JSONDecoder().withISO8601())
-            .mapError { _ in .serverError }
-            .receive(on: DispatchQueue.main)
-            .eraseToAnyPublisher()
-    }
-
-    // MARK: - Update Store Item
-    func updateStore(_ storeId: String, status: String) -> AnyPublisher<Void, NetworkError> {
-        guard let url = URL(string: "/store/\(storeId)", relativeTo: baseURL) else {
-            return Fail(error: .invalidURL).eraseToAnyPublisher()
-        }
-
-        var request = URLRequest(url: url)
-        request.httpMethod = "PATCH"
-        request.setValue("Bearer \(tokenManager.getToken() ?? "")", forHTTPHeaderField: "Authorization")
-        request.setValue(APIConstants.jsonContentType, forHTTPHeaderField: "Content-Type")
-        request.httpBody = try? JSONSerialization.data(withJSONObject: ["status": status])
-
-        return URLSession.shared.dataTaskPublisher(for: request)
-            .map { _ in () }
-            .mapError { _ in .serverError }
-            .eraseToAnyPublisher()
-    }
-
-    // MARK: - Delete Store Item
-    func deleteStoreItem(_ storeId: String) -> AnyPublisher<Void, NetworkError> {
-        guard let url = URL(string: "/store/\(storeId)", relativeTo: baseURL) else {
-            return Fail(error: .invalidURL).eraseToAnyPublisher()
-        }
-
-        var request = URLRequest(url: url)
-        request.httpMethod = "DELETE"
-        request.setValue("Bearer \(tokenManager.getToken() ?? "")", forHTTPHeaderField: "Authorization")
-
-        return URLSession.shared.dataTaskPublisher(for: request)
-            .map { _ in () }
+            .decode(type: [Store].self, decoder: JSONDecoder().withISO8601())
             .mapError { error -> NetworkError in
                 if let urlError = error as? URLError { return .transport(urlError) }
+                if let decodingError = error as? DecodingError {
+                    print("Decoding error:", decodingError)
+                    return .decodingFailed
+                }
                 return .serverError
             }
             .receive(on: DispatchQueue.main)
             .eraseToAnyPublisher()
     }
-    // MARK: - Create Store Item (avec body brut)
+    // MARK: - Create Store Item
     func createStoreItem(body: [String: Any]) -> AnyPublisher<Store, NetworkError> {
         guard let url = URL(string: "/store", relativeTo: baseURL) else {
             return Fail(error: .invalidURL).eraseToAnyPublisher()
@@ -124,29 +84,31 @@ class StoreService {
             .receive(on: DispatchQueue.main)
             .eraseToAnyPublisher()
     }
-    func fetchAllStoreItems() -> AnyPublisher<[Store], NetworkError> {
-        guard let url = URL(string: "/store", relativeTo: baseURL) else {
+
+    
+
+    // MARK: - Update Store Item
+    func updateStore(_ storeId: String, status: String) -> AnyPublisher<Void, NetworkError> {
+        guard let url = URL(string: "/store/\(storeId)", relativeTo: baseURL) else {
             return Fail(error: .invalidURL).eraseToAnyPublisher()
         }
 
         var request = URLRequest(url: url)
-        request.httpMethod = "GET"
+        request.httpMethod = "PATCH"
         request.setValue("Bearer \(tokenManager.getToken() ?? "")", forHTTPHeaderField: "Authorization")
+        request.setValue(APIConstants.jsonContentType, forHTTPHeaderField: "Content-Type")
+        request.httpBody = try? JSONSerialization.data(withJSONObject: ["status": status])
 
         return URLSession.shared.dataTaskPublisher(for: request)
-            .map(\.data)
-            .decode(type: [Store].self, decoder: JSONDecoder().withISO8601())
-            .mapError { error -> NetworkError in
-                if let urlError = error as? URLError { return .transport(urlError) }
-                if let decodingError = error as? DecodingError {
-                    print("Decoding error:", decodingError)
-                    return .decodingFailed
-                }
-                return .serverError
-            }
-            .receive(on: DispatchQueue.main)
+            .map { _ in () }
+            .mapError { _ in .serverError }
             .eraseToAnyPublisher()
     }
+
+    
+    
+    
+    // MARK: - Update Item Price
     func updateStorePrice(_ storeId: String, price: Double) -> AnyPublisher<Store, NetworkError> {
       guard let url = URL(string: "/store/\(storeId)", relativeTo: baseURL) else {
         return Fail(error: .invalidURL).eraseToAnyPublisher()
@@ -168,8 +130,7 @@ class StoreService {
         .eraseToAnyPublisher()
     }
 
-    // StoreService.swift
-
+    // MARK: - Mark Item As Sold
     func markAsSold(_ storeId: String) -> AnyPublisher<Store, NetworkError> {
         guard let url = URL(string: "/store/\(storeId)", relativeTo: baseURL) else {
             return Fail(error: .invalidURL).eraseToAnyPublisher()
@@ -206,6 +167,25 @@ class StoreService {
                     print("Decoding error:", decodingError)
                     return .decodingFailed
                 }
+                return .serverError
+            }
+            .receive(on: DispatchQueue.main)
+            .eraseToAnyPublisher()
+    }
+    // MARK: - Delete Store Item
+    func deleteStoreItem(_ storeId: String) -> AnyPublisher<Void, NetworkError> {
+        guard let url = URL(string: "/store/\(storeId)", relativeTo: baseURL) else {
+            return Fail(error: .invalidURL).eraseToAnyPublisher()
+        }
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "DELETE"
+        request.setValue("Bearer \(tokenManager.getToken() ?? "")", forHTTPHeaderField: "Authorization")
+
+        return URLSession.shared.dataTaskPublisher(for: request)
+            .map { _ in () }
+            .mapError { error -> NetworkError in
+                if let urlError = error as? URLError { return .transport(urlError) }
                 return .serverError
             }
             .receive(on: DispatchQueue.main)

@@ -1,10 +1,3 @@
-//
-//  ProfileService.swift
-//  Labasniios
-//
-//  Created by MacBook on 2/11/2025.
-//
-
 import Foundation
 import UIKit
 
@@ -12,7 +5,7 @@ final class ProfileService {
     private let session: URLSession
     private let encoder: JSONEncoder
     private let decoder: JSONDecoder
-    
+    //Permet de lire les dates comme "2025-11-14T15:00:00.123Z"
     private static let iso8601Fractional: ISO8601DateFormatter = {
         let formatter = ISO8601DateFormatter()
         formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
@@ -197,7 +190,8 @@ final class ProfileService {
 }
 
 
-// Extension pour append String → Data
+// Extension pour ajouter facilement une String à un objet Data
+// Utile pour construire le body multipart/form-data lors de l'envoi d'une image
 private extension Data {
     mutating func append(_ string: String) {
         if let data = string.data(using: .utf8) {

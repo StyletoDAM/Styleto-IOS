@@ -395,20 +395,3 @@ private struct IconSecureField: View {
     }
 }
 
-// MARK: - Previews
-struct LabasniLoginView_Previews: PreviewProvider {
-    static var previews: some View {
-        Group {
-            LabasniLoginView()
-                .previewDevice(PreviewDevice(rawValue: "iPhone 15 Pro"))
-                .environment(\.colorScheme, .light)
-
-            LabasniLoginView()
-                .previewDevice(PreviewDevice(rawValue: "iPhone SE (3rd generation)"))
-                .environment(\.colorScheme, .dark)
-
-            LabasniLoginView()
-                .environment(\.sizeCategory, .accessibilityExtraExtraExtraLarge)
-        }
-    }
-}

@@ -1,4 +1,3 @@
-// Views/Outfits/FavoritesView.swift
 import SwiftUI
 
 struct FavoritesView: View {
@@ -13,7 +12,7 @@ struct FavoritesView: View {
     
     // État pour forcer le rafraîchissement
     @State private var outfitsLoaded = false
-
+    
     var body: some View {
         NavigationStack {
             ScrollView {
@@ -21,13 +20,13 @@ struct FavoritesView: View {
                     header
                     
                     if !outfitsLoaded {
-                        ProgressView("Chargement des favoris...")
+                        ProgressView("Loading favorites...")
                             .frame(maxWidth: .infinity)
                             .padding()
                     } else if favoriteOutfits.isEmpty {
                         emptyState
                     } else if filteredFavorites.isEmpty {
-                        Text("Aucun outfit trouvé (vérifie les IDs)")
+                        Text("No outfit found (check the IDs)")
                             .foregroundColor(.red)
                     } else {
                         favoritesList
@@ -39,8 +38,6 @@ struct FavoritesView: View {
             .background(Color.themeBackground.ignoresSafeArea())
             .navigationBarTitleDisplayMode(.large)
             .onAppear {
-                print("FavoritesView ouverte")
-                    print("Favoris en Core Data: \(FavoritesManager.shared.allFavoriteIds)")
                 loadOutfitsAndFavorites()
             }
             .refreshable {
@@ -54,9 +51,6 @@ struct FavoritesView: View {
         viewModel.loadOutfits()
         // Attendre que les outfits soient chargés
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-            print("Outfits chargés: \(self.viewModel.outfits.count) éléments")
-                    print("IDs outfits: \(self.viewModel.outfits.map { $0.id })")
-                    print("IDs favoris: \(FavoritesManager.shared.allFavoriteIds)")
             outfitsLoaded = true
         }
     }
@@ -82,10 +76,10 @@ struct FavoritesView: View {
             Image(systemName: "heart.slash")
                 .font(.system(size: 50))
                 .foregroundColor(.gray)
-            Text("Aucun outfit favori")
+            Text("No favorite outfits")
                 .font(.title3)
                 .foregroundColor(.themeSecondaryText)
-            Text("Appuie sur le cœur dans \"My Outfits\" pour ajouter ici")
+            Text("Tap the heart in \"My Outfits\" to add them here")
                 .font(.subheadline)
                 .foregroundColor(.gray)
                 .multilineTextAlignment(.center)
@@ -105,7 +99,3 @@ struct FavoritesView: View {
     }
 }
 
-#Preview {
-    FavoritesView()
-        .environment(\.managedObjectContext, CoreDataManager.shared.container.viewContext)
-}

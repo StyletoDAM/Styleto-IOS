@@ -1,4 +1,3 @@
-// Models/Entities/Clothe.swift
 import Foundation
 
 // MARK: - UserInfo (objet complet)
@@ -22,7 +21,7 @@ struct UserInfo: Codable {
     }
 }
 
-// MARK: - Clothe (1 seul modèle, gère String OU UserInfo)
+// MARK: - Clothe 
 struct Clothe: Identifiable, Codable {
     let id: String
     let imageURL: String
@@ -53,12 +52,10 @@ struct Clothe: Identifiable, Codable {
         color = try container.decodeIfPresent(String.self, forKey: .color)
         style = try container.decodeIfPresent(String.self, forKey: .style)
 
-        // Essaie String d'abord
         if let string = try? container.decode(String.self, forKey: .userId) {
             userIdString = string
             userIdObject = nil
         }
-        // Sinon UserInfo
         else if let user = try? container.decode(UserInfo.self, forKey: .userId) {
             userIdString = nil
             userIdObject = user
@@ -69,7 +66,6 @@ struct Clothe: Identifiable, Codable {
         }
     }
 
-    // Pour l'encodage (si tu envoies des données)
     func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
         try container.encode(id, forKey: .id)

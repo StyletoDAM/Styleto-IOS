@@ -11,6 +11,7 @@ import SwiftUI
 struct StoreView: View {
     @ObservedObject private var themeManager = ThemeManager.shared
     @StateObject private var viewModel = StoreViewModel()
+    @State private var searchText = ""
     private let columns: [GridItem] = [
         GridItem(.flexible(), spacing: 16),
         GridItem(.flexible(), spacing: 16)
@@ -94,15 +95,30 @@ struct StoreView: View {
             .foregroundColor(.themePrimary)
     }
 
+
     private var searchBar: some View {
         HStack(spacing: 10) {
             Image(systemName: "magnifyingglass")
                 .font(.system(size: 18, weight: .semibold))
                 .foregroundColor(.themeSecondary)
-            TextField("Search for an item...", text: .constant(""))
+            
+            TextField("Search for an item...", text: $searchText)
                 .textInputAutocapitalization(.never)
                 .autocorrectionDisabled(true)
-                .disabled(true)
+                .onChange(of: searchText) { newValue in
+                    viewModel.searchText = newValue
+                }
+            
+            // Bouton X pour effacer
+            if !searchText.isEmpty {
+                Button {
+                    searchText = ""
+                    viewModel.searchText = ""
+                } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .foregroundColor(.gray)
+                }
+            }
         }
         .padding(16)
         .background(

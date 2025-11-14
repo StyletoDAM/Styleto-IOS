@@ -1,9 +1,8 @@
-// Utils/FavoritesManager.swift
 import Foundation
 import CoreData
 
-class FavoritesManager {
-    static let shared = FavoritesManager()
+class FavoritesService {
+    static let shared = FavoritesService()
     private let context = CoreDataManager.shared.container.viewContext
     
     private init() {}
@@ -27,7 +26,6 @@ class FavoritesManager {
             }
             
             try context.save()
-            print("Core Data sauvegardé. Total favoris: \(allFavoriteIds.count)")
         } catch {
             print("ERREUR Core Data: \(error)")
         }
@@ -42,19 +40,4 @@ class FavoritesManager {
     }
 }
 
-// MARK: - Debug
-extension FavoritesManager {
-    var allFavoriteIds: [String] {
-        let request: NSFetchRequest<FavoriteOutfit> = FavoriteOutfit.fetchRequest()
-        let results = (try? context.fetch(request)) ?? []
-        let ids = results.compactMap { $0.outfitId }
-        print("FAVORIS EN CORE DATA → IDs: \(ids)")
-        return ids
-    }
-    
-    var favoriteCount: Int {
-        let count = allFavoriteIds.count
-        print("NOMBRE DE FAVORIS: \(count)")
-        return count
-    }
-}
+

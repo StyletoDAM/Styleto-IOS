@@ -117,14 +117,4 @@ private struct SecureInputField: View {
     }
 }
 
-#Preview {
-    ResetPasswordSheet(
-        newPassword: .constant(""),
-        confirmPassword: .constant(""),
-        isLoading: false,
-        errorMessage: nil,
-        onConfirm: {},
-        onCancel: {}
-    )
-}
 

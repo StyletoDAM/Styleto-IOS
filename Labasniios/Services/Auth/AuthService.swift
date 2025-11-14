@@ -8,7 +8,7 @@ import GoogleSignInSwift
 @MainActor
 final class AuthService: NSObject, ObservableObject {
     
-    static let shared = AuthService() // singleton si tu veux un accès global
+    static let shared = AuthService()
     
     private let session: URLSession
     private let encoder: JSONEncoder
@@ -80,7 +80,7 @@ final class AuthService: NSObject, ObservableObject {
         defer { isLoading = false }
         guard let profile = user.profile else { return }
         let googleId = user.userID ?? ""
-        let fullName = profile.name ?? "User"
+        let fullName = profile.name
         let email = profile.email
         let profilePicture = profile.hasImage ? profile.imageURL(withDimension: 320)?.absoluteString : nil
         

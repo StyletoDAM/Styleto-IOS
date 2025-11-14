@@ -1,10 +1,3 @@
-//
-//  PinEntrySheet.swift
-//  Labasniios
-//
-//  Created by Salma Mahjoub on 7/11/2025.
-//
-
 import Foundation
 import SwiftUI
 
@@ -18,7 +11,7 @@ struct PinEntrySheet: View {
     let onVerify: () -> Void
     let onCancel: () -> Void
     let onResend: (() -> Void)?
-
+    
     init(
         email: String,
         pinCode: Binding<String>,
@@ -40,24 +33,24 @@ struct PinEntrySheet: View {
         self.onCancel = onCancel
         self.onResend = onResend
     }
-
+    
     var body: some View {
         VStack(spacing: 24) {
             Capsule()
                 .fill(Color.gray.opacity(0.3))
                 .frame(width: 50, height: 4)
                 .padding(.top, 8)
-
+            
             VStack(spacing: 16) {
                 Text("Verification Required")
                     .font(.title2).bold()
                     .foregroundColor(.ca3c66)
-
+                
                 VStack(spacing: 8) {
                     Text("A 6-digit code has been sent to")
                         .font(.subheadline)
                         .foregroundColor(._4aa3a2)
-
+                    
                     Text(email)
                         .font(.subheadline).bold()
                         .foregroundColor(.ca3c66)
@@ -67,7 +60,7 @@ struct PinEntrySheet: View {
                         .cornerRadius(8)
                 }
             }
-
+            
             TextField("000000", text: $pinCode)
                 .font(.system(size: 28, weight: .bold, design: .monospaced))
                 .multilineTextAlignment(.center)
@@ -83,14 +76,14 @@ struct PinEntrySheet: View {
                         .stroke(Color.ca3c66.opacity(0.7), lineWidth: 1.8)
                 )
                 .shadow(color: .black.opacity(0.06), radius: 6, x: 0, y: 4)
-
+            
             if let error = errorMessage {
                 Text(error)
                     .font(.caption).bold()
                     .foregroundColor(.red)
                     .padding(.horizontal)
             }
-
+            
             Button {
                 onVerify()
             } label: {
@@ -107,7 +100,7 @@ struct PinEntrySheet: View {
             }
             .buttonStyle(PillButtonStyle(background: .ca3c66, foreground: .white))
             .disabled(pinCode.count != 6 || isLoading)
-
+            
             if let onResend {
                 Button {
                     onResend()
@@ -120,7 +113,7 @@ struct PinEntrySheet: View {
                 .foregroundColor(canResend ? .ca3c66 : .gray)
                 .disabled(!canResend)
             }
-
+            
             Button("Cancel", action: onCancel)
                 .foregroundColor(._4aa3a2)
                 .font(.subheadline)
@@ -131,16 +124,3 @@ struct PinEntrySheet: View {
     }
 }
 
-#Preview {
-    PinEntrySheet(
-        email: "mahjoub2003@gmail.com",
-        pinCode: .constant(""),
-        errorMessage: nil,
-        isLoading: false,
-        resendSecondsRemaining: 30,
-        canResend: false,
-        onVerify: {},
-        onCancel: {},
-        onResend: {}
-    )
-}

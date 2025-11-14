@@ -2,20 +2,29 @@ import SwiftUI
 
 struct CategoryColors {
     static func color(for category: String) -> Color {
-        let cat = category.lowercased()
-        switch cat {
+        // Normalisation : minuscules + suppression 's' final
+        let cat = category.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
+        let normalized = cat.hasSuffix("s") ? String(cat.dropLast()) : cat
+
+        switch normalized {
+        // Tops
         case "tshirt", "haut", "chemise":
-            return Color(hex: "#A7E0E0") // Bleu clair
+            return Color(hex: "#A7E0E0") // Light Blue
+        // Pants
         case "pantalon", "jean", "bas":
-            return Color(hex: "#4D5F8F") // Bleu foncé
-        case "robe":
-            return Color(hex: "#DB6A8F") // Rose
-        case "chaussures", "baskets":
-            return Color(hex: "#4A4A4A") // Gris foncé
+            return Color(hex: "#4D5F8F") // Dark Blue
+        // Dress
+        case "robe", "dress":
+            return Color(hex: "#DB6A8F") // Pink
+        // Shoes
+        case "chaussure", "basket":
+            return Color(hex: "#4A4A4A") // Dark Gray
+        // Accessories
         case "accessoire", "sac", "bijou":
-            return Color(hex: "#E8AABE") // Rose pâle
+            return Color(hex: "#E8AABE") // Light Pink
+        // Default
         default:
-            return Color(hex: "#D3D3D3") // Gris clair
+            return Color(hex: "#D3D3D3") // Light Gray
         }
     }
 }

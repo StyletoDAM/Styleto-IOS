@@ -1,10 +1,3 @@
-//
-//  AppPreferences.swift
-//  Labasniios
-//
-//  Created by MacBook on 2/11/2025.
-//
-
 import Foundation
 
 /// Gestionnaire centralisé des préférences de l'application

@@ -13,16 +13,19 @@ class StoreViewModel: ObservableObject {
     @Published var priceInput: String = ""
     @Published var isAdding = false
     @Published var showToast = false
-    @Published var discoverItems: [Store] = []  // ← NOUVEAU
+    @Published var searchText: String = ""
+    @Published var discoverItems: [Store] = []
+    @Published private var rawStoreItems: [Store] = []
+    @Published private var rawDiscoverItems: [Store] = []
     
     private var cancellables = Set<AnyCancellable>()
     private let service = StoreService.shared
-
+    
     // MARK: - Load My Store Items
     func loadMyStore() {
         isLoading = true
         errorMessage = nil
-
+        
         StoreService.shared.fetchMyStore()
             .sink { [weak self] completion in
                 self?.isLoading = false
@@ -31,25 +34,25 @@ class StoreViewModel: ObservableObject {
                 }
             } receiveValue: { [weak self] myItems in
                 guard let self = self else { return }
-                self.storeItems = myItems
-                // CHARGE DÉCOUVERTE APRÈS AVOIR LES MIENS
+                self.rawStoreItems = myItems
+                self.storeItems = myItems  // ← Affiche tout au début
                 self.loadDiscoverItems()
             }
             .store(in: &cancellables)
     }
-
-
+    
+    
     // MARK: - Update Store Item
     func updateStoreStatus(_ store: Store, status: String) {
         service.updateStore(store.id, status: status)
             .sink { _ in } receiveValue: { }
             .store(in: &cancellables)
     }
-
+    
     // MARK: - Delete Store Item
     func deleteStoreItem(_ store: Store) {
         isLoading = true
-
+        
         StoreService.shared.deleteStoreItem(store.id)
             .sink { [weak self] completion in
                 DispatchQueue.main.async {
@@ -88,25 +91,25 @@ class StoreViewModel: ObservableObject {
             }
         }
     }
-
+    
     func addToStore(onSuccess: @escaping () -> Void) {
         guard let clothe = selectedClothe,
               let price = Double(priceInput), price >= 0 else {
             return
         }
-
+        
         isAdding = true
-
+        
         let body: [String: Any] = [
             "clothesId": clothe.id,
             "price": price,
             "status": "available"
         ]
-
+        
         StoreService.shared.createStoreItem(body: body)
             .sink { completion in
                 DispatchQueue.main.async {
-                    // ❌ NE PAS mettre isAdding = false ici
+                    // NE PAS mettre isAdding = false ici
                     if case .failure(let error) = completion {
                         self.isAdding = false  // ← Seulement en cas d'erreur
                         self.errorMessage = "Erreur: \(error.localizedDescription)"
@@ -114,19 +117,19 @@ class StoreViewModel: ObservableObject {
                 }
             } receiveValue: { [weak self] createdItem in
                 guard let self = self else { return }
-
+                
                 DispatchQueue.main.async {
                     // 1. Ajouter l'article
                     self.storeItems.insert(createdItem, at: 0)
-
+                    
                     // 2. Réinitialiser
                     self.selectedClothe = nil
                     self.priceInput = ""
-
+                    
                     // 3. Recharger les vêtements disponibles
                     self.loadMyClothes()
-
-                    // 4. ✅ METTRE isAdding = false AVANT onSuccess()
+                    
+                    // 4. METTRE isAdding = false AVANT onSuccess()
                     self.isAdding = false
                     
                     // 5. FERMER LE SHEET
@@ -136,9 +139,8 @@ class StoreViewModel: ObservableObject {
             .store(in: &cancellables)
     }
     func loadDiscoverItems() {
-        // Empêche le chargement si on n'a pas encore nos items
-        guard !storeItems.isEmpty else { return }
-
+        guard !rawStoreItems.isEmpty else { return }
+        
         StoreService.shared.fetchAllStoreItems()
             .sink { [weak self] completion in
                 if case .failure(let error) = completion {
@@ -146,59 +148,104 @@ class StoreViewModel: ObservableObject {
                 }
             } receiveValue: { [weak self] allItems in
                 guard let self = self else { return }
-                let myIds = Set(self.storeItems.map { $0.id })
-                self.discoverItems = allItems.filter { !myIds.contains($0.id) }
+                let myIds = Set(self.rawStoreItems.map { $0.id })
+                let filtered = allItems.filter { !myIds.contains($0.id) }
+                self.rawDiscoverItems = filtered
+                self.discoverItems = filtered
+                self.filterItems() // ← Applique le filtre actuel
             }
             .store(in: &cancellables)
     }
     func updateStorePrice(_ storeId: String, price: Double) {
-      isLoading = true
-      StoreService.shared.updateStorePrice(storeId, price: price)
-        .sink { [weak self] completion in
-          DispatchQueue.main.async {
-            self?.isLoading = false
-            if case .failure = completion {
-              self?.errorMessage = "Échec de la mise à jour"
+        isLoading = true
+        StoreService.shared.updateStorePrice(storeId, price: price)
+            .sink { [weak self] completion in
+                DispatchQueue.main.async {
+                    self?.isLoading = false
+                    if case .failure = completion {
+                        self?.errorMessage = "Échec de la mise à jour"
+                    }
+                }
+            } receiveValue: { [weak self] updatedStore in
+                DispatchQueue.main.async {
+                    if let index = self?.storeItems.firstIndex(where: { $0.id == updatedStore.id }) {
+                        self?.storeItems[index] = updatedStore
+                    }
+                    if let index = self?.discoverItems.firstIndex(where: { $0.id == updatedStore.id }) {
+                        self?.discoverItems[index] = updatedStore
+                    }
+                    self?.showToast = true
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+                        self?.showToast = false
+                    }
+                }
             }
-          }
-        } receiveValue: { [weak self] updatedStore in
-          DispatchQueue.main.async {
-            if let index = self?.storeItems.firstIndex(where: { $0.id == updatedStore.id }) {
-              self?.storeItems[index] = updatedStore
-            }
-            if let index = self?.discoverItems.firstIndex(where: { $0.id == updatedStore.id }) {
-              self?.discoverItems[index] = updatedStore
-            }
-            self?.showToast = true
-            DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
-              self?.showToast = false
-            }
-          }
-        }
-        .store(in: &cancellables)
+            .store(in: &cancellables)
     }
-
+    
     func markAsSold(_ storeId: String) {
-      isLoading = true
-      StoreService.shared.markAsSold(storeId)
-        .sink { [weak self] completion in
-          DispatchQueue.main.async {
-            self?.isLoading = false
-            if case .failure = completion {
-              self?.errorMessage = "Échec"
+        isLoading = true
+        StoreService.shared.markAsSold(storeId)
+            .sink { [weak self] completion in
+                DispatchQueue.main.async {
+                    self?.isLoading = false
+                    if case .failure = completion {
+                        self?.errorMessage = "Échec"
+                    }
+                }
+            } receiveValue: { [weak self] updatedStore in
+                DispatchQueue.main.async {
+                    if let index = self?.storeItems.firstIndex(where: { $0.id == updatedStore.id }) {
+                        self?.storeItems[index] = updatedStore
+                    }
+                    self?.showToast = true
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+                        self?.showToast = false
+                    }
+                }
             }
-          }
-        } receiveValue: { [weak self] updatedStore in
-          DispatchQueue.main.async {
-            if let index = self?.storeItems.firstIndex(where: { $0.id == updatedStore.id }) {
-              self?.storeItems[index] = updatedStore
+            .store(in: &cancellables)
+    }
+    init() {
+        setupSearchBinding()
+    }
+    
+    private func setupSearchBinding() {
+        $searchText
+            .debounce(for: .milliseconds(300), scheduler: RunLoop.main)
+            .removeDuplicates()
+            .sink { [weak self] _ in
+                self?.filterItems()
             }
-            self?.showToast = true
-            DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
-              self?.showToast = false
-            }
-          }
+            .store(in: &cancellables)
+    }
+    
+    // Appelé à chaque changement de searchText
+    private func filterItems() {
+        let query = searchText.lowercased().trimmingCharacters(in: .whitespaces)
+        
+        if query.isEmpty {
+            storeItems = rawStoreItems
+            discoverItems = rawDiscoverItems
+            return
         }
-        .store(in: &cancellables)
+        
+        let filteredMy = rawStoreItems.filter { matchesSearch($0, query: query) }
+        let filteredDiscover = rawDiscoverItems.filter { matchesSearch($0, query: query) }
+        
+        storeItems = filteredMy
+        discoverItems = filteredDiscover
+    }
+    
+    private func matchesSearch(_ item: Store, query: String) -> Bool {
+        let category = item.clothesId.category?.lowercased() ?? ""
+        let price = "\(item.price)"
+        let status = item.status.lowercased()
+        let ownerName = item.userId.fullName?.lowercased() ?? ""
+        
+        return category.contains(query) ||
+        price.contains(query) ||
+        status.contains(query) ||
+        ownerName.contains(query)
     }
 }

@@ -38,7 +38,7 @@ final class GoogleSignInHelper: ObservableObject {
                 }
 
                 let googleId = user.userID ?? ""
-                let fullName = profile.name ?? "User"
+                let fullName = profile.name
                 let email = profile.email
                 let profilePicture = profile.hasImage ? profile.imageURL(withDimension: 320)?.absoluteString : nil
 

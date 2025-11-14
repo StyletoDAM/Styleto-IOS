@@ -6,37 +6,37 @@ struct LabasniSignupView: View {
     private enum GenderOption: String, CaseIterable {
         case female = "Female", male = "Male"
     }
-
+    
     @StateObject private var viewModel = SignupViewModel()
     @State private var selectedGender: GenderOption?
     @State private var showTermsSheet = false
     @State private var attemptedSubmit = false
     @State private var navigateToLogin = false
     @Environment(\.dismiss) private var dismiss
-
+    
     var body: some View {
         ZStack {
             // Fond doux rosé → blanc
             LinearGradient(colors: [Color.e8aabe.opacity(0.35), .white],
                            startPoint: .top, endPoint: .bottom)
             .ignoresSafeArea()
-
+            
             ScrollView(showsIndicators: false) {
                 VStack(alignment: .leading, spacing: 20) {
                     Spacer(minLength: 8)
-
+                    
                     // Titre
                     VStack(alignment: .leading, spacing: 6) {
                         Text("Create Account")
                             .font(.system(size: 28, weight: .heavy))
                             .foregroundColor(.ca3c66)
-
+                        
                         Text("Join Labasni and discover your style")
                             .font(.system(size: 15, weight: .medium))
                             .foregroundColor(._4aa3a2)
                     }
                     .padding(.bottom, 8)
-
+                    
                     // Formulaire
                     Group {
                         Label("Full Name", systemImage: "person")
@@ -47,7 +47,7 @@ struct LabasniSignupView: View {
                         if shouldShowFullNameWarning {
                             ValidationMessage("Please enter your full name.")
                         }
-
+                        
                         Label("Email", systemImage: "envelope")
                             .labelStyle(LeftAlignedLabelStyle(color: ._4aa3a2))
                         IconField(systemName: "envelope",
@@ -56,7 +56,7 @@ struct LabasniSignupView: View {
                         if shouldShowEmailWarning {
                             ValidationMessage("Invalid email address.")
                         }
-
+                        
                         Label("Phone Number", systemImage: "phone")
                             .labelStyle(LeftAlignedLabelStyle(color: ._4aa3a2))
                         PhoneInputField(
@@ -67,7 +67,7 @@ struct LabasniSignupView: View {
                         if shouldShowPhoneWarning {
                             ValidationMessage("Please enter a phone number.")
                         }
-
+                        
                         Label("Password", systemImage: "lock")
                             .labelStyle(LeftAlignedLabelStyle(color: ._4aa3a2))
                         IconSecureField(systemName: "lock",
@@ -75,13 +75,13 @@ struct LabasniSignupView: View {
                                         text: $viewModel.password)
                         PasswordHint(isValid: viewModel.isPasswordStrong, attempted: attemptedSubmit)
                     }
-
+                    
                     // Sexe – chips
                     VStack(alignment: .leading, spacing: 12) {
                         Text("Gender")
                             .font(.system(size: 16, weight: .semibold))
                             .foregroundColor(._4aa3a2)
-
+                        
                         HStack(spacing: 12) {
                             Spacer(minLength: 0)
                             ForEach(GenderOption.allCases, id: \.self) { option in
@@ -102,12 +102,12 @@ struct LabasniSignupView: View {
                             ValidationMessage("Please select your gender.")
                         }
                     }
-
+                    
                     // Conditions
                     if let error = viewModel.errorMessage {
                         ValidationMessage(error)
                     }
-
+                    
                     // Bouton principal
                     Button {
                         attemptedSubmit = true
@@ -136,7 +136,7 @@ struct LabasniSignupView: View {
                     .buttonStyle(PillButtonStyle(background: .ca3c66, foreground: .white))
                     .disabled(viewModel.isLoading)
                     .padding(.top, 6)
-
+                    
                     // Lien connexion
                     HStack {
                         Spacer()
@@ -151,7 +151,7 @@ struct LabasniSignupView: View {
                         Spacer()
                     }
                     .padding(.top, 6)
-
+                    
                     Spacer(minLength: 20)
                 }
                 .padding(.horizontal, 22)
@@ -167,7 +167,7 @@ struct LabasniSignupView: View {
             ) {
                 EmptyView()
             }
-            .hidden()
+                .hidden()
         )
         .sheet(isPresented: $showTermsSheet) {
             TermsSheetView(
@@ -216,7 +216,7 @@ struct LabasniSignupView: View {
             attemptedSubmit = false
         }
     }
-
+    
     private func userGender(for option: GenderOption) -> User.Gender? {
         switch option {
         case .female:
@@ -225,23 +225,23 @@ struct LabasniSignupView: View {
             return .male
         }
     }
-
+    
     private var shouldShowFullNameWarning: Bool {
         attemptedSubmit && viewModel.fullName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
-
+    
     private var shouldShowEmailWarning: Bool {
         attemptedSubmit && !isValidEmail(viewModel.email)
     }
-
+    
     private var shouldShowPhoneWarning: Bool {
         attemptedSubmit && viewModel.formattedPhoneNumber.isEmpty
     }
-
+    
     private var shouldShowGenderWarning: Bool {
         attemptedSubmit && selectedGender == nil
     }
-
+    
     private var hasBlockingValidationError: Bool {
         shouldShowFullNameWarning
         || shouldShowEmailWarning
@@ -249,7 +249,7 @@ struct LabasniSignupView: View {
         || shouldShowPhoneWarning
         || shouldShowGenderWarning
     }
-
+    
     private func isValidEmail(_ email: String) -> Bool {
         let pattern = #"^[A-Z0-9a-z._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$"#
         return email.range(of: pattern, options: .regularExpression) != nil
@@ -258,7 +258,6 @@ struct LabasniSignupView: View {
 
 // MARK: - Composants
 
-/// Label aligné à gauche (icône + titre) pour l’intitulé des champs
 struct LeftAlignedLabelStyle: LabelStyle {
     var color: Color
     func makeBody(configuration: Configuration) -> some View {
@@ -272,14 +271,13 @@ struct LeftAlignedLabelStyle: LabelStyle {
     }
 }
 
-/// Champ texte avec icône, bord rose et ombre douce
 private struct IconField: View {
     let systemName: String
     let placeholder: String
     @Binding var text: String
     var keyboardType: UIKeyboardType = .default
     var textContentType: UITextContentType? = nil
-
+    
     var body: some View {
         HStack(spacing: 10) {
             Image(systemName: systemName)
@@ -305,14 +303,14 @@ private struct PhoneInputField: View {
     @Binding var selectedDialCode: CountryDialCode
     @Binding var number: String
     let options: [CountryDialCode]
-
+    
     var body: some View {
         HStack(spacing: 12) {
             Image(systemName: "phone")
                 .foregroundColor(._4aa3a2.opacity(0.9))
                 .font(.system(size: 18, weight: .semibold))
                 .frame(width: 24)
-
+            
             Menu {
                 ForEach(options, id: \.id) { code in
                     Button {
@@ -330,11 +328,11 @@ private struct PhoneInputField: View {
                 }
                 .foregroundColor(.ca3c66)
             }
-
+            
             Divider()
                 .frame(height: 24)
                 .background(Color.ca3c66.opacity(0.3))
-
+            
             TextField("12 345 678", text: $number)
                 .keyboardType(.numberPad)
                 .textInputAutocapitalization(.never)
@@ -359,21 +357,21 @@ private struct IconSecureField: View {
     let placeholder: String
     @Binding var text: String
     @State private var isSecure: Bool
-
+    
     init(systemName: String, placeholder: String, text: Binding<String>, initiallySecure: Bool = true) {
         self.systemName = systemName
         self.placeholder = placeholder
         _text = text
         _isSecure = State(initialValue: initiallySecure)
     }
-
+    
     var body: some View {
         HStack(spacing: 10) {
             Image(systemName: systemName)
                 .foregroundColor(._4aa3a2.opacity(0.9))
                 .font(.system(size: 18, weight: .semibold))
                 .frame(width: 24)
-
+            
             if isSecure {
                 SecureField(placeholder, text: $text)
             } else {
@@ -381,9 +379,9 @@ private struct IconSecureField: View {
                     .textInputAutocapitalization(.never)
                     .autocorrectionDisabled(true)
             }
-
+            
             Spacer(minLength: 0)
-
+            
             Button {
                 isSecure.toggle()
             } label: {
@@ -406,7 +404,7 @@ private struct IconSecureField: View {
 private struct GenderChip: View {
     var title: String
     var selected: Bool
-
+    
     var body: some View {
         Text(title)
             .font(.system(size: 16, weight: .semibold))
@@ -449,7 +447,7 @@ struct CheckboxToggleStyle: ToggleStyle {
                 }
             }
             .buttonStyle(.plain)
-
+            
             configuration.label
         }
     }
@@ -457,11 +455,11 @@ struct CheckboxToggleStyle: ToggleStyle {
 
 private struct ValidationMessage: View {
     var text: String
-
+    
     init(_ text: String) {
         self.text = text
     }
-
+    
     var body: some View {
         Text(text)
             .font(.system(size: 13, weight: .semibold))
@@ -472,7 +470,7 @@ private struct ValidationMessage: View {
 private struct PasswordHint: View {
     var isValid: Bool
     var attempted: Bool
-
+    
     var body: some View {
         let color: Color = isValid || !attempted ? ._4aa3a2.opacity(0.7) : .ca3c66
         Text("Minimum 6 characters, one uppercase letter, and one special character.")
@@ -484,7 +482,7 @@ private struct PasswordHint: View {
 private struct TermsSheetView: View {
     var onAccept: () -> Void
     var onDecline: () -> Void
-
+    
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             Capsule()
@@ -492,26 +490,26 @@ private struct TermsSheetView: View {
                 .frame(width: 50, height: 4)
                 .padding(.top, 8)
                 .frame(maxWidth: .infinity)
-
+            
             Text("Terms of Use")
                 .font(.system(size: 20, weight: .bold))
                 .foregroundColor(.ca3c66)
-
+            
             ScrollView {
                 VStack(alignment: .leading, spacing: 12) {
                     Text("By creating a Labasni account, you agree to:")
                         .font(.system(size: 16, weight: .semibold))
                         .foregroundColor(.ca3c66)
-
+                    
                     TermsBullet("The processing of your data to personalize your style recommendations.")
                     TermsBullet("The possible receipt of notifications related to your activity and our updates.")
                     TermsBullet("The secure use of your information in accordance with our privacy policy.")
-
+                    
                 }
                 .foregroundColor(._4aa3a2)
                 .font(.system(size: 14))
             }
-
+            
             VStack(spacing: 12) {
                 Button(action: onAccept) {
                     Text("Accept and create my account")
@@ -520,7 +518,7 @@ private struct TermsSheetView: View {
                         .padding(.vertical, 14)
                 }
                 .buttonStyle(PillButtonStyle(background: .ca3c66, foreground: .white))
-
+                
                 Button(action: onDecline) {
                     Text("Decline")
                         .font(.system(size: 16, weight: .semibold))
@@ -538,11 +536,11 @@ private struct TermsSheetView: View {
 
 private struct TermsBullet: View {
     var text: String
-
+    
     init(_ text: String) {
         self.text = text
     }
-
+    
     var body: some View {
         HStack(alignment: .top, spacing: 8) {
             Circle()
@@ -554,20 +552,3 @@ private struct TermsBullet: View {
     }
 }
 
-// MARK: - Previews
-struct LabasniSignupView_Previews: PreviewProvider {
-    static var previews: some View {
-        Group {
-            LabasniSignupView()
-                .previewDevice(PreviewDevice(rawValue: "iPhone 15 Pro"))
-                .environment(\.colorScheme, .light)
-
-            LabasniSignupView()
-                .previewDevice(PreviewDevice(rawValue: "iPhone SE (3rd generation)"))
-                .environment(\.colorScheme, .dark)
-
-            LabasniSignupView()
-                .environment(\.sizeCategory, .accessibilityExtraExtraExtraLarge)
-        }
-    }
-}

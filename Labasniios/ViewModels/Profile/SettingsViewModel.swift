@@ -1,10 +1,3 @@
-//
-//  SettingsViewModel.swift
-//  Labasniios
-//
-//  Created by MacBook on 2/11/2025.
-//
-
 import Foundation
 import UIKit
 import _PhotosUI_SwiftUI
@@ -17,13 +10,13 @@ final class SettingsViewModel: ObservableObject {
     @Published var updatedUser: User?
     @Published var profileImage: UIImage?
     @Published var selectedPhoto: PhotosPickerItem?
-
+    
     private let profileService: ProfileService
-
+    
     init(profileService: ProfileService = ProfileService()) {
         self.profileService = profileService
     }
-
+    
     // MARK: - Update Text Profile (fullName, phone, gender, password)
     func updateProfileText(
         fullName: String?,
@@ -35,7 +28,7 @@ final class SettingsViewModel: ObservableObject {
         resetFeedback()
         isLoading = true
         defer { isLoading = false }
-
+        
         do {
             let updatedUser = try await profileService.updateProfileText(
                 fullName: fullName,
@@ -55,15 +48,15 @@ final class SettingsViewModel: ObservableObject {
             debugPrint("[SettingsViewModel] Unexpected error: \(error.localizedDescription)")
         }
     }
-
+    
     // MARK: - Update Profile Photo Only
     func updateProfilePhoto(image: UIImage?) async {
         guard let image = image else { return }
-
+        
         resetFeedback()
         isLoading = true
         defer { isLoading = false }
-
+        
         do {
             let updatedUser = try await profileService.updateProfilePhoto(image: image)
             self.updatedUser = updatedUser
@@ -78,20 +71,20 @@ final class SettingsViewModel: ObservableObject {
             errorMessage = error.localizedDescription
         }
     }
-
+    
     // MARK: - Delete Profile
     func deleteProfile() async {
         resetFeedback()
         isLoading = true
         defer { isLoading = false }
-
+        
         do {
             let success = try await profileService.deleteProfile()
             if success {
                 successMessage = "Account deleted successfully."
                 updatedUser = nil
                 profileImage = nil
-
+                
                 // Optionally clear the auth token
                 TokenManager.shared.clearToken()
                 
@@ -110,7 +103,7 @@ final class SettingsViewModel: ObservableObject {
             debugPrint("[SettingsViewModel] Unexpected error: \(error.localizedDescription)")
         }
     }
-
+    
     // MARK: - Reset Feedback
     func resetFeedback() {
         errorMessage = nil

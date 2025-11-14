@@ -1,4 +1,3 @@
-// Services/Outfits/OutfitsService.swift
 import Foundation
 import Combine
 
@@ -9,6 +8,7 @@ class OutfitsService {
     private let baseURL = APIConstants.baseURL
     private let tokenManager = TokenManager.shared
 
+    // MARK: - Fetch User Authenticated Outfits
     func fetchMyOutfits() -> AnyPublisher<[Outfit], NetworkError> {
         guard let url = URL(string: APIConstants.outfitsMyPath, relativeTo: baseURL) else {
             return Fail(error: .invalidURL).eraseToAnyPublisher()
@@ -39,6 +39,7 @@ class OutfitsService {
             .receive(on: DispatchQueue.main)
             .eraseToAnyPublisher()
     }
+    // MARK: - Generate Random Outfit
     func generateRandomOutfit() -> AnyPublisher<Outfit, NetworkError> {
         guard let url = URL(string: APIConstants.outfitsGeneratePath, relativeTo: baseURL) else {
             return Fail(error: .invalidURL).eraseToAnyPublisher()
@@ -59,6 +60,7 @@ class OutfitsService {
             .receive(on: DispatchQueue.main)
             .eraseToAnyPublisher()
     }
+    // MARK: - Update Generated Outfit Status
     func updateOutfitStatus(_ outfitId: String, status: String) -> AnyPublisher<Void, NetworkError> {
         guard let url = URL(string: "\(APIConstants.outfitsPath)/\(outfitId)", relativeTo: baseURL) else {
             return Fail(error: .invalidURL).eraseToAnyPublisher()
@@ -80,7 +82,7 @@ class OutfitsService {
             }
             .eraseToAnyPublisher()
     }
-
+    // MARK: - Reject Generated Or Existing Outfit
     func deleteOutfit(_ outfitId: String) -> AnyPublisher<Void, NetworkError> {
         guard let url = URL(string: "\(APIConstants.outfitsPath)/\(outfitId)", relativeTo: baseURL) else {
             return Fail(error: .invalidURL).eraseToAnyPublisher()
@@ -98,6 +100,20 @@ class OutfitsService {
             }
             .eraseToAnyPublisher()
     }
+    // MARK: - Accept Generated Outfit
+    func createOutfit(clothesIds: [String]) -> AnyPublisher<Outfit, Error> {
+        let url = URL(string: "https://your-api.com/outfits")!
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.httpBody = try? JSONEncoder().encode(["clothesIds": clothesIds])
+
+        return URLSession.shared.dataTaskPublisher(for: request)
+            .map(\.data)
+            .decode(type: Outfit.self, decoder: JSONDecoder())
+            .eraseToAnyPublisher()
+    }
+
     
 
     

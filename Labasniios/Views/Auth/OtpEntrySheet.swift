@@ -91,17 +91,4 @@ struct OtpEntrySheet: View {
     }
 }
 
-#Preview {
-    OtpEntrySheet(
-        maskedPhone: "+216 ** *** 123",
-        code: .constant(""),
-        errorMessage: nil,
-        isLoading: false,
-        resendSecondsRemaining: 45,
-        canResend: false,
-        onVerify: {},
-        onResend: {},
-        onCancel: {}
-    )
-}
 

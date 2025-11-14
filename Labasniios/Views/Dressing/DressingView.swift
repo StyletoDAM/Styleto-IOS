@@ -1,4 +1,3 @@
-// Views/Dressing/DressingView.swift
 import SwiftUI
 import UIKit
 
@@ -7,7 +6,8 @@ struct DressingView: View {
     @ObservedObject private var themeManager = ThemeManager.shared
     @State private var showCamera = false
     @State private var capturedImage: UIImage?
-
+    @State private var searchText = ""
+    
     
     private let columns: [GridItem] = [
         GridItem(.flexible(), spacing: 16),
@@ -22,7 +22,7 @@ struct DressingView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 18) {
                     header
-                    searchAndFilter  // ← RETOUR À L'ANCIEN
+                    searchAndFilter
                     categoryChips
                     clothesGrid
                 }
@@ -32,7 +32,7 @@ struct DressingView: View {
                         print("IMAGE CAPTUREE :", image)
                     }
                 }
-
+                
                 .padding(.horizontal, 16)
                 .padding(.top, 12)
                 .padding(.bottom, 80)
@@ -74,10 +74,13 @@ struct DressingView: View {
             HStack(spacing: 10) {
                 Image(systemName: "magnifyingglass")
                     .foregroundColor(.themeSecondary)
-                TextField("Rechercher...", text: .constant(""))
+                
+                TextField("Rechercher...", text: $searchText)
                     .textInputAutocapitalization(.never)
                     .autocorrectionDisabled(true)
-                    .disabled(true)
+                    .onChange(of: searchText) { newValue in
+                        viewModel.searchText = newValue
+                    }
             }
             .padding(14)
             .background(
@@ -88,7 +91,7 @@ struct DressingView: View {
                             .fill(Color.themeSoftPink.opacity(0.25))
                     )
             )
-
+            
             Circle()
                 .fill(Color.themeAqua)
                 .frame(width: 48, height: 48)
@@ -111,6 +114,7 @@ struct DressingView: View {
                         selected: viewModel.selectedCategory == category
                     )
                     .onTapGesture {
+                        searchText = ""
                         viewModel.selectCategory(category)
                     }
                 }
@@ -145,7 +149,7 @@ struct DressingView: View {
         Button(action: {
             showCamera = true
         }) {
-
+            
             Image(systemName: "plus")
                 .font(.system(size: 24, weight: .bold))
                 .foregroundColor(.white)
@@ -222,29 +226,29 @@ private struct ClothingCard: View {
 struct ImagePicker: UIViewControllerRepresentable {
     var sourceType: UIImagePickerController.SourceType = .camera
     var onImagePicked: (UIImage) -> Void
-
+    
     func makeCoordinator() -> Coordinator {
         Coordinator(self, onImagePicked: onImagePicked)
     }
-
+    
     func makeUIViewController(context: Context) -> UIImagePickerController {
         let picker = UIImagePickerController()
         picker.sourceType = sourceType
         picker.delegate = context.coordinator
         return picker
     }
-
+    
     func updateUIViewController(_ uiViewController: UIImagePickerController, context: Context) {}
-
+    
     class Coordinator: NSObject, UINavigationControllerDelegate, UIImagePickerControllerDelegate {
         let parent: ImagePicker
         let onImagePicked: (UIImage) -> Void
-
+        
         init(_ parent: ImagePicker, onImagePicked: @escaping (UIImage) -> Void) {
             self.parent = parent
             self.onImagePicked = onImagePicked
         }
-
+        
         func imagePickerController(
             _ picker: UIImagePickerController,
             didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey : Any]
@@ -254,7 +258,7 @@ struct ImagePicker: UIViewControllerRepresentable {
             }
             picker.dismiss(animated: true)
         }
-
+        
         func imagePickerControllerDidCancel(_ picker: UIImagePickerController) {
             picker.dismiss(animated: true)
         }
@@ -262,6 +266,3 @@ struct ImagePicker: UIViewControllerRepresentable {
 }
 
 
-#Preview {
-    DressingView()
-}

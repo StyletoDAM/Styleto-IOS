@@ -18,11 +18,13 @@ struct ForgotPasswordResponse: Codable {
     let expiresAt: Date?
 }
 
+// MARK: - Verify Otp
 struct VerifyOtpResponse: Codable {
     let message: String
     let resetToken: String
 }
 
+// MARK: - Reset Password
 struct ResetPasswordResponse: Codable {
     let message: String
 }

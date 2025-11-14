@@ -1,4 +1,3 @@
-// Models/Entities/Outfit.swift
 import Foundation
 import CoreData
 
@@ -17,16 +16,18 @@ struct Outfit: Identifiable, Codable {
         case userId, clothesIds, eventType, weatherType, status, createdAt, updatedAt
     }
 
-    var title: String { eventType ?? "Tenue" }
+    var title: String { eventType ?? "Outfit" }
     var dateLabel: String {
         let formatter = RelativeDateTimeFormatter()
         formatter.unitsStyle = .abbreviated
         return formatter.localizedString(for: createdAt, relativeTo: Date())
     }
-    var isFavorite: Bool { status == "accepted" }
+    var isFavorite: Bool { isLocallyFavorite }
     var itemsCount: Int { clothesIds.count }
     var previewClothes: [Clothe] { Array(clothesIds.prefix(3)) }
 }
+
+// MARK: - Local Favorites (CoreData)
 extension Outfit {
     var isLocallyFavorite: Bool {
         let context = CoreDataManager.shared.container.viewContext

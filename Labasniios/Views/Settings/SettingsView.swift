@@ -1,10 +1,3 @@
-//
-//  SettingsView.swift
-//  Labasniios
-//
-//  Created by MacBook on 2/11/2025.
-//
-
 import SwiftUI
 import PhotosUI
 
@@ -817,6 +810,3 @@ private struct SettingsOptionRow: View {
     }
 }
 
-#Preview {
-    SettingsView()
-}

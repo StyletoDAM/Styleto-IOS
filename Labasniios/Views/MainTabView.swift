@@ -1,14 +1,8 @@
-//
-//  MainTabView.swift
-//  Labasniios
-//
-//  Created by MacBook on 2/11/2025.
-//
-
 import SwiftUI
 
 struct MainTabView: View {
     @ObservedObject private var themeManager = ThemeManager.shared
+    @StateObject private var avatarVM = AvatarViewModel()
     @State private var selectedTab: Tab = .dressing
     let user: User?
     let onLogout: (() -> Void)?
@@ -31,13 +25,8 @@ struct MainTabView: View {
                 case .tenues:
                     OutfitsView()
                 case .avatar:
-                    // Placeholder pour Avatar (statique pour le moment)
-                    ZStack {
-                        Color.themeBackground.ignoresSafeArea()
-                        Text("Avatar")
-                            .font(.system(size: 24, weight: .bold))
-                            .foregroundColor(.themeTeal)
-                    }
+                    AvatarView()
+                        .environmentObject(avatarVM)
                 case .store:
                     StoreView()
                 case .profil:
@@ -85,6 +74,7 @@ struct MainTabView: View {
                 // Bouton central Avatar (plus grand et distinctif)
                 Button {
                     selectedTab = .avatar
+                    //avatarVM.startCamera()  // ← DÉMARRE LA CAMÉRA
                 } label: {
                     ZStack {
                         Circle()

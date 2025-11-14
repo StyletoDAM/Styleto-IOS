@@ -1,4 +1,3 @@
-
 import Foundation
 
 struct Store: Identifiable, Codable {
@@ -15,7 +14,7 @@ struct Store: Identifiable, Codable {
         case userId, clothesId, price, status, createdAt, updatedAt
     }
 
-    var title: String { clothesId.category! } // ou autre propriété du vêtement
+    var title: String { clothesId.category! }
     var dateLabel: String {
         let formatter = RelativeDateTimeFormatter()
         formatter.unitsStyle = .abbreviated

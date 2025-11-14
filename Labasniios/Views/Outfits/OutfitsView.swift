@@ -1,28 +1,42 @@
-// Views/Outfits/OutfitsView.swift
 import SwiftUI
 
 struct OutfitsView: View {
     @StateObject private var viewModel = OutfitsViewModel()
     @ObservedObject private var themeManager = ThemeManager.shared
+    @State private var showStylePopup = false
+    @State private var selectedStyle: String?
+    @State private var currentSuggestion: Outfit?
+
+
     @Environment(\.managedObjectContext) private var context
 
 
     var body: some View {
-        NavigationStack {  // AJOUTE ÇA ICI
+        NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 24) {
                     header
                     suggestionCard
-                    if let suggestion = viewModel.suggestion {
-                        TenueCard(
-                            outfit: suggestion,
-                            isSuggestion: true,
-                            onAccept: { viewModel.acceptSuggestion(suggestion) },
-                            onReject: { viewModel.rejectSuggestion(suggestion) }
-                        )
-                        .padding(.horizontal, 4)
-                        .transition(.move(edge: .top).combined(with: .opacity))
+                    VStack {
+                        if let suggestion = viewModel.suggestion {
+                            SuggestionCard(
+                                outfit: suggestion,
+                                onAccept: {
+                                    withAnimation {
+                                        viewModel.acceptSuggestion()
+                                    }
+                                },
+                                onReject: {
+                                    withAnimation {
+                                        viewModel.rejectSuggestion()
+                                    }
+                                }
+                            )
+                            .transition(.move(edge: .top).combined(with: .opacity))
+                        }
                     }
+                    .animation(.easeInOut, value: viewModel.suggestion != nil)
+
                     sectionHeader
 
                     if viewModel.isLoading && viewModel.outfits.isEmpty {
@@ -46,6 +60,16 @@ struct OutfitsView: View {
                 .padding(.bottom, 32)
             }
             .background(Color.themeBackground.ignoresSafeArea())
+            .sheet(isPresented: $showStylePopup) {
+                StyleSelectionPopup(isPresented: $showStylePopup, selectedStyle: $selectedStyle)
+                    .onDisappear {
+                                if let style = selectedStyle {
+                                    // Générer un outfit aléatoire selon le style choisi
+                                    viewModel.generateSuggestion()
+                                }
+                            }
+            }
+
             .navigationBarBackButtonHidden(true)
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
@@ -83,7 +107,7 @@ struct OutfitsView: View {
             Text("The weather is nice today! Why not try a light and colorful outfit?")
                 .foregroundColor(.white.opacity(0.95))
             Button("See suggestion") {
-                viewModel.generateOutfit()
+                showStylePopup = true
             }
             .font(.system(size: 16, weight: .semibold))
             .padding(.horizontal, 20)
@@ -118,11 +142,11 @@ struct OutfitsView: View {
             Image(systemName: "tshirt")
                 .font(.system(size: 50))
                 .foregroundColor(.gray)
-            Text("Aucun outfit pour le moment")
+            Text("No outfits at the moment")
                 .font(.title3)
                 .foregroundColor(.themeSecondaryText)
-            Button("Générer un outfit") {
-                viewModel.generateOutfit()
+            Button("Generate an outfit") {
+                viewModel.generateSuggestion()
             }
             .buttonStyle(.borderedProminent)
             .tint(.themeTeal)
@@ -145,7 +169,7 @@ struct OutfitsView: View {
         HStack {
             Spacer()
             Button {
-                viewModel.generateOutfit()
+                viewModel.generateSuggestion()
             } label: {
                 Image(systemName: "shuffle")
                     .font(.system(size: 22, weight: .bold))
@@ -186,8 +210,7 @@ struct TenueCard: View {
                 Spacer()
                 Button {
                         isFavorite.toggle()
-                    print("BOUTON CŒUR CLIQUÉ → Outfit ID: \(outfit.id), Nouveau statut: \(isFavorite ? "FAVORI" : "NON FAVORI")")
-                        FavoritesManager.shared.toggleFavorite(outfitId: outfit.id)
+                    FavoritesService.shared.toggleFavorite(outfitId: outfit.id)
                     } label: {
                         Image(systemName: isFavorite ? "heart.fill" : "heart")
                             .font(.system(size: 20, weight: .semibold))
@@ -199,7 +222,6 @@ struct TenueCard: View {
                     }
                     .onAppear {
                         isFavorite = outfit.isLocallyFavorite
-                        print("TenueCard chargée → Outfit ID: \(outfit.id), isFavorite: \(isFavorite)")
                     }
             }
 
@@ -282,6 +304,3 @@ struct TenueCard: View {
     }
 }
 
-#Preview {
-    OutfitsView()
-}

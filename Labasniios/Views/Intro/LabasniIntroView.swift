@@ -32,30 +32,30 @@ struct LabasniIntroView: View {
                 LinearGradient(colors: [.e8aabe, .a7e0e0],
                                startPoint: .top, endPoint: .bottom)
                 .ignoresSafeArea()
-
+                
                 VStack(spacing: 28) {
                     Spacer(minLength: 40)
-
+                    
                     Image("logocercle")
                         .resizable()
                         .scaledToFit()
                         .frame(width: 180, height: 180)
                         .shadow(color: .black.opacity(0.18), radius: 20, x: 0, y: 10)
-
+                    
                     VStack(spacing: 6) {
                         Text("Labasni")
                             .font(.system(size: 34, weight: .bold))
                             .foregroundColor(.white.opacity(0.96))
                             .shadow(color: .black.opacity(0.08), radius: 4, x: 0, y: 2)
-
+                        
                         Text("Your Smart Stylist")
                             .font(.system(size: 16, weight: .medium))
                             .foregroundColor(.white.opacity(0.85))
                     }
                     .padding(.top, 4)
-
+                    
                     Spacer()
-
+                    
                     VStack(spacing: 16) {
                         NavigationLink {
                             LabasniLoginView()
@@ -69,7 +69,7 @@ struct LabasniIntroView: View {
                             background: .ca3c66,
                             foreground: .white
                         ))
-
+                        
                         NavigationLink {
                             LabasniSignupView()
                         } label: {
@@ -85,7 +85,7 @@ struct LabasniIntroView: View {
                         ))
                     }
                     .padding(.horizontal, 28)
-
+                    
                     Spacer(minLength: 24)
                 }
                 .padding(.bottom, 8)
@@ -101,7 +101,7 @@ struct PillButtonStyle: ButtonStyle {
     var background: Color
     var foreground: Color
     var border: Color? = nil
-
+    
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .foregroundColor(foreground)
@@ -113,20 +113,3 @@ struct PillButtonStyle: ButtonStyle {
     }
 }
 
-// MARK: - Previews
-struct LabasniIntroView_Previews: PreviewProvider {
-    static var previews: some View {
-        Group {
-            LabasniIntroView()
-                .previewDevice(PreviewDevice(rawValue: "iPhone 15 Pro"))
-                .environment(\.colorScheme, .light)
-
-            LabasniIntroView()
-                .previewDevice(PreviewDevice(rawValue: "iPhone SE (3rd generation)"))
-                .environment(\.colorScheme, .dark)
-
-            LabasniIntroView()
-                .environment(\.sizeCategory, .accessibilityExtraExtraExtraLarge)
-        }
-    }
-}
