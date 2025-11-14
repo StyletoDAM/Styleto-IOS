@@ -1,5 +1,6 @@
 // Models/Entities/Outfit.swift
 import Foundation
+import CoreData
 
 struct Outfit: Identifiable, Codable {
     let id: String
@@ -25,4 +26,13 @@ struct Outfit: Identifiable, Codable {
     var isFavorite: Bool { status == "accepted" }
     var itemsCount: Int { clothesIds.count }
     var previewClothes: [Clothe] { Array(clothesIds.prefix(3)) }
+}
+extension Outfit {
+    var isLocallyFavorite: Bool {
+        let context = CoreDataManager.shared.container.viewContext
+        let request: NSFetchRequest<FavoriteOutfit> = FavoriteOutfit.fetchRequest()
+        request.predicate = NSPredicate(format: "outfitId == %@", id)
+        request.fetchLimit = 1
+        return (try? context.count(for: request)) ?? 0 > 0
+    }
 }

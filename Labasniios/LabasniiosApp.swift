@@ -1,10 +1,3 @@
-//
-//  LabasniiosApp.swift
-//  Labasniios
-//
-//  Created by MacBook on 2/11/2025.
-//
-
 import SwiftUI
 
 @main
@@ -13,6 +6,9 @@ struct LabasniiosApp: App {
     @StateObject private var themeManager = ThemeManager.shared
     @StateObject private var appPreferences = AppPreferences.shared
     @UIApplicationDelegateAdaptor(AppDelegate.self) var delegate
+    
+    // ✅ AJOUTER CETTE LIGNE
+    let persistenceController = CoreDataManager.shared
 
     var body: some Scene {
         WindowGroup {
@@ -23,6 +19,7 @@ struct LabasniiosApp: App {
                         handleLogout()
                     })
                     .opacity(showingSplash ? 0 : 1)
+                    .environment(\.managedObjectContext, persistenceController.container.viewContext)  // ✅ AJOUTER ÇA
                 } else {
                     LabasniIntroView()
                         .opacity(showingSplash ? 0 : 1)

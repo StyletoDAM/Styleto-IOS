@@ -1,0 +1,111 @@
+// Views/Outfits/FavoritesView.swift
+import SwiftUI
+
+struct FavoritesView: View {
+    @FetchRequest(
+        entity: FavoriteOutfit.entity(),
+        sortDescriptors: [NSSortDescriptor(keyPath: \FavoriteOutfit.createdAt, ascending: false)]
+    ) var favoriteOutfits: FetchedResults<FavoriteOutfit>
+    
+    @Environment(\.managedObjectContext) private var context
+    
+    @StateObject private var viewModel = OutfitsViewModel()
+    
+    // État pour forcer le rafraîchissement
+    @State private var outfitsLoaded = false
+
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 24) {
+                    header
+                    
+                    if !outfitsLoaded {
+                        ProgressView("Chargement des favoris...")
+                            .frame(maxWidth: .infinity)
+                            .padding()
+                    } else if favoriteOutfits.isEmpty {
+                        emptyState
+                    } else if filteredFavorites.isEmpty {
+                        Text("Aucun outfit trouvé (vérifie les IDs)")
+                            .foregroundColor(.red)
+                    } else {
+                        favoritesList
+                    }
+                }
+                .padding(.horizontal, 16)
+                .padding(.bottom, 32)
+            }
+            .background(Color.themeBackground.ignoresSafeArea())
+            .navigationBarTitleDisplayMode(.large)
+            .onAppear {
+                print("FavoritesView ouverte")
+                    print("Favoris en Core Data: \(FavoritesManager.shared.allFavoriteIds)")
+                loadOutfitsAndFavorites()
+            }
+            .refreshable {
+                loadOutfitsAndFavorites()
+            }
+        }
+    }
+    
+    // MARK: - Chargement
+    private func loadOutfitsAndFavorites() {
+        viewModel.loadOutfits()
+        // Attendre que les outfits soient chargés
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+            print("Outfits chargés: \(self.viewModel.outfits.count) éléments")
+                    print("IDs outfits: \(self.viewModel.outfits.map { $0.id })")
+                    print("IDs favoris: \(FavoritesManager.shared.allFavoriteIds)")
+            outfitsLoaded = true
+        }
+    }
+    
+    // MARK: - Outfits filtrés
+    private var filteredFavorites: [Outfit] {
+        favoriteOutfits.compactMap { favorite in
+            viewModel.outfits.first { $0.id == favorite.outfitId }
+        }
+    }
+    
+    // MARK: - Header
+    private var header: some View {
+        Text("My Favorites")
+            .font(.system(size: 36, weight: .bold))
+            .foregroundColor(.themePrimary)
+            .frame(maxWidth: .infinity, alignment: .leading)
+    }
+    
+    // MARK: - Empty State
+    private var emptyState: some View {
+        VStack(spacing: 16) {
+            Image(systemName: "heart.slash")
+                .font(.system(size: 50))
+                .foregroundColor(.gray)
+            Text("Aucun outfit favori")
+                .font(.title3)
+                .foregroundColor(.themeSecondaryText)
+            Text("Appuie sur le cœur dans \"My Outfits\" pour ajouter ici")
+                .font(.subheadline)
+                .foregroundColor(.gray)
+                .multilineTextAlignment(.center)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.top, 40)
+    }
+    
+    // MARK: - Favorites List
+    private var favoritesList: some View {
+        VStack(spacing: 18) {
+            ForEach(filteredFavorites) { outfit in
+                TenueCard(outfit: outfit)
+                    .padding(.horizontal, 4)
+            }
+        }
+    }
+}
+
+#Preview {
+    FavoritesView()
+        .environment(\.managedObjectContext, CoreDataManager.shared.container.viewContext)
+}

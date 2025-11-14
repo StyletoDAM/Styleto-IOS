@@ -25,7 +25,9 @@ class OutfitsViewModel: ObservableObject {
                     self?.errorMessage = error.errorDescription
                 }
             } receiveValue: { [weak self] outfits in
-                self?.outfits = outfits.sorted { $0.createdAt ?? Date() > $1.createdAt ?? Date() }
+                print("API → \(outfits.count) outfits reçus")
+                self?.outfits = outfits.sorted { $0.createdAt ?? Date() > $1.createdAt ?? Date()
+                }
             }
             .store(in: &cancellables)
     }

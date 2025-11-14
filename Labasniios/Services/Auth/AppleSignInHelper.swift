@@ -61,6 +61,7 @@ final class AppleSignInHelper: NSObject, ObservableObject {
             }
         }
     }
+    
 }
 
 // MARK: - ASAuthorizationControllerDelegate

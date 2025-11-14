@@ -193,6 +193,12 @@ struct SettingsView: View {
         NavigationStack {
             ScrollView {
                 VStack(spacing: 16) {
+                    Text("Settings")
+                                .font(.system(size: 36, weight: .bold))
+                                .foregroundColor(.themePrimary)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .padding(.horizontal, 20)
+                                .padding(.top, 12)
                     // Profile Photo
                     VStack(spacing: 12) {
                         ZStack {
@@ -321,8 +327,7 @@ struct SettingsView: View {
                 .padding(.vertical, 16)
             }
             .background(Color.themeBackground.ignoresSafeArea())
-            .navigationTitle("Settings")
-            .navigationBarTitleDisplayMode(.large)
+            
             .navigationBarBackButtonHidden(true)
             .sheet(isPresented: $showThemePicker) {
                 ThemePickerSheet(themeManager: themeManager)

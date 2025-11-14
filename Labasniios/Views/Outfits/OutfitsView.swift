@@ -4,12 +4,15 @@ import SwiftUI
 struct OutfitsView: View {
     @StateObject private var viewModel = OutfitsViewModel()
     @ObservedObject private var themeManager = ThemeManager.shared
+    @Environment(\.managedObjectContext) private var context
+
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 24) {
-                header
-                suggestionCard
+        NavigationStack {  // AJOUTE ÇA ICI
+            ScrollView {
+                VStack(alignment: .leading, spacing: 24) {
+                    header
+                    suggestionCard
                     if let suggestion = viewModel.suggestion {
                         TenueCard(
                             outfit: suggestion,
@@ -20,36 +23,45 @@ struct OutfitsView: View {
                         .padding(.horizontal, 4)
                         .transition(.move(edge: .top).combined(with: .opacity))
                     }
-                sectionHeader
+                    sectionHeader
 
-                if viewModel.isLoading && viewModel.outfits.isEmpty {
-                    ProgressView()
-                        .frame(maxWidth: .infinity)
-                        .padding()
-                } else if let error = viewModel.errorMessage {
-                    Text(error)
-                        .foregroundColor(.red)
-                        .frame(maxWidth: .infinity)
-                } else if viewModel.outfits.isEmpty {
-                    emptyState
-                } else {
-                    tenueList
+                    if viewModel.isLoading && viewModel.outfits.isEmpty {
+                        ProgressView()
+                            .frame(maxWidth: .infinity)
+                            .padding()
+                    } else if let error = viewModel.errorMessage {
+                        Text(error)
+                            .foregroundColor(.red)
+                            .frame(maxWidth: .infinity)
+                    } else if viewModel.outfits.isEmpty {
+                        emptyState
+                    } else {
+                        tenueList
+                    }
+
+                    floatingButton
                 }
-
-                floatingButton
+                .padding(.horizontal, 16)
+                .padding(.top, 12)
+                .padding(.bottom, 32)
             }
-            .padding(.horizontal, 16)
-            .padding(.top, 12)
-            .padding(.bottom, 32)
-        }
-        .background(Color.themeBackground.ignoresSafeArea())
-        .navigationBarBackButtonHidden(true)
-        .toolbar(.hidden, for: .navigationBar)
-        .onAppear {
-            viewModel.loadOutfits()
-        }
-        .refreshable {
-            viewModel.loadOutfits()
+            .background(Color.themeBackground.ignoresSafeArea())
+            .navigationBarBackButtonHidden(true)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    NavigationLink(destination: FavoritesView()) {
+                        Image(systemName: "heart.fill")
+                            .font(.system(size: 20, weight: .semibold))
+                            .foregroundColor(.themePrimary)
+                    }
+                }
+            }
+            .onAppear {
+                viewModel.loadOutfits()
+            }
+            .refreshable {
+                viewModel.loadOutfits()
+            }
         }
         
     }
@@ -152,7 +164,8 @@ struct OutfitsView: View {
 }
 
 // MARK: - Tenue Card (mise à jour)
-private struct TenueCard: View {
+struct TenueCard: View {
+    @State private var isFavorite: Bool = false
     @ObservedObject private var themeManager = ThemeManager.shared
     let outfit: Outfit
     var isSuggestion = false
@@ -171,9 +184,23 @@ private struct TenueCard: View {
                         .foregroundColor(.themeSecondaryText)
                 }
                 Spacer()
-                Image(systemName: outfit.isFavorite ? "heart.fill" : "heart")
-                    .font(.system(size: 20, weight: .semibold))
-                    .foregroundColor(outfit.isFavorite ? .themePrimary : .themeSecondary)
+                Button {
+                        isFavorite.toggle()
+                    print("BOUTON CŒUR CLIQUÉ → Outfit ID: \(outfit.id), Nouveau statut: \(isFavorite ? "FAVORI" : "NON FAVORI")")
+                        FavoritesManager.shared.toggleFavorite(outfitId: outfit.id)
+                    } label: {
+                        Image(systemName: isFavorite ? "heart.fill" : "heart")
+                            .font(.system(size: 20, weight: .semibold))
+                            .foregroundColor(isFavorite ? .themePrimary : .themeSecondary)
+                            .padding(8)
+                            .background(Color.themeCard.opacity(0.8))
+                            .clipShape(Circle())
+                            .shadow(radius: 2)
+                    }
+                    .onAppear {
+                        isFavorite = outfit.isLocallyFavorite
+                        print("TenueCard chargée → Outfit ID: \(outfit.id), isFavorite: \(isFavorite)")
+                    }
             }
 
             HStack(spacing: 14) {

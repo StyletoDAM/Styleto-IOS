@@ -1,9 +1,13 @@
 // Views/Dressing/DressingView.swift
 import SwiftUI
+import UIKit
 
 struct DressingView: View {
     @StateObject private var viewModel = DressingViewModel()
     @ObservedObject private var themeManager = ThemeManager.shared
+    @State private var showCamera = false
+    @State private var capturedImage: UIImage?
+
     
     private let columns: [GridItem] = [
         GridItem(.flexible(), spacing: 16),
@@ -22,6 +26,13 @@ struct DressingView: View {
                     categoryChips
                     clothesGrid
                 }
+                .sheet(isPresented: $showCamera) {
+                    ImagePicker(sourceType: .camera) { image in
+                        capturedImage = image
+                        print("IMAGE CAPTUREE :", image)
+                    }
+                }
+
                 .padding(.horizontal, 16)
                 .padding(.top, 12)
                 .padding(.bottom, 80)
@@ -43,6 +54,7 @@ struct DressingView: View {
         .navigationBarBackButtonHidden(true)
         .toolbar(.hidden, for: .navigationBar)
         .onAppear { viewModel.fetchClothes() }
+        
     }
     
     // MARK: - Header
@@ -131,8 +143,9 @@ struct DressingView: View {
     // MARK: - Floating Add Button
     private var floatingAddButton: some View {
         Button(action: {
-            // Ouvre la modale d'ajout
+            showCamera = true
         }) {
+
             Image(systemName: "plus")
                 .font(.system(size: 24, weight: .bold))
                 .foregroundColor(.white)
@@ -205,6 +218,49 @@ private struct ClothingCard: View {
         .shadow(color: .black.opacity(0.08), radius: 8)
     }
 }
+
+struct ImagePicker: UIViewControllerRepresentable {
+    var sourceType: UIImagePickerController.SourceType = .camera
+    var onImagePicked: (UIImage) -> Void
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator(self, onImagePicked: onImagePicked)
+    }
+
+    func makeUIViewController(context: Context) -> UIImagePickerController {
+        let picker = UIImagePickerController()
+        picker.sourceType = sourceType
+        picker.delegate = context.coordinator
+        return picker
+    }
+
+    func updateUIViewController(_ uiViewController: UIImagePickerController, context: Context) {}
+
+    class Coordinator: NSObject, UINavigationControllerDelegate, UIImagePickerControllerDelegate {
+        let parent: ImagePicker
+        let onImagePicked: (UIImage) -> Void
+
+        init(_ parent: ImagePicker, onImagePicked: @escaping (UIImage) -> Void) {
+            self.parent = parent
+            self.onImagePicked = onImagePicked
+        }
+
+        func imagePickerController(
+            _ picker: UIImagePickerController,
+            didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey : Any]
+        ) {
+            if let image = info[.originalImage] as? UIImage {
+                onImagePicked(image)
+            }
+            picker.dismiss(animated: true)
+        }
+
+        func imagePickerControllerDidCancel(_ picker: UIImagePickerController) {
+            picker.dismiss(animated: true)
+        }
+    }
+}
+
 
 #Preview {
     DressingView()
