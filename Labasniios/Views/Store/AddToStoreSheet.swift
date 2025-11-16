@@ -43,9 +43,8 @@ struct AddToStoreSheet: View {
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Add") {
-                        viewModel.addToStore {
-                            dismiss()
-                        }
+                        // Appel sans closure
+                        viewModel.addToStore()
                     }
                     .bold()
                     .foregroundColor(.white)
@@ -68,10 +67,9 @@ struct AddToStoreSheet: View {
                         .shadow(radius: 10)
                 }
             }
-            // ✅ OBSERVER LES CHANGEMENTS POUR FERMER AUTOMATIQUEMENT
-            .onChange(of: viewModel.isAdding) { oldValue, newValue in
-                // Quand isAdding passe de true à false (fin de l'ajout)
-                if oldValue == true && newValue == false && viewModel.errorMessage == nil {
+            // Observer showAddToStore pour fermer automatiquement
+            .onChange(of: viewModel.showAddToStore) { _, newValue in
+                if !newValue {
                     dismiss()
                 }
             }
@@ -108,7 +106,15 @@ struct AddToStoreSheet: View {
         ScrollView {
             LazyVStack(spacing: 12) {
                 ForEach(viewModel.myClothes) { clothe in
-                    let isAlreadyInStore = viewModel.storeItems.contains { $0.clothesId.id == clothe.id }
+                    let isAlreadyInStore = viewModel.storeItems.contains { storeItem in
+                        if case .clotheId(let id) = storeItem.clothesId {
+                            return id == clothe.id
+                        }
+                        if case .clothe(let c) = storeItem.clothesId {
+                            return c.id == clothe.id
+                        }
+                        return false
+                    }
                     let isSelected = viewModel.selectedClothe?.id == clothe.id
 
                     HStack {

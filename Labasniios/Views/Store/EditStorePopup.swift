@@ -19,7 +19,7 @@ struct EditStorePopup: View {
                 // MARK: - Image + Infos
                 Section {
                     HStack(spacing: 16) {
-                        AsyncImage(url: URL(string: storeItem.clothesId.imageURL)) { image in
+                        AsyncImage(url: URL(string: storeItem.clothe?.imageURL ?? "")) { image in
                             image
                                 .resizable()
                                 .scaledToFill()
@@ -37,7 +37,7 @@ struct EditStorePopup: View {
                         .shadow(color: .black.opacity(0.1), radius: 4, x: 0, y: 2)
 
                         VStack(alignment: .leading, spacing: 6) {
-                            Text(storeItem.clothesId.category?.capitalized ?? "Item")
+                            Text(storeItem.clothe?.category?.capitalized ?? "Item")
                                 .font(.headline)
                                 .foregroundColor(.themeTeal)
 
@@ -165,7 +165,10 @@ struct EditStorePopup: View {
             }
             .navigationTitle("Edit Item")
             .navigationBarTitleDisplayMode(.inline)
-            .background(Color.themeBackground.ignoresSafeArea())
+            .background(
+                Color.themeSoftPink.opacity(UITraitCollection.current.userInterfaceStyle == .dark ? 0.1 : 0.25)
+                    .ignoresSafeArea()
+            )
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") {

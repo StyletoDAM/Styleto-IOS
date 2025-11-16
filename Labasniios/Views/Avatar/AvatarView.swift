@@ -14,12 +14,12 @@ struct AvatarView: View {
                         .font(.system(size: 80))
                         .foregroundColor(.themePrimary.opacity(0.6))
                     
-                    Text("Try-On en Temps Réel")
+                    Text("Real Time Try-On")
                         .font(.title)
                         .fontWeight(.bold)
                         .foregroundColor(.themeTeal)
                     
-                    Text("Appuyez sur le bouton central pour commencer")
+                    Text("Press the central button to start")
                         .font(.subheadline)
                         .foregroundColor(.themeSecondaryText)
                         .multilineTextAlignment(.center)

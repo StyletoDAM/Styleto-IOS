@@ -90,6 +90,11 @@ struct SettingsView: View {
     @State private var originalPhone: String = ""
     @State private var originalGender: Gender = .female
     
+    @State private var showImageSourcePicker = false
+    @State private var showCamera = false
+    @State private var showPhotoPicker = false
+    @State private var showDeletePhotoConfirmation = false
+    
     init(user: User? = nil, onLogout: (() -> Void)? = nil) {
         self.user = user
         self.onLogout = onLogout
@@ -187,57 +192,99 @@ struct SettingsView: View {
             ScrollView {
                 VStack(spacing: 16) {
                     Text("Settings")
-                                .font(.system(size: 36, weight: .bold))
-                                .foregroundColor(.themePrimary)
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                                .padding(.horizontal, 20)
-                                .padding(.top, 12)
+                        .font(.system(size: 36, weight: .bold))
+                        .foregroundColor(.themePrimary)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(.horizontal, 20)
+                        .padding(.top, 12)
                     // Profile Photo
                     VStack(spacing: 12) {
-                        ZStack {
-                            Circle()
-                                .fill(Color.themePrimary.opacity(0.15))
-                                .frame(width: 80, height: 80)
-                            
-                            if let img = profileImage ?? viewModel.profileImage {
-                                Image(uiImage: img)
-                                    .resizable()
-                                    .scaledToFill()
+                        Button {
+                            showImageSourcePicker = true
+                        } label: {
+                            ZStack {
+                                Circle()
+                                    .fill(Color.themePrimary.opacity(0.15))
                                     .frame(width: 80, height: 80)
-                                    .clipShape(Circle())
-                            } else if let pic = user?.profilePicture, !pic.isEmpty, let url = URL(string: pic) {
-                                AsyncImage(url: url) { image in
-                                    image
+                                
+                                if let img = profileImage ?? viewModel.profileImage {
+                                    Image(uiImage: img)
                                         .resizable()
                                         .scaledToFill()
-                                } placeholder: {
+                                        .frame(width: 80, height: 80)
+                                        .clipShape(Circle())
+                                } else if let updatedUser = viewModel.updatedUser,
+                                          let pic = updatedUser.profilePicture,
+                                          !pic.isEmpty,
+                                          let url = URL(string: pic) {
+                                    AsyncImage(url: url) { image in
+                                        image
+                                            .resizable()
+                                            .scaledToFill()
+                                    } placeholder: {
+                                        Text(initials(from: fullName))
+                                            .font(.system(size: 28, weight: .bold))
+                                            .foregroundColor(.themePrimary)
+                                    }
+                                    .frame(width: 80, height: 80)
+                                    .clipShape(Circle())
+                                } else if let pic = user?.profilePicture, !pic.isEmpty, let url = URL(string: pic) {
+                                    AsyncImage(url: url) { image in
+                                        image
+                                            .resizable()
+                                            .scaledToFill()
+                                    } placeholder: {
+                                        Text(initials(from: fullName))
+                                            .font(.system(size: 28, weight: .bold))
+                                            .foregroundColor(.themePrimary)
+                                    }
+                                    .frame(width: 80, height: 80)
+                                    .clipShape(Circle())
+                                } else {
                                     Text(initials(from: fullName))
                                         .font(.system(size: 28, weight: .bold))
                                         .foregroundColor(.themePrimary)
                                 }
+                                
+                                // Icône d'édition
+                                VStack {
+                                    Spacer()
+                                    HStack {
+                                        Spacer()
+                                        ZStack {
+                                            Circle()
+                                                .fill(Color.themePrimary)
+                                                .frame(width: 28, height: 28)
+                                            Image(systemName: "camera.fill")
+                                                .font(.system(size: 12, weight: .semibold))
+                                                .foregroundColor(.white)
+                                        }
+                                    }
+                                }
                                 .frame(width: 80, height: 80)
-                                .clipShape(Circle())
-                            } else {
-                                Text(initials(from: fullName))
-                                    .font(.system(size: 28, weight: .bold))
-                                    .foregroundColor(.themePrimary)
                             }
                         }
-                        
-                        PhotosPicker(selection: $selectedPhoto, matching: .images) {
-                            Text("Change photo")
-                                .font(.system(size: 15, weight: .semibold))
-                                .foregroundColor(.themePrimary)
-                        }
-                        .onChange(of: selectedPhoto) { newItem in
-                            Task {
-                                if let data = try? await newItem?.loadTransferable(type: Data.self),
-                                   let uiImage = UIImage(data: data) {
-                                    pendingPhoto = uiImage
-                                    showPhotoConfirmation = true
+                        .buttonStyle(.plain)
+                        .confirmationDialog("Choose an option", isPresented: $showImageSourcePicker) {
+                            Button("Take a new photo") {
+                                showCamera = true
+                            }
+                            Button("Choose from gallery") {
+                                showPhotoPicker = true
+                            }
+                            
+                            if hasProfilePhoto {
+                                Button("Delete photo", role: .destructive) {
+                                    showDeletePhotoConfirmation = true
                                 }
                             }
+                            
+                            Button("Cancel", role: .cancel) {}
                         }
+                        
+                        Text(fullName)
+                            .font(.system(size: 18, weight: .semibold))
+                            .foregroundColor(.themeText)
                     }
                     .padding(.top, 20)
                     
@@ -325,82 +372,123 @@ struct SettingsView: View {
             .sheet(isPresented: $showThemePicker) {
                 ThemePickerSheet(themeManager: themeManager)
             }
-            .alert("Confirmer la modification", isPresented: $showSaveConfirmation) {
-                Button("Annuler", role: .cancel) {}
-                Button("Confirmer") { Task { await saveProfile() } }
-            } message: { Text("Voulez-vous vraiment enregistrer ces modifications ?") }
-            .alert("Succès", isPresented: $showSuccessAlert) {
-                Button("OK") {
-                    if let updatedUser = viewModel.updatedUser {
-                        originalFullName = updatedUser.fullName
-                        originalPhone = updatedUser.phoneNumber ?? ""
-                        originalGender = updatedUser.gender == .male ? .male : .female
-                        fullName = updatedUser.fullName
-                        phone = updatedUser.phoneNumber ?? ""
-                        gender = updatedUser.gender == .male ? .male : .female
-                        
-                        // Mise à jour des styles
-                        let mapped = updatedUser.preferences.compactMap { s -> StylePreference? in
-                            switch s.lowercased() {
-                            case "casual": return .casual
-                            case "chic": return .chic
-                            case "sport": return .sport
-                            case "boheme", "bohème": return .boheme
-                            case "minimal": return .minimal
-                            default: return nil
+            
+            
+            .sheet(isPresented: $showCamera) {
+                ImagePicker(sourceType: .camera) { image in
+                    if let image = image {
+                        pendingPhoto = image
+                        showPhotoConfirmation = true
+                    }
+                }
+            }
+            .sheet(isPresented: $showPhotoPicker) {
+                ImagePicker(sourceType: .photoLibrary) { image in
+                    if let image = image {
+                        pendingPhoto = image
+                        showPhotoConfirmation = true
+                    }
+                }
+            }
+            .alert("Confirm Modification", isPresented: $showSaveConfirmation) {
+                Button("Cancel", role: .cancel) {}
+                Button("Confirm") { Task { await saveProfile() } }
+            } message: {
+                Text("Do you really want to save these changes?")
+            }
+                .alert("Success", isPresented: $showSuccessAlert) {
+                    Button("OK") {
+                        if let updatedUser = viewModel.updatedUser {
+                            originalFullName = updatedUser.fullName
+                            originalPhone = updatedUser.phoneNumber ?? ""
+                            originalGender = updatedUser.gender == .male ? .male : .female
+                            fullName = updatedUser.fullName
+                            phone = updatedUser.phoneNumber ?? ""
+                            gender = updatedUser.gender == .male ? .male : .female
+                            
+                            // Mise à jour des styles
+                            let mapped = updatedUser.preferences.compactMap { s -> StylePreference? in
+                                switch s.lowercased() {
+                                case "casual": return .casual
+                                case "chic": return .chic
+                                case "sport": return .sport
+                                case "boheme", "bohème": return .boheme
+                                case "minimal": return .minimal
+                                default: return nil
+                                }
+                            }
+                            originalStyles = Set(mapped)
+                            selectedStyles = originalStyles
+                        } else {
+                            originalFullName = fullName
+                            originalPhone = phone
+                            originalGender = gender
+                            originalStyles = selectedStyles
+                        }
+                    }
+                } message: { Text(viewModel.successMessage ?? "Profile updated successfully.") }
+                .alert("Error", isPresented: $showErrorAlert) {
+                    Button("OK") {}
+                } message: {
+                    Text(viewModel.errorMessage ?? "An error has occurred.")
+                }
+                .onChange(of: viewModel.successMessage) { _ in showSuccessAlert = true }
+                .onChange(of: viewModel.errorMessage) { _ in showErrorAlert = true }
+                .alert("Logout", isPresented: $showLogoutConfirmation) {
+                    Button("Cancel", role: .cancel) {}
+                    Button("Logout", role: .destructive) { performLogout() }
+                } message: {
+                    Text("Do you really want to log out?")
+                }
+                .alert("Confirm Photo Change", isPresented: $showPhotoConfirmation) {
+                    Button("Cancel", role: .cancel) {
+                        selectedPhoto = nil
+                        pendingPhoto = nil
+                    }
+                    Button("Confirm") {
+                        withAnimation(.easeInOut) {
+                            profileImage = pendingPhoto
+                            viewModel.profileImage = pendingPhoto
+                        }
+                        pendingPhoto = nil
+                        selectedPhoto = nil
+                        Task {
+                            await viewModel.updateProfilePhoto(image: profileImage)
+                        }
+                    }
+                } message: {
+                    Text("Do you really want to change your profile picture?")
+                }
+                .alert("Delete aacount", isPresented: $showDeleteConfirmation) {
+                    Button("Cancel", role: .cancel) {}
+                    Button("Delete", role: .destructive) {
+                        Task {
+                            await viewModel.deleteProfile()
+                            if viewModel.errorMessage == nil {
+                                performLogout()
                             }
                         }
-                        originalStyles = Set(mapped)
-                        selectedStyles = originalStyles
-                    } else {
-                        originalFullName = fullName
-                        originalPhone = phone
-                        originalGender = gender
-                        originalStyles = selectedStyles
                     }
+                } message: {
+                    Text("Do you really want to delete your account? This action is irreversible.")
                 }
-            } message: { Text(viewModel.successMessage ?? "Profil mis à jour avec succès.") }
-            .alert("Erreur", isPresented: $showErrorAlert) {
-                Button("OK") {}
-            } message: { Text(viewModel.errorMessage ?? "Une erreur est survenue.") }
-            .onChange(of: viewModel.successMessage) { _ in showSuccessAlert = true }
-            .onChange(of: viewModel.errorMessage) { _ in showErrorAlert = true }
-            .alert("Déconnexion", isPresented: $showLogoutConfirmation) {
-                Button("Annuler", role: .cancel) {}
-                Button("Déconnexion", role: .destructive) { performLogout() }
-            } message: { Text("Voulez-vous vraiment vous déconnecter ?") }
-            .alert("Confirmer le changement de photo", isPresented: $showPhotoConfirmation) {
-                Button("Annuler", role: .cancel) {
-                    selectedPhoto = nil
-                    pendingPhoto = nil
-                }
-                Button("Confirmer") {
-                    withAnimation(.easeInOut) {
-                        profileImage = pendingPhoto
-                        viewModel.profileImage = pendingPhoto
-                    }
-                    pendingPhoto = nil
-                    selectedPhoto = nil
-                    Task {
-                        await viewModel.updateProfilePhoto(image: profileImage)
-                    }
-                }
-            } message: {
-                Text("Voulez-vous vraiment changer votre photo de profil ?")
-            }
-            .alert("Supprimer le compte", isPresented: $showDeleteConfirmation) {
-                Button("Annuler", role: .cancel) {}
-                Button("Supprimer", role: .destructive) {
-                    Task {
-                        await viewModel.deleteProfile()
-                        if viewModel.errorMessage == nil {
-                            performLogout()
+                .alert("Delete profile photo", isPresented: $showDeletePhotoConfirmation) {
+                    Button("Cancel", role: .cancel) {}
+                    Button("Delete", role: .destructive) {
+                        // Supprimer immédiatement de l'UI
+                        withAnimation(.easeInOut(duration: 0.3)) {
+                            profileImage = nil
+                            viewModel.profileImage = nil
+                        }
+                        
+                        // Puis appeler l'API
+                        Task {
+                            await viewModel.deleteProfilePhoto()
                         }
                     }
+                } message: {
+                    Text("Are you sure you want to delete your profile picture?")
                 }
-            } message: {
-                Text("Voulez-vous vraiment supprimer votre compte ? Cette action est irréversible.")
-            }
         }
     }
     
@@ -409,6 +497,20 @@ struct SettingsView: View {
         phone != originalPhone ||
         gender != originalGender ||
         selectedStyles != originalStyles
+    }
+    private var hasProfilePhoto: Bool {
+        if profileImage != nil || viewModel.profileImage != nil {
+            return true
+        }
+        if let updatedUser = viewModel.updatedUser,
+           let pic = updatedUser.profilePicture,
+           !pic.isEmpty {
+            return true
+        }
+        if let pic = user?.profilePicture, !pic.isEmpty {
+            return true
+        }
+        return false
     }
     
     private func performLogout() {
@@ -751,7 +853,7 @@ private struct SettingsOptionRow: View {
     var onPasswordChange: (() -> Void)?
     var onDeleteAccount: (() -> Void)?
     @State private var toggleValue: Bool
-
+    
     init(
         option: SettingsOption,
         themeManager: ThemeManager,
@@ -766,7 +868,7 @@ private struct SettingsOptionRow: View {
         self.onDeleteAccount = onDeleteAccount
         _toggleValue = State(initialValue: option.toggleValue)
     }
-
+    
     var body: some View {
         Button {
             if option.title == "Theme" {

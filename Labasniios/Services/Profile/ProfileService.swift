@@ -186,6 +186,23 @@ final class ProfileService {
             throw NetworkError.requestFailed(httpResponse.statusCode)
         }
     }
+    // MARK: - Delete Profile Photo
+    func deleteProfilePhoto() async throws -> User {
+        guard let token = TokenManager.shared.getToken() else {
+            throw NetworkError.serverMessage("Token d'authentification manquant.")
+        }
+        
+        let url = APIConstants.baseURL.appendingPathComponent("auth/profile/photo/remove")
+        var request = URLRequest(url: url)
+        request.httpMethod = "DELETE"  // Changé de PATCH à DELETE
+        request.addValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        request.addValue(APIConstants.jsonContentType, forHTTPHeaderField: "Accept")
+        
+        debugPrint("[ProfileService] DELETE /auth/profile/photo/remove")
+        
+        return try await performRequest(request)
+    }
+    
 
 }
 

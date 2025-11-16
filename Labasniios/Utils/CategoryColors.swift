@@ -1,30 +1,57 @@
 import SwiftUI
 
 struct CategoryColors {
-    static func color(for category: String) -> Color {
-        // Normalisation : minuscules + suppression 's' final
-        let cat = category.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
-        let normalized = cat.hasSuffix("s") ? String(cat.dropLast()) : cat
+    // Public API that adapts to the provided color scheme.
+    // Pass `colorScheme` from your views using `@Environment(\.colorScheme)`.
+    static func color(for category: String, in colorScheme: ColorScheme) -> Color {
+        let normalized = normalize(category)
+        let palette = palette(for: normalized)
+        switch colorScheme {
+        case .dark:
+            return Color(hex: palette.dark)
+        default:
+            return Color(hex: palette.light)
+        }
+    }
 
+    // Backward-compatible API (kept to avoid breaking callers).
+    // Defaults to light variant; prefer calling the `in colorScheme:` version for adaptive behavior.
+    static func color(for category: String) -> Color {
+        let normalized = normalize(category)
+        let palette = palette(for: normalized)
+        return Color(hex: palette.light)
+    }
+
+    // Normalize plurals and whitespace, keep previous behavior of removing trailing 's'.
+    private static func normalize(_ category: String) -> String {
+        let cat = category
+            .lowercased()
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        return cat.hasSuffix("s") ? String(cat.dropLast()) : cat
+    }
+
+    // Provide light/dark pairs for each logical category.
+    // Colors are chosen to maintain contrast in dark mode.
+    private static func palette(for normalized: String) -> (light: String, dark: String) {
         switch normalized {
         // Tops
         case "tshirt", "haut", "chemise":
-            return Color(hex: "#A7E0E0") // Light Blue
+            return (light: "#A7E0E0", dark: "#6FB8B8")
         // Pants
         case "pantalon", "jean", "bas":
-            return Color(hex: "#4D5F8F") // Dark Blue
+            return (light: "#4D5F8F", dark: "#3C4B70")
         // Dress
         case "robe", "dress":
-            return Color(hex: "#DB6A8F") // Pink
+            return (light: "#DB6A8F", dark: "#B85476")
         // Shoes
         case "chaussure", "basket":
-            return Color(hex: "#4A4A4A") // Dark Gray
+            return (light: "#4A4A4A", dark: "#DADADA") // Invert to keep visibility on dark backgrounds
         // Accessories
         case "accessoire", "sac", "bijou":
-            return Color(hex: "#E8AABE") // Light Pink
+            return (light: "#E8AABE", dark: "#C9879B")
         // Default
         default:
-            return Color(hex: "#D3D3D3") // Light Gray
+            return (light: "#D3D3D3", dark: "#8A8A8A")
         }
     }
 }

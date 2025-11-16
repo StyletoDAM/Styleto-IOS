@@ -26,18 +26,11 @@ struct DressingView: View {
                     categoryChips
                     clothesGrid
                 }
-                .sheet(isPresented: $showCamera) {
-                    ImagePicker(sourceType: .camera) { image in
-                        capturedImage = image
-                        print("IMAGE CAPTUREE :", image)
-                    }
-                }
-                
                 .padding(.horizontal, 16)
                 .padding(.top, 12)
                 .padding(.bottom, 80)
             }
-            .background(Color.themeSoftPink.opacity(0.18).ignoresSafeArea())
+            .background(Color.themeBackground.ignoresSafeArea())
             .refreshable { viewModel.fetchClothes() }
             
             // Bouton flottant EN BAS À DROITE
@@ -55,6 +48,16 @@ struct DressingView: View {
         .toolbar(.hidden, for: .navigationBar)
         .onAppear { viewModel.fetchClothes() }
         
+        // MODAL CAMERA UNIQUEMENT
+        .sheet(isPresented: $showCamera) {
+            ImagePicker(sourceType: .camera) { image in
+                capturedImage = image
+                if let image = image {
+                    print("IMAGE CAPTUREE:", image)
+                    // TODO: Traiter l'image capturée
+                }
+            }
+        }
     }
     
     // MARK: - Header
@@ -149,7 +152,6 @@ struct DressingView: View {
         Button(action: {
             showCamera = true
         }) {
-            
             Image(systemName: "plus")
                 .font(.system(size: 24, weight: .bold))
                 .foregroundColor(.white)
@@ -217,52 +219,49 @@ private struct ClothingCard: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(12)
             .background(fillColor.opacity(0.1))
+            .background(Color.themeCard.opacity(0.9))
         }
         .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
         .shadow(color: .black.opacity(0.08), radius: 8)
     }
 }
 
+// MARK: - ImagePicker (Version mise à jour avec Optional)
 struct ImagePicker: UIViewControllerRepresentable {
-    var sourceType: UIImagePickerController.SourceType = .camera
-    var onImagePicked: (UIImage) -> Void
-    
-    func makeCoordinator() -> Coordinator {
-        Coordinator(self, onImagePicked: onImagePicked)
-    }
+    let sourceType: UIImagePickerController.SourceType
+    let onImagePicked: (UIImage?) -> Void
+    @Environment(\.dismiss) private var dismiss
     
     func makeUIViewController(context: Context) -> UIImagePickerController {
         let picker = UIImagePickerController()
         picker.sourceType = sourceType
         picker.delegate = context.coordinator
+        picker.allowsEditing = true
         return picker
     }
     
     func updateUIViewController(_ uiViewController: UIImagePickerController, context: Context) {}
     
-    class Coordinator: NSObject, UINavigationControllerDelegate, UIImagePickerControllerDelegate {
+    func makeCoordinator() -> Coordinator {
+        Coordinator(self)
+    }
+    
+    class Coordinator: NSObject, UIImagePickerControllerDelegate, UINavigationControllerDelegate {
         let parent: ImagePicker
-        let onImagePicked: (UIImage) -> Void
         
-        init(_ parent: ImagePicker, onImagePicked: @escaping (UIImage) -> Void) {
+        init(_ parent: ImagePicker) {
             self.parent = parent
-            self.onImagePicked = onImagePicked
         }
         
-        func imagePickerController(
-            _ picker: UIImagePickerController,
-            didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey : Any]
-        ) {
-            if let image = info[.originalImage] as? UIImage {
-                onImagePicked(image)
-            }
-            picker.dismiss(animated: true)
+        func imagePickerController(_ picker: UIImagePickerController, didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey : Any]) {
+            let image = info[.editedImage] as? UIImage ?? info[.originalImage] as? UIImage
+            parent.onImagePicked(image)
+            parent.dismiss()
         }
         
         func imagePickerControllerDidCancel(_ picker: UIImagePickerController) {
-            picker.dismiss(animated: true)
+            parent.onImagePicked(nil)
+            parent.dismiss()
         }
     }
 }
-
-

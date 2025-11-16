@@ -39,7 +39,7 @@ struct StoreView: View {
                 .padding(.horizontal, 16)
                 .padding(.top, 8)
             }
-            .background(Color.themeSoftPink.opacity(0.25).ignoresSafeArea())
+            .background(Color.themeBackground.ignoresSafeArea())
             .navigationBarBackButtonHidden(true)
             .toolbar(.hidden, for: .navigationBar)
             .onAppear {
@@ -187,7 +187,7 @@ private struct ProductCard: View {
                 )
                 .frame(height: 160)
 
-                AsyncImage(url: URL(string: storeItem.clothesId.imageURL)) { phase in
+                AsyncImage(url: URL(string: storeItem.clothe?.imageURL ?? "")) { phase in
                     switch phase {
                     case .empty: ProgressView()
                     case .success(let image):
@@ -225,7 +225,7 @@ private struct ProductCard: View {
             // Info + Poubelle
             HStack {
                 VStack(alignment: .leading, spacing: 6) {
-                    Text(storeItem.clothesId.category ?? "Unknown")
+                    Text(storeItem.clothe?.category ?? "Unknown")
                         .font(.system(size: 18, weight: .semibold))
                         .foregroundColor(.themeTeal)
                         .lineLimit(1)

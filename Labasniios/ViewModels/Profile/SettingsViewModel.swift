@@ -109,4 +109,31 @@ final class SettingsViewModel: ObservableObject {
         errorMessage = nil
         successMessage = nil
     }
+    // MARK: - Delete Profile Photo
+    func deleteProfilePhoto() async {
+        resetFeedback()
+        isLoading = true
+        defer { isLoading = false }
+        
+        do {
+            let updatedUser = try await profileService.deleteProfilePhoto()
+            
+            // IMPORTANT: Mettre à jour updatedUser pour que l'UI se rafraîchisse
+            self.updatedUser = updatedUser
+            self.profileImage = nil
+            
+            // Supprime le cache
+            UserDefaults.standard.removeObject(forKey: "cachedProfilePicture")
+            
+            successMessage = "Photo de profil supprimée avec succès."
+            debugPrint("[SettingsViewModel] Profile photo deleted successfully")
+        } catch let networkError as NetworkError {
+            errorMessage = networkError.errorDescription ?? "Une erreur est survenue."
+            debugPrint("[SettingsViewModel] Delete photo error: \(networkError)")
+        } catch {
+            errorMessage = error.localizedDescription
+            debugPrint("[SettingsViewModel] Unexpected error: \(error)")
+        }
+    }
+    
 }

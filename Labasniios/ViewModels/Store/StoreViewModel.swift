@@ -83,7 +83,15 @@ class StoreViewModel: ObservableObject {
                 case .success(let clothes):
                     // Exclure les vêtements déjà en vente
                     self.myClothes = clothes.filter { clothe in
-                        !self.storeItems.contains { $0.clothesId.id == clothe.id }
+                        !self.storeItems.contains { storeItem in
+                            if case .clotheId(let id) = storeItem.clothesId {
+                                return id == clothe.id
+                            }
+                            if case .clothe(let c) = storeItem.clothesId {
+                                return c.id == clothe.id
+                            }
+                            return false
+                        }
                     }
                 case .failure(let error):
                     self.errorMessage = "Erreur chargement vêtements: \(error.localizedDescription)"
@@ -92,7 +100,7 @@ class StoreViewModel: ObservableObject {
         }
     }
     
-    func addToStore(onSuccess: @escaping () -> Void) {
+    func addToStore() {
         guard let clothe = selectedClothe,
               let price = Double(priceInput), price >= 0 else {
             return
@@ -107,34 +115,30 @@ class StoreViewModel: ObservableObject {
         ]
         
         StoreService.shared.createStoreItem(body: body)
-            .sink { completion in
-                DispatchQueue.main.async {
-                    // NE PAS mettre isAdding = false ici
-                    if case .failure(let error) = completion {
-                        self.isAdding = false  // ← Seulement en cas d'erreur
-                        self.errorMessage = "Erreur: \(error.localizedDescription)"
-                    }
+            .sink { [weak self] completion in
+                guard let self = self else { return }
+                
+                if case .failure(let error) = completion {
+                    self.isAdding = false
+                    self.errorMessage = "Erreur: \(error.localizedDescription)"
                 }
             } receiveValue: { [weak self] createdItem in
                 guard let self = self else { return }
                 
-                DispatchQueue.main.async {
-                    // 1. Ajouter l'article
-                    self.storeItems.insert(createdItem, at: 0)
-                    
-                    // 2. Réinitialiser
-                    self.selectedClothe = nil
-                    self.priceInput = ""
-                    
-                    // 3. Recharger les vêtements disponibles
-                    self.loadMyClothes()
-                    
-                    // 4. METTRE isAdding = false AVANT onSuccess()
-                    self.isAdding = false
-                    
-                    // 5. FERMER LE SHEET
-                    onSuccess()
-                }
+                
+                
+                // 1. Réinitialiser les champs
+                self.selectedClothe = nil
+                self.priceInput = ""
+                
+                // 2. Mettre isAdding = false
+                self.isAdding = false
+                
+                // 3. Fermer le sheet
+                self.showAddToStore = false
+                
+                // 4. RECHARGER la liste complète pour obtenir les objets populés
+                self.loadMyStore()
             }
             .store(in: &cancellables)
     }
@@ -237,15 +241,18 @@ class StoreViewModel: ObservableObject {
         discoverItems = filteredDiscover
     }
     
+    // matchesSearch
     private func matchesSearch(_ item: Store, query: String) -> Bool {
-        let category = item.clothesId.category?.lowercased() ?? ""
+        let category = item.clothe?.category?.lowercased() ?? ""
         let price = "\(item.price)"
         let status = item.status.lowercased()
-        let ownerName = item.userId.fullName?.lowercased() ?? ""
+        let ownerName = item.userInfo?.fullName?.lowercased() ?? ""
         
         return category.contains(query) ||
-        price.contains(query) ||
-        status.contains(query) ||
-        ownerName.contains(query)
+               price.contains(query) ||
+               status.contains(query) ||
+               ownerName.contains(query)
     }
+
+    
 }
