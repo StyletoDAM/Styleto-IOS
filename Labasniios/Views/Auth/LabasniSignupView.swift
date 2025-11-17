@@ -50,9 +50,14 @@ struct LabasniSignupView: View {
                         
                         Label("Email", systemImage: "envelope")
                             .labelStyle(LeftAlignedLabelStyle(color: ._4aa3a2))
-                        IconField(systemName: "envelope",
-                                  placeholder: "your@email.com",
-                                  text: $viewModel.email)
+
+                        IconField(
+                            systemName: "envelope",
+                            placeholder: "your@email.com",
+                            text: $viewModel.email,
+                            keyboardType: .emailAddress,
+                            textContentType: .emailAddress
+                        )
                         if shouldShowEmailWarning {
                             ValidationMessage("Invalid email address.")
                         }
@@ -158,6 +163,11 @@ struct LabasniSignupView: View {
                 .padding(.bottom, 30)
             }
         }
+        .contentShape(Rectangle())                    // Important : permet de capter le tap même sur les espaces vides
+            .onTapGesture {
+                // Ferme le clavier quand on tape n’importe où sur l'écran
+                UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+            }
         .navigationBarBackButtonHidden(true)
         .toolbar(.hidden, for: .navigationBar)
         .background(
@@ -338,7 +348,13 @@ private struct PhoneInputField: View {
                 .textInputAutocapitalization(.never)
                 .autocorrectionDisabled(true)
                 .onChange(of: number) { newValue in
-                    number = newValue.filter { $0.isNumber }
+                    let digitsOnly = newValue.filter { $0.isNumber }
+                    
+                    if digitsOnly.count > 8 {
+                        number = String(digitsOnly.prefix(8))
+                    } else {
+                        number = digitsOnly
+                    }
                 }
         }
         .padding(.horizontal, 14)

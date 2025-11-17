@@ -53,7 +53,6 @@ struct OutfitsView: View {
                         tenueList
                     }
 
-                    floatingButton
                 }
                 .padding(.horizontal, 16)
                 .padding(.top, 12)
@@ -164,27 +163,6 @@ struct OutfitsView: View {
         }
     }
 
-    // MARK: - Floating Button
-    private var floatingButton: some View {
-        HStack {
-            Spacer()
-            Button {
-                viewModel.generateSuggestion()
-            } label: {
-                Image(systemName: "shuffle")
-                    .font(.system(size: 22, weight: .bold))
-                    .foregroundColor(.white)
-                    .frame(width: 56, height: 56)
-                    .background(
-                        Circle()
-                            .fill(Color.themeTeal)
-                            .shadow(color: .black.opacity(0.15), radius: 10, x: 0, y: 6)
-                    )
-            }
-            .accessibilityIdentifier("generate-outfit-button")
-        }
-        .padding(.top, 12)
-    }
 }
 
 // MARK: - Tenue Card (mise à jour)

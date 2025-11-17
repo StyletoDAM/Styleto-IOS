@@ -73,4 +73,21 @@ class DressingViewModel: ObservableObject {
         selectedCategory = category
         searchText = ""
     }
+    // MARK: - Suppression d'un vêtement
+    func deleteClothe(_ clothe: Clothe, completion: ((Bool) -> Void)? = nil) {
+        let id = clothe.id  // String non-optionnel
+
+        ClothesService.shared.deleteClothe(id: id) { [weak self] result in
+            DispatchQueue.main.async {
+                switch result {
+                case .success:
+                    self?.clothes.removeAll { $0.id == clothe.id }
+                    self?.filterClothes()
+                    completion?(true)
+                case .failure:
+                    completion?(false)
+                }
+            }
+        }
+    }
 }

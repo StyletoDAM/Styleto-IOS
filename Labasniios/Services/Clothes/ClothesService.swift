@@ -35,4 +35,27 @@ class ClothesService {
             }
         }.resume()
     }
+    func deleteClothe(id: String, completion: @escaping (Result<Void, Error>) -> Void) {
+        guard let token = TokenManager.shared.getToken() else {
+            completion(.failure(NSError(domain: "", code: 401, userInfo: nil)))
+            return
+        }
+
+        let url = URL(string: "\(baseURL)/cloth/\(id)")!
+        var request = URLRequest(url: url)
+        request.httpMethod = "DELETE"
+        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+
+        URLSession.shared.dataTask(with: request) { _, response, error in
+            if let error = error {
+                completion(.failure(error))
+                return
+            }
+            if let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 204 {
+                completion(.success(()))
+            } else {
+                completion(.failure(NSError(domain: "", code: -1, userInfo: nil)))
+            }
+        }.resume()
+    }
 }

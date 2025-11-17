@@ -219,6 +219,11 @@ struct LabasniLoginView: View {
                 .padding(.horizontal, 16)
             }
         }
+        .contentShape(Rectangle())                    // Important : permet de capter le tap même sur les espaces vides
+            .onTapGesture {
+                // Ferme le clavier quand on tape n’importe où sur l'écran
+                UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+            }
         .navigationBarBackButtonHidden(true)
         .toolbar(.hidden, for: .navigationBar)
         .onChange(of: viewModel.errorMessage) { message in

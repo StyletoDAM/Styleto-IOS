@@ -869,6 +869,11 @@ private struct SettingsOptionRow: View {
         _toggleValue = State(initialValue: option.toggleValue)
     }
     
+    // Variable pour détecter si c'est la ligne "Delete Account"
+    private var isDeleteAccount: Bool {
+        option.title == "Delete Account"
+    }
+    
     var body: some View {
         Button {
             if option.title == "Theme" {
@@ -882,12 +887,15 @@ private struct SettingsOptionRow: View {
             HStack(spacing: 16) {
                 Image(systemName: option.icon)
                     .font(.system(size: 18, weight: .medium))
-                    .foregroundColor(.themeSecondaryText)
+                    .foregroundColor(isDeleteAccount ? .red : .themeSecondaryText)  // Icône en rouge
                     .frame(width: 24)
+                
                 Text(option.title)
-                    .font(.system(size: 16, weight: .regular))
-                    .foregroundColor(.themeText)
+                    .font(.system(size: 16, weight: isDeleteAccount ? .semibold : .regular))
+                    .foregroundColor(isDeleteAccount ? .red : .themeText)  // Texte en rouge
+                
                 Spacer()
+                
                 if option.title == "Theme" {
                     Text(themeManager.getThemeMode().rawValue)
                         .font(.system(size: 15, weight: .medium))

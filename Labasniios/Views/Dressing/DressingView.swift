@@ -139,7 +139,7 @@ struct DressingView: View {
             } else {
                 LazyVGrid(columns: columns, spacing: 16) {
                     ForEach(viewModel.filteredClothes) { clothe in
-                        ClothingCard(clothe: clothe)
+                        ClothingCard(clothe: clothe, viewModel: viewModel)
                     }
                 }
             }
@@ -184,8 +184,13 @@ private struct CategoryChip: View {
 }
 
 // MARK: - Clothing Card
+// MARK: - Clothing Card
 private struct ClothingCard: View {
     let clothe: Clothe
+    @ObservedObject var viewModel: DressingViewModel
+    
+    @State private var showDeleteAlert = false
+    @State private var isDeleting = false
     
     private var fillColor: Color {
         CategoryColors.color(for: clothe.category ?? "")
@@ -193,6 +198,7 @@ private struct ClothingCard: View {
     
     var body: some View {
         VStack(spacing: 0) {
+            // Image
             AsyncImage(url: URL(string: clothe.imageURL)) { image in
                 image
                     .resizable()
@@ -205,26 +211,85 @@ private struct ClothingCard: View {
             .frame(height: 140)
             .clipped()
             
-            VStack(alignment: .leading, spacing: 4) {
-                Text(clothe.category?.capitalized ?? "Unknown")
-                    .font(.system(size: 16, weight: .semibold))
-                    .foregroundColor(.themeTeal)
-                
-                if let season = clothe.season {
-                    Text(season)
-                        .font(.system(size: 13))
-                        .foregroundColor(.themeTeal.opacity(0.7))
+            // Infos + Trash
+            HStack {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text(clothe.category?.capitalized ?? "Unknown")
+                        .font(.system(size: 18, weight: .semibold))
+                        .foregroundColor(.themeTeal)
+                        .lineLimit(1)
+                    
+                    if let season = clothe.season {
+                        Text(season)
+                            .font(.system(size: 13))
+                            .foregroundColor(.themeTeal.opacity(0.7))
+                    }
                 }
+                Spacer()
+                
+                // Trash Button
+                Button {
+                    showDeleteAlert = true
+                } label: {
+                    Image(systemName: "trash")
+                        .font(.system(size: 16, weight: .medium))
+                        .foregroundColor(.themePrimary)
+                        .frame(width: 32, height: 32)
+                        .background(
+                            Circle()
+                                .fill(Color.themePrimary.opacity(0.15))
+                        )
+                        .overlay(
+                            Circle()
+                                .stroke(Color.themePrimary.opacity(0.3), lineWidth: 1)
+                        )
+                }
+                .opacity(isDeleting ? 0.5 : 1.0)
+                .disabled(isDeleting)
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(12)
-            .background(fillColor.opacity(0.1))
-            .background(Color.themeCard.opacity(0.9))
+            .padding(14)
+            .background(Color.themeCard)
         }
+        .background(
+            RoundedRectangle(cornerRadius: 20)
+                .fill(Color.themeCard)
+        )
         .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
         .shadow(color: .black.opacity(0.08), radius: 8)
+        .alert("Delete this item?", isPresented: $showDeleteAlert) {
+            Button("Cancel", role: .cancel) { }
+            Button("Delete", role: .destructive) {
+                deleteItem()
+            }
+        } message: {
+            Text("This action cannot be undone.")
+        }
+        .opacity(isDeleting ? 0.0 : 1.0)
+        .scaleEffect(isDeleting ? 0.95 : 1.0)
+        .animation(.spring(response: 0.35), value: isDeleting)
+    }
+    
+    private func deleteItem() {
+        // 1. Animation immédiate
+        withAnimation(.easeOut(duration: 0.25)) {
+            isDeleting = true
+        }
+        
+        // 2. Suppression
+        viewModel.deleteClothe(clothe) { success in
+            DispatchQueue.main.async {
+                if !success {
+                    withAnimation {
+                        isDeleting = false
+                    }
+                }
+            }
+        }
     }
 }
+    
+
+
 
 // MARK: - ImagePicker (Version mise à jour avec Optional)
 struct ImagePicker: UIViewControllerRepresentable {

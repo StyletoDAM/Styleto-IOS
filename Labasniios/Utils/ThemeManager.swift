@@ -159,4 +159,3 @@ extension Color {
         ThemeManager.shared.currentTheme.secondaryText
     }
 }
-
