@@ -4,10 +4,10 @@ import UIKit
 struct DressingView: View {
     @StateObject private var viewModel = DressingViewModel()
     @ObservedObject private var themeManager = ThemeManager.shared
+    @ObservedObject private var appPreferences = AppPreferences.shared
     @State private var showCamera = false
     @State private var capturedImage: UIImage?
     @State private var searchText = ""
-    
     
     private let columns: [GridItem] = [
         GridItem(.flexible(), spacing: 16),
@@ -22,6 +22,7 @@ struct DressingView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 18) {
                     header
+                    //userInfoDebug // POUR TESTER
                     searchAndFilter
                     categoryChips
                     clothesGrid
@@ -46,8 +47,11 @@ struct DressingView: View {
         }
         .navigationBarBackButtonHidden(true)
         .toolbar(.hidden, for: .navigationBar)
-        .onAppear { viewModel.fetchClothes() }
-        
+        .onAppear {
+            // Rafraîchir le thème en fonction du sexe de l'utilisateur
+            themeManager.updateTheme()
+            viewModel.fetchClothes()
+        }
         // MODAL CAMERA UNIQUEMENT
         .sheet(isPresented: $showCamera) {
             ImagePicker(sourceType: .camera) { image in
@@ -69,6 +73,58 @@ struct DressingView: View {
             Spacer()
         }
         .padding(.top, 8)
+    }
+    
+    // MARK: - User Info Debug (POUR TESTER)
+    private var userInfoDebug: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            if let user = appPreferences.currentUser {
+                HStack {
+                    Text("👤 User:")
+                        .font(.system(size: 14, weight: .medium))
+                    Text(user.fullName)
+                        .font(.system(size: 14))
+                }
+                
+                HStack {
+                    Text("⚧ Gender:")
+                        .font(.system(size: 14, weight: .medium))
+                    Text(user.gender == .male ? "Male 👨 (Couleurs inversées)" : "Female 👩 (Couleurs normales)")
+                        .font(.system(size: 14))
+                        .foregroundColor(user.gender == .male ? .themeAqua : .themePrimary)
+                }
+                
+                HStack {
+                    Text("🎨 Theme:")
+                        .font(.system(size: 14, weight: .medium))
+                    Circle()
+                        .fill(Color.themePrimary)
+                        .frame(width: 20, height: 20)
+                    Circle()
+                        .fill(Color.themeSecondary)
+                        .frame(width: 20, height: 20)
+                    Circle()
+                        .fill(Color.themeSoftPink)
+                        .frame(width: 20, height: 20)
+                    Circle()
+                        .fill(Color.themeAqua)
+                        .frame(width: 20, height: 20)
+                    Circle()
+                        .fill(Color.themeTeal)
+                        .frame(width: 20, height: 20)
+                }
+            } else {
+                Text("Aucun utilisateur connecté")
+                    .font(.system(size: 14))
+                    .foregroundColor(.gray)
+            }
+        }
+        .padding(12)
+        .background(
+            RoundedRectangle(cornerRadius: 12)
+                .fill(Color.themeCard)
+                .shadow(color: .black.opacity(0.05), radius: 4)
+        )
     }
     
     // MARK: - Search & Filter
@@ -184,7 +240,6 @@ private struct CategoryChip: View {
 }
 
 // MARK: - Clothing Card
-// MARK: - Clothing Card
 private struct ClothingCard: View {
     let clothe: Clothe
     @ObservedObject var viewModel: DressingViewModel
@@ -287,11 +342,8 @@ private struct ClothingCard: View {
         }
     }
 }
-    
 
-
-
-// MARK: - ImagePicker (Version mise à jour avec Optional)
+// MARK: - ImagePicker
 struct ImagePicker: UIViewControllerRepresentable {
     let sourceType: UIImagePickerController.SourceType
     let onImagePicked: (UIImage?) -> Void
