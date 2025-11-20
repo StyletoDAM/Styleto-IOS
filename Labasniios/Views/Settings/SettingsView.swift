@@ -419,6 +419,12 @@ struct SettingsView: View {
                             }
                             originalStyles = Set(mapped)
                             selectedStyles = originalStyles
+                            // CRUCIAL : Mettre à jour l'utilisateur dans AppPreferences
+                            AppPreferences.shared.currentUser = updatedUser
+                            AppPreferences.shared.saveLoginState(user: updatedUser) // SAUVEGARDE DANS USERDEFAULTS !
+                            
+                            // Et forcer le rafraîchissement du thème
+                            ThemeManager.shared.updateThemeBasedOnUser()
                         } else {
                             originalFullName = fullName
                             originalPhone = phone

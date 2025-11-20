@@ -8,6 +8,10 @@ struct DressingView: View {
     @State private var showCamera = false
     @State private var capturedImage: UIImage?
     @State private var searchText = ""
+    @State private var showDetectionResult = false
+    @State private var detectedImage: UIImage?
+    @State private var detectionText = ""
+    @State private var isUploading = false
     
     private let columns: [GridItem] = [
         GridItem(.flexible(), spacing: 16),
@@ -57,13 +61,80 @@ struct DressingView: View {
             ImagePicker(sourceType: .camera) { image in
                 capturedImage = image
                 if let image = image {
-                    print("IMAGE CAPTUREE:", image)
-                    // TODO: Traiter l'image capturée
+                    uploadAndDetect(image: image)
                 }
             }
         }
+        .fullScreenCover(isPresented: $showDetectionResult) {
+            DetectionResultView(
+                image: detectedImage,
+                resultText: detectionText,
+                isShowing: $showDetectionResult,
+                isUploading: $isUploading
+            )
+        }
+        .alert("Erreur", isPresented: .constant(!detectionText.isEmpty && detectionText.contains("Erreur"))) {
+            Button("OK") { }
+        } message: {
+            Text(detectionText)
+        }
     }
-    
+    private func uploadAndDetect(image: UIImage) {
+        guard let imageData = image.jpegData(compressionQuality: 0.85) else { return }
+        
+        isUploading = true
+        showDetectionResult = true
+        detectedImage = image
+        detectionText = "Analyse en cours..."
+
+        let url = URL(string: "\(APIConstants.baseURL.absoluteString)/detect")!
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        
+        let boundary = "Boundary-\(UUID().uuidString)"
+        request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
+        
+        var body = Data()
+        
+        // --- Partie fichier ---
+        body.append("--\(boundary)\r\n".data(using: .utf8)!)
+        body.append("Content-Disposition: form-data; name=\"photo\"; filename=\"photo.jpg\"\r\n".data(using: .utf8)!)
+        body.append("Content-Type: image/jpeg\r\n\r\n".data(using: .utf8)!)
+        body.append(imageData)
+        body.append("\r\n".data(using: .utf8)!)
+        
+        // --- Fin ---
+        body.append("--\(boundary)--\r\n".data(using: .utf8)!)
+        
+        request.httpBody = body
+        
+        URLSession.shared.dataTask(with: request) { data, response, error in
+            DispatchQueue.main.async {
+                isUploading = false
+                
+                if let error = error {
+                    detectionText = "Network error: \(error.localizedDescription)"
+                    return
+                }
+                
+                guard let data = data,
+                      let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                      let detectionResult = json["detection_result"] as? String else {
+                    detectionText = "Server error"
+                    return
+                }
+                
+                // ON MET À JOUR LE TEXTE BRUT
+                detectionText = detectionResult
+                
+                // ON FERME LE POP-UP ET ON LE RÉ-OUVRE POUR FORCER LE PARSING
+                showDetectionResult = false
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                    showDetectionResult = true
+                }
+            }
+        }.resume()
+    }
     // MARK: - Header
     private var header: some View {
         HStack {

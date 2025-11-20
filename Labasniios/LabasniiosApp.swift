@@ -2,12 +2,19 @@ import SwiftUI
 
 @main
 struct LabasniiosApp: App {
+    
     @State private var showingSplash = true
     @StateObject private var themeManager = ThemeManager.shared
     @StateObject private var appPreferences = AppPreferences.shared
     @UIApplicationDelegateAdaptor(AppDelegate.self) var delegate
     
-    // ✅ AJOUTER CETTE LIGNE
+    init() {
+            // Forcer le bon thème dès le lancement de l'app
+            DispatchQueue.main.async {
+                ThemeManager.shared.updateThemeBasedOnUser()
+            }
+        }
+    //  AJOUTER CETTE LIGNE
     let persistenceController = CoreDataManager.shared
 
     var body: some Scene {

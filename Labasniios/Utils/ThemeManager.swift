@@ -120,6 +120,9 @@ class ThemeManager: ObservableObject {
     func getThemeMode() -> ThemeMode {
         return themeMode
     }
+    func updateThemeBasedOnUser() {
+            updateTheme() // C’est tout ! Elle fait déjà tout le boulot
+        }
     
     // NOUVELLE MÉTHODE: Met à jour le thème en fonction du sexe de l'utilisateur
     func updateTheme() {
@@ -155,6 +158,7 @@ class ThemeManager: ObservableObject {
             self?.updateTheme()
         }
     }
+    
 }
 
 // MARK: - Color Extension for Theme

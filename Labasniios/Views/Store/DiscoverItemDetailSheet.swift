@@ -1,23 +1,27 @@
-//
-//  EditStorePopup.swift
-//  Labasniios
-//
-//  Created by Salma Mahjoub on 14/11/2025.
-//
 
 import SwiftUI
 
-struct EditStorePopup: View {
-    @ObservedObject var viewModel: StoreViewModel
+struct DiscoverItemDetailSheet: View {
     let storeItem: Store
-    @State private var newPrice: String = ""
-    @State private var showDeleteAlert = false
     @Environment(\.dismiss) var dismiss
-
+    
+    // À connecter plus tard avec ton système de panier et chat
+    private func addToCart() {
+        print("Ajouté au panier : \(storeItem.clothe?.category ?? "") – \(storeItem.price) DT")
+        // viewModel.addToCart(storeItem)
+        dismiss()
+    }
+    
+    private func openChatWithSeller() {
+        print("Ouvrir le chat avec le vendeur de cet article")
+        // Navigation vers le chat avec le owner du storeItem
+        dismiss()
+    }
+    
     var body: some View {
         NavigationView {
             Form {
-                // MARK: - Image + Infos
+                // MARK: - Image + Infos principales
                 Section {
                     HStack(spacing: 16) {
                         AsyncImage(url: URL(string: storeItem.clothe?.imageURL ?? "")) { image in
@@ -51,7 +55,7 @@ struct EditStorePopup: View {
                                     .foregroundColor(.themePrimary)
                             }
 
-                            // STATUS BADGE
+                            // Statut : Disponible ou Vendu
                             HStack(spacing: 4) {
                                 Image(systemName: storeItem.isAvailable ? "circle.fill" : "checkmark.circle.fill")
                                     .font(.caption2)
@@ -74,71 +78,19 @@ struct EditStorePopup: View {
                 .listRowBackground(Color.themeCard)
                 .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
 
-                // MARK: - Current Price
-                Section("Current Price") {
-                    HStack {
-                        Image(systemName: "dollarsign.circle.fill")
-                            .foregroundColor(.themeAqua)
-                        Text("\(Int(storeItem.price)) DT")
-                            .font(.title3.bold())
-                            .foregroundColor(.themeText)
-                    }
-                }
+                
                 .listRowBackground(Color.themeSoftPink.opacity(0.15))
 
-                // MARK: - New Price (only if available)
-                if storeItem.isAvailable {
-                    Section("New Price") {
-                        HStack {
-                            Image(systemName: "pencil.circle.fill")
-                                .foregroundColor(.themeSecondary)
-                            TextField("Ex: 55", text: $newPrice)
-                                .keyboardType(.decimalPad)
-                                .font(.body)
-                                .foregroundColor(.themeText)
-                        }
-                    }
-                    .listRowBackground(Color.themeCard)
-                }
-
-                // MARK: - Actions
+                // MARK: - Actions (Add to Cart + Chat)
                 Section {
-                    // Update Price
-                    if storeItem.isAvailable {
-                        Button {
-                            let price = Double(newPrice) ?? storeItem.price
-                            viewModel.updateStorePrice(storeItem.id, price: price)
-                            dismiss()
-                        } label: {
-                            HStack {
-                                Image(systemName: "checkmark.circle.fill")
-                                    .foregroundColor(.white)
-                                Text("Update Price")
-                                    .font(.subheadline.bold())
-                                    .foregroundColor(.white)
-                            }
-                            .frame(maxWidth: .infinity)
-                            .padding()
-                            .background(
-                                LinearGradient(colors: [.themePrimary, .themeSecondary], startPoint: .leading, endPoint: .trailing)
-                                    .cornerRadius(12)
-                            )
-                        }
-                        .disabled(newPrice.isEmpty || Double(newPrice) == nil)
-                        .listRowBackground(Color.clear)
-                    }
-
-                    // Mark as Sold
+                    // Bouton Add to Cart
                     Button {
-                        if storeItem.isAvailable {
-                            viewModel.markAsSold(storeItem.id)
-                            dismiss()
-                        }
+                        addToCart()
                     } label: {
                         HStack {
-                            Image(systemName: storeItem.isAvailable ? "bag.fill" : "checkmark.circle.fill")
+                            Image(systemName: "cart.fill")
                                 .foregroundColor(.white)
-                            Text(storeItem.isAvailable ? "Mark as Sold" : "Already Sold")
+                            Text("Add to Cart")
                                 .font(.subheadline.bold())
                                 .foregroundColor(.white)
                         }
@@ -146,9 +98,7 @@ struct EditStorePopup: View {
                         .padding()
                         .background(
                             LinearGradient(
-                                colors: storeItem.isAvailable
-                                    ? [Color.red.opacity(0.9), Color.red.opacity(0.7)]
-                                    : [Color.gray.opacity(0.5), Color.gray.opacity(0.3)],
+                                colors: [.themePrimary, .themeSecondary],
                                 startPoint: .leading,
                                 endPoint: .trailing
                             )
@@ -158,29 +108,34 @@ struct EditStorePopup: View {
                     .disabled(!storeItem.isAvailable)
                     .listRowBackground(Color.clear)
 
-                    // DELETE ITEM – avec alerte classique au milieu
+                    // Bouton Chat with Seller
                     Button {
-                        showDeleteAlert = true
+                        openChatWithSeller()
                     } label: {
                         HStack {
-                            Image(systemName: "trash.fill")
-                                .foregroundColor(.white)          // ← Ici c’était l’erreur !
-                            Text("Delete Item")
+                            Image(systemName: "message.fill")
+                                .foregroundColor(.white)
+                            Text("Chat with Seller")
                                 .font(.subheadline.bold())
                                 .foregroundColor(.white)
                         }
                         .frame(maxWidth: .infinity)
                         .padding()
                         .background(
-                            LinearGradient(colors: [Color.red, Color.red.opacity(0.8)], startPoint: .leading, endPoint: .trailing)
-                                .cornerRadius(12)
+                            LinearGradient(
+                                colors: [Color.themeTeal, Color.themeAqua],
+                                startPoint: .leading,
+                                endPoint: .trailing
+                            )
+                            .cornerRadius(12)
                         )
                     }
+                    .disabled(!storeItem.isAvailable)
                     .listRowBackground(Color.clear)
                 }
                 .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
             }
-            .navigationTitle("Edit Item")
+            .navigationTitle("Item Details")
             .navigationBarTitleDisplayMode(.inline)
             .background(
                 Color.themeSoftPink.opacity(UITraitCollection.current.userInterfaceStyle == .dark ? 0.1 : 0.25)
@@ -188,29 +143,14 @@ struct EditStorePopup: View {
             )
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") {
+                    Button("Close") {
                         dismiss()
                     }
                     .foregroundColor(.themePrimary)
                     .font(.subheadline.bold())
                 }
             }
-            .onAppear {
-                newPrice = String(Int(storeItem.price))
-            }
-
-            // ALERTE CLASSIQUE AU MILIEU DE L’ÉCRAN
-            .alert("Delete this item?", isPresented: $showDeleteAlert) {
-                Button("Cancel", role: .cancel) { }
-                Button("Delete", role: .destructive) {
-                    viewModel.deleteStoreItem(storeItem)
-                    dismiss()
-                }
-            } message: {
-                Text("This action cannot be undone.")
-            }
         }
     }
 }
-
 

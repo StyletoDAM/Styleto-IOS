@@ -25,17 +25,19 @@ final class AppPreferences: ObservableObject {
     /// Sauvegarde l'état de connexion et l'utilisateur
     func saveLoginState(user: User) {
         isLoggedIn = true
-        currentUser = user
-        
-        // Sauvegarder dans UserDefaults
+        currentUser = user  // Important : on met à jour la propriété publiée
+
+        // Sauvegarde dans UserDefaults
         UserDefaults.standard.set(true, forKey: isLoggedInKey)
         
-        // Sauvegarder l'utilisateur en JSON
         if let userData = try? JSONEncoder().encode(user) {
             UserDefaults.standard.set(userData, forKey: currentUserKey)
         }
         
-        debugPrint("[AppPreferences] Login state saved for user: \(user.email)")
+        debugPrint("[AppPreferences] Utilisateur sauvegardé et publié : \(user.email) – Genre: \(user.gender.rawValue)")
+        
+        // FORCER LE RECHARGEMENT IMMÉDIAT (clé magique)
+        NotificationCenter.default.post(name: .userDidUpdate, object: user)
     }
     
     /// Supprime l'état de connexion
@@ -96,5 +98,8 @@ final class AppPreferences: ObservableObject {
 
 extension Notification.Name {
     static let didRequestNavigateToLogin = Notification.Name("didRequestNavigateToLogin")
+}
+extension Notification.Name {
+    static let userDidUpdate = Notification.Name("userDidUpdate")
 }
 
