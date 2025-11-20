@@ -12,7 +12,7 @@ struct DressingView: View {
     @State private var detectedImage: UIImage?
     @State private var detectionText = ""
     @State private var isUploading = false
-    
+    @State private var detectedImageURL: String?
     private let columns: [GridItem] = [
         GridItem(.flexible(), spacing: 16),
         GridItem(.flexible(), spacing: 16)
@@ -52,9 +52,17 @@ struct DressingView: View {
         .navigationBarBackButtonHidden(true)
         .toolbar(.hidden, for: .navigationBar)
         .onAppear {
-            // Rafraîchir le thème en fonction du sexe de l'utilisateur
             themeManager.updateTheme()
             viewModel.fetchClothes()
+            
+            // Écoute le refresh global
+            NotificationCenter.default.addObserver(
+                forName: .refreshDressing,
+                object: nil,
+                queue: .main
+            ) { _ in
+                viewModel.fetchClothes()
+            }
         }
         // MODAL CAMERA UNIQUEMENT
         .sheet(isPresented: $showCamera) {
@@ -84,7 +92,8 @@ struct DressingView: View {
                 image: detectedImage,
                 resultText: detectionText,
                 isShowing: $showDetectionResult,
-                isUploading: $isUploading
+                isUploading: $isUploading,
+                imageURL: detectedImageURL          // ← METS imageURL EN DERNIER
             )
         }
         .alert("Erreur", isPresented: .constant(!detectionText.isEmpty && detectionText.contains("Erreur"))) {
@@ -139,8 +148,17 @@ struct DressingView: View {
                 }
                 
                 // ON MET À JOUR LE TEXTE BRUT
-                detectionText = detectionResult
-                
+                // On garde le JSON complet + on extrait juste le texte à afficher
+                if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                   let fullText = json["detection_result"] as? String,
+                   let imageUrl = json["image_url"] as? String {
+
+                    detectionText = fullText        // ← Seulement le texte à afficher
+                    detectedImageURL = imageUrl     // ← On garde l'URL Cloudinary !
+                } else {
+                    detectionText = "Erreur de réponse du serveur"
+                    detectedImageURL = nil
+                }
                 // ON FERME LE POP-UP ET ON LE RÉ-OUVRE POUR FORCER LE PARSING
                 showDetectionResult = false
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
@@ -466,4 +484,7 @@ struct ImagePicker: UIViewControllerRepresentable {
             parent.dismiss()
         }
     }
+}
+extension Notification.Name {
+    static let refreshDressing = Notification.Name("refreshDressing")
 }

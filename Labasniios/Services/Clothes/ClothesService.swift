@@ -105,4 +105,28 @@ class ClothesService {
             }
         }.resume()
     }
+    func addClotheAsync(
+        imageURL: String,
+        category: String,
+        color: String,
+        style: String,
+        season: String
+    ) async throws {
+        try await withCheckedThrowingContinuation { continuation in
+            addClothe(
+                imageURL: imageURL,
+                category: category,
+                color: color,
+                style: style,
+                season: season
+            ) { result in
+                switch result {
+                case .success:
+                    continuation.resume(returning: ())
+                case .failure(let error):
+                    continuation.resume(throwing: error)
+                }
+            }
+        }
+    }
 }

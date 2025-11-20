@@ -13,6 +13,9 @@ struct DetectionResultView: View {
     @State private var selectedSeason: Season = .all
     @State private var detectedColorName = "Pink"
     @State private var detectedColor: Color = .pink
+    @State private var isSaving = false
+    @Environment(\.dismiss) private var dismiss
+    let imageURL: String?                      // ← NOUVEAU
     
     // MARK: - Enums (English)
     enum Category: String, CaseIterable, Identifiable {
@@ -225,9 +228,11 @@ struct DetectionResultView: View {
                 
                 // MARK: Add Button
                 Button {
-                    isShowing = false
+                    Task {
+                        await saveClotheToDatabase()
+                    }
                 } label: {
-                    Text("Add to Wardrobe")
+                    Text(isSaving ? "Ajout en cours..." : "Add to Wardrobe")
                         .font(.title3.bold())
                         .foregroundColor(.white)
                         .frame(maxWidth: .infinity)
@@ -242,6 +247,7 @@ struct DetectionResultView: View {
                         .cornerRadius(22)
                         .shadow(color: Color.themePrimary.opacity(0.4), radius: 12, y: 6)
                 }
+                .disabled(isSaving)
                 .padding(.horizontal, 20)
                 .padding(.bottom, 30)
             }
@@ -252,7 +258,100 @@ struct DetectionResultView: View {
             }
         }
     }
-    
+    private func saveClotheToDatabase() async {
+        guard let imageURL = imageURL else {
+            print("Erreur : imageURL manquante")
+            return
+        }
+        
+        isSaving = true
+        
+        do {
+            try await ClothesService.shared.addClotheAsync(
+                imageURL: imageURL,
+                category: selectedCategory.rawValue,
+                color: detectedColorName,
+                style: selectedStyle.rawValue,
+                season: selectedSeason.rawValue
+            )
+            
+            await MainActor.run {
+                isSaving = false
+                isShowing = false
+                NotificationCenter.default.post(name: .refreshDressing, object: nil)
+            }
+        } catch {
+            await MainActor.run {
+                isSaving = false
+                print("Erreur ajout: \(error)")
+            }
+        }
+    }
+    private func extractImageURLFromFullResponse() -> String? {
+        // On parse la réponse complète qui arrive dans `resultText` (c’est du JSON brut)
+        guard let data = resultText.data(using: .utf8),
+              let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let imageURL = json["image_url"] as? String else {
+            print("JSON parsing failed or image_url not found")
+            print("Raw resultText: \(resultText)")
+            return nil
+        }
+        
+        return imageURL
+    }
+    private func extractImageURL(from jsonString: String) -> String? {
+        // On cherche la partie "image_url": "https://..."
+        let pattern = #"\"image_url\"\s*:\s*\"(https?://[^\"]+)\""#
+        
+        if let regex = try? NSRegularExpression(pattern: pattern),
+           let match = regex.firstMatch(in: jsonString, range: NSRange(jsonString.startIndex..., in: jsonString)),
+           let range = Range(match.range(at: 1), in: jsonString) {
+            return String(jsonString[range])
+        }
+        
+        return nil
+    }
+    private func uploadImageToServer(_ image: UIImage) async throws -> String {
+        return try await withCheckedThrowingContinuation { continuation in
+            guard let imageData = image.jpegData(compressionQuality: 0.85) else {
+                continuation.resume(throwing: NSError(domain: "", code: -1, userInfo: [NSLocalizedDescriptionKey: "Image invalide"]))
+                return
+            }
+            
+            let url = URL(string: "\(APIConstants.baseURL)/upload")! // ← Crée cette route ou utilise Cloudinary
+            var request = URLRequest(url: url)
+            request.httpMethod = "POST"
+            
+            let boundary = "Boundary-\(UUID().uuidString)"
+            request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
+            request.setValue("Bearer \(TokenManager.shared.getToken() ?? "")", forHTTPHeaderField: "Authorization")
+            
+            var body = Data()
+            body.append("--\(boundary)\r\n".data(using: .utf8)!)
+            body.append("Content-Disposition: form-data; name=\"photo\"; filename=\"photo.jpg\"\r\n".data(using: .utf8)!)
+            body.append("Content-Type: image/jpeg\r\n\r\n".data(using: .utf8)!)
+            body.append(imageData)
+            body.append("\r\n--\(boundary)--\r\n".data(using: .utf8)!)
+            
+            request.httpBody = body
+            
+            URLSession.shared.dataTask(with: request) { data, response, error in
+                if let error = error {
+                    continuation.resume(throwing: error)
+                    return
+                }
+                
+                guard let data = data,
+                      let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                      let url = json["url"] as? String else {
+                    continuation.resume(throwing: NSError(domain: "", code: -1, userInfo: [NSLocalizedDescriptionKey: "URL non retournée"]))
+                    return
+                }
+                
+                continuation.resume(returning: url)
+            }.resume()
+        }
+    }
     // MARK: - Parsing (inchangé)
     private func parseResult() {
         print("Raw AI result:\n\(resultText)")
