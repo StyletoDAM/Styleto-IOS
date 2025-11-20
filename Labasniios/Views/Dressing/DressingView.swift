@@ -60,10 +60,24 @@ struct DressingView: View {
         .sheet(isPresented: $showCamera) {
             ImagePicker(sourceType: .camera) { image in
                 capturedImage = image
+                isUploading = true
                 if let image = image {
                     uploadAndDetect(image: image)
                 }
             }
+        }
+        // Remplace ton ancien fullScreenCover par ÇA :
+        .fullScreenCover(isPresented: $isUploading) {
+            AIAnalysisLoadingView(
+                image: capturedImage,
+                onAnalysisComplete: { resultText in
+                    // Quand l'analyse est finie → on ouvre le vrai popup
+                    detectionText = resultText
+                    detectedImage = capturedImage
+                    showDetectionResult = true
+                    isUploading = false
+                }
+            )
         }
         .fullScreenCover(isPresented: $showDetectionResult) {
             DetectionResultView(
