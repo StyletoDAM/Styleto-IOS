@@ -9,6 +9,8 @@ struct StoreView: View {
     @ObservedObject private var themeManager = ThemeManager.shared
     @StateObject private var viewModel = StoreViewModel()
     @State private var searchText = ""
+    @State private var showCart = false
+    @State private var showChat = false
     private let columns: [GridItem] = [
         GridItem(.flexible(), spacing: 16),
         GridItem(.flexible(), spacing: 16)
@@ -107,7 +109,9 @@ struct StoreView: View {
             Spacer()
 
             HStack(spacing: 16) {
-                Button { print("Chat") } label: {
+                Button {
+                    showChat = true
+                } label: {
                     Image(systemName: "message.fill")
                         .font(.system(size: 20, weight: .semibold))
                         .foregroundColor(.white)
@@ -116,8 +120,13 @@ struct StoreView: View {
                         .clipShape(Circle())
                         .shadow(color: .black.opacity(0.2), radius: 8)
                 }
+                .fullScreenCover(isPresented: $showChat) {
+                    ChatView()
+                }
 
-                Button { print("Panier") } label: {
+                Button {
+                    showCart = true
+                } label: {
                     Image(systemName: "cart.fill")
                         .font(.system(size: 22, weight: .semibold))
                         .foregroundColor(.white)
@@ -125,6 +134,9 @@ struct StoreView: View {
                         .background(Color.themePrimary)
                         .clipShape(Circle())
                         .shadow(color: .black.opacity(0.2), radius: 8)
+                }
+                .fullScreenCover(isPresented: $showCart) {
+                    CartView()
                 }
             }
         }

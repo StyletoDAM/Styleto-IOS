@@ -9,6 +9,7 @@ struct LabasniiosApp: App {
     @UIApplicationDelegateAdaptor(AppDelegate.self) var delegate
     
     init() {
+        _ = NavigationTheme()
             // Forcer le bon thème dès le lancement de l'app
             DispatchQueue.main.async {
                 ThemeManager.shared.updateThemeBasedOnUser()

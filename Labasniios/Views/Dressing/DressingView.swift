@@ -13,13 +13,14 @@ struct DressingView: View {
     @State private var detectionText = ""
     @State private var isUploading = false
     @State private var detectedImageURL: String?
+    @State private var showAIErrorAlert = false
+    @State private var aiErrorMessage = ""
     private let columns: [GridItem] = [
         GridItem(.flexible(), spacing: 16),
         GridItem(.flexible(), spacing: 16)
     ]
     
-    private let categories = ["All", "Tshirt", "Pants", "Dress", "Shoes", "Accessory"]
-    
+    private let categories = ["All", "Top", "Bottom", "Dress", "Shoes", "Accessory", "Jacket"]
     var body: some View {
         ZStack {
             // Scrollable Content
@@ -96,20 +97,20 @@ struct DressingView: View {
                 imageURL: detectedImageURL          // ← METS imageURL EN DERNIER
             )
         }
-        .alert("Erreur", isPresented: .constant(!detectionText.isEmpty && detectionText.contains("Erreur"))) {
-            Button("OK") { }
+        .alert("Detection Error", isPresented: $showAIErrorAlert) {
+            Button("OK") {
+                aiErrorMessage = ""
+            }
         } message: {
-            Text(detectionText)
+            Text(aiErrorMessage)
         }
     }
     private func uploadAndDetect(image: UIImage) {
         guard let imageData = image.jpegData(compressionQuality: 0.85) else { return }
         
         isUploading = true
-        showDetectionResult = true
-        detectedImage = image
-        detectionText = "Analyse en cours..."
-
+        detectionText = "Analyzing..."
+        
         let url = URL(string: "\(APIConstants.baseURL.absoluteString)/detect")!
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
@@ -118,17 +119,11 @@ struct DressingView: View {
         request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
         
         var body = Data()
-        
-        // --- Partie fichier ---
         body.append("--\(boundary)\r\n".data(using: .utf8)!)
         body.append("Content-Disposition: form-data; name=\"photo\"; filename=\"photo.jpg\"\r\n".data(using: .utf8)!)
         body.append("Content-Type: image/jpeg\r\n\r\n".data(using: .utf8)!)
         body.append(imageData)
-        body.append("\r\n".data(using: .utf8)!)
-        
-        // --- Fin ---
-        body.append("--\(boundary)--\r\n".data(using: .utf8)!)
-        
+        body.append("\r\n--\(boundary)--\r\n".data(using: .utf8)!)
         request.httpBody = body
         
         URLSession.shared.dataTask(with: request) { data, response, error in
@@ -136,36 +131,44 @@ struct DressingView: View {
                 isUploading = false
                 
                 if let error = error {
-                    detectionText = "Network error: \(error.localizedDescription)"
+                    self.showErrorAlert("Network error. Please try again.")
                     return
                 }
                 
                 guard let data = data,
                       let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
                       let detectionResult = json["detection_result"] as? String else {
-                    detectionText = "Server error"
+                    self.showErrorAlert("AI analysis failed. Please try again.")
                     return
                 }
                 
-                // ON MET À JOUR LE TEXTE BRUT
-                // On garde le JSON complet + on extrait juste le texte à afficher
-                if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-                   let fullText = json["detection_result"] as? String,
-                   let imageUrl = json["image_url"] as? String {
-
-                    detectionText = fullText        // ← Seulement le texte à afficher
-                    detectedImageURL = imageUrl     // ← On garde l'URL Cloudinary !
-                } else {
-                    detectionText = "Erreur de réponse du serveur"
-                    detectedImageURL = nil
+                let imageUrl = json["image_url"] as? String
+                let text = detectionResult.lowercased()
+                
+                let errorKeywords = [
+                    "aucun vêtement", "aucun vetement", "no clothing", "no clothes",
+                    "no item", "nothing detected", "cannot detect", "erreur", "error"
+                ]
+                
+                if errorKeywords.contains(where: text.contains) {
+                    self.showErrorAlert("Error: No clothing detected. Please take a clear photo of a single item on a plain background.")
+                    return
                 }
-                // ON FERME LE POP-UP ET ON LE RÉ-OUVRE POUR FORCER LE PARSING
-                showDetectionResult = false
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                    showDetectionResult = true
-                }
+                
+                // SEULEMENT ici on ouvre le vrai popup
+                self.detectionText = detectionResult
+                self.detectedImageURL = imageUrl
+                self.detectedImage = image
+                self.showDetectionResult = true
             }
         }.resume()
+    }
+
+    private func showErrorAlert(_ message: String) {
+        aiErrorMessage = message
+        showAIErrorAlert = true
+        // On empêche le popup de s'ouvrir
+        showDetectionResult = false
     }
     // MARK: - Header
     private var header: some View {
