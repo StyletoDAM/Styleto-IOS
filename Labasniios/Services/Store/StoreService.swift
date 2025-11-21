@@ -104,7 +104,50 @@ class StoreService {
             .mapError { _ in .serverError }
             .eraseToAnyPublisher()
     }
+    // MARK: - Update Item Size (version finale, propre et qui marche partout)
+    func updateStoreSize(_ storeId: String, size: String) -> AnyPublisher<Store, NetworkError> {
+        guard let url = URL(string: "/store/\(storeId)", relativeTo: baseURL) else {
+            return Fail(error: .invalidURL).eraseToAnyPublisher()
+        }
 
+        var request = URLRequest(url: url)
+        request.httpMethod = "PATCH"
+        request.setValue("Bearer \(tokenManager.getToken() ?? "")", forHTTPHeaderField: "Authorization")
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+
+        // VERSION QUI MARCHE À 100% EN TUNISIE
+        let body: [String: Any] = ["size": size]  // ← C'EST ÇA QUE TON BACKEND VEUT !
+
+        do {
+            request.httpBody = try JSONSerialization.data(withJSONObject: body)
+        } catch {
+            return Fail(error: .serverError).eraseToAnyPublisher() // ← plus propre, pas d'erreur encodingFailed
+        }
+
+        return URLSession.shared.dataTaskPublisher(for: request)
+            .tryMap { output -> Data in
+                guard let httpResponse = output.response as? HTTPURLResponse else {
+                    throw NetworkError.serverError
+                }
+                
+                print("Status code mise à jour taille:", httpResponse.statusCode)
+                if let responseString = String(data: output.data, encoding: .utf8) {
+                    print("Réponse backend:", responseString)
+                }
+
+                guard (200...299).contains(httpResponse.statusCode) else {
+                    throw NetworkError.serverError
+                }
+                return output.data
+            }
+            .decode(type: Store.self, decoder: JSONDecoder().withISO8601())
+            .mapError { error -> NetworkError in
+                print("Erreur mise à jour taille:", error)
+                return .serverError
+            }
+            .receive(on: DispatchQueue.main)
+            .eraseToAnyPublisher()
+    }
     
     
     

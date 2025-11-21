@@ -26,8 +26,11 @@ struct AddToStoreSheet: View {
                     clothesList
                 }
 
-                // MARK: - Price Input
-                priceInput
+                // MARK: - Price + Size (seulement si un vêtement est sélectionné)
+                if viewModel.selectedClothe != nil {
+                    priceInput
+                    sizeInputSection
+                }
 
                 Spacer()
             }
@@ -49,10 +52,19 @@ struct AddToStoreSheet: View {
                     .bold()
                     .foregroundColor(.white)
                     .frame(width: 80, height: 36)
+                    .disabled(
+                        viewModel.selectedClothe == nil ||
+                        viewModel.priceInput.isEmpty ||
+                        viewModel.isAdding ||
+                        (viewModel.isShoes ? viewModel.sizeInput.isEmpty : false)
+                    )
                     .background(
-                        viewModel.selectedClothe != nil && !viewModel.priceInput.isEmpty && !viewModel.isAdding
-                        ? Color.themePrimary
-                        : Color.gray.opacity(0.3)
+                        viewModel.selectedClothe != nil &&
+                        !viewModel.priceInput.isEmpty &&
+                        !viewModel.isAdding &&
+                        (viewModel.isShoes ? !viewModel.sizeInput.isEmpty : true)
+                            ? Color.themePrimary
+                            : Color.gray.opacity(0.3)
                     )
                     .clipShape(Capsule())
                     .disabled(viewModel.selectedClothe == nil || viewModel.priceInput.isEmpty || viewModel.isAdding)
@@ -192,6 +204,21 @@ struct AddToStoreSheet: View {
                         if !isAlreadyInStore {
                             withAnimation(.spring()) {
                                 viewModel.selectedClothe = clothe
+
+                                // Détection automatique chaussures
+                                let category = (clothe.category ?? "").lowercased()
+                                viewModel.isShoes = category.contains("shoe") ||
+                                                   category.contains("sneaker") ||
+                                                   category.contains("basket") ||
+                                                   category.contains("boot") ||
+                                                   category.contains("chaussure")
+
+                                // Reset taille selon type
+                                if viewModel.isShoes {
+                                    viewModel.sizeInput = ""
+                                } else {
+                                    viewModel.selectedSize = "M"
+                                }
                             }
                         }
                     }
@@ -226,6 +253,56 @@ struct AddToStoreSheet: View {
                     .font(.title2.bold())
                     .foregroundColor(.themePrimary)
                     .padding(.trailing)
+            }
+        }
+    }
+
+    // MARK: - Size Input (Dynamique)
+    private var sizeInputSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Size / Shoe size")
+                .font(.headline)
+                .foregroundColor(.themeText)
+
+            if viewModel.isShoes {
+                // Champ libre pour chaussures
+                TextField("Ex: 38, 42, 44...", text: $viewModel.sizeInput)
+                    .keyboardType(.numberPad)
+                    .padding()
+                    .frame(height: 56)
+                    .background(Color.themeCard)
+                    .clipShape(RoundedRectangle(cornerRadius: 16))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 16)
+                            .stroke(viewModel.sizeInput.isEmpty ? Color.red.opacity(0.5) : Color.themePrimary.opacity(0.5), lineWidth: 2)
+                    )
+            } else {
+                // Picker vêtements
+                LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 4), spacing: 12) {
+                    ForEach(["XS", "S", "M", "L", "XL", "XXL", "XXXL"], id: \.self) { size in
+                        Button {
+                            withAnimation(.spring()) {
+                                viewModel.selectedSize = size
+                            }
+                        } label: {
+                            Text(size)
+                                .font(.system(size: 16, weight: .bold))
+                                .foregroundColor(viewModel.selectedSize == size ? .white : .themeText)
+                                .frame(width: 52, height: 52)
+                                .background(
+                                    viewModel.selectedSize == size
+                                        ? Color.themePrimary
+                                        : Color.themeCard
+                                )
+                                .clipShape(Circle())
+                                .overlay(
+                                    Circle()
+                                        .stroke(Color.themePrimary, lineWidth: viewModel.selectedSize == size ? 0 : 2)
+                                )
+                        }
+                    }
+                }
+                .padding(.horizontal)
             }
         }
     }

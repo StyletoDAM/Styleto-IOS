@@ -6,12 +6,13 @@ struct Store: Identifiable, Codable {
     let clothesId: ClotheReference
     var price: Double
     var status: String
+    var size: String?
     let createdAt: Date
     let updatedAt: Date
     
     enum CodingKeys: String, CodingKey {
         case id = "_id"
-        case userId, clothesId, price, status, createdAt, updatedAt
+        case userId, clothesId, price, status,size, createdAt, updatedAt
     }
     
     var title: String {

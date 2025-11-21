@@ -1,7 +1,7 @@
 import Foundation
 
 enum APIConstants {
-    static let baseURL = URL(string: "http://192.168.1.12:3000")!
+    static let baseURL = URL(string: "http://192.168.50.1:3000")!
     // AUTH
     static let signupPath = "/auth/signup"
     static let signinPath = "/auth/signin"

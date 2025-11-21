@@ -17,6 +17,9 @@ class StoreViewModel: ObservableObject {
     @Published var discoverItems: [Store] = []
     @Published private var rawStoreItems: [Store] = []
     @Published private var rawDiscoverItems: [Store] = []
+    @Published var sizeInput: String = ""
+    @Published var selectedSize: String = "M"
+    @Published var isShoes: Bool = false
     
     private var cancellables = Set<AnyCancellable>()
     private let service = StoreService.shared
@@ -105,39 +108,51 @@ class StoreViewModel: ObservableObject {
               let price = Double(priceInput), price >= 0 else {
             return
         }
-        
+
         isAdding = true
-        
+
+        // Déterminer la taille finale
+        let finalSize: String = {
+            if isShoes {
+                return sizeInput.trimmingCharacters(in: .whitespacesAndNewlines)
+            } else {
+                return selectedSize
+            }
+        }()
+
+        // Validation taille
+        guard !finalSize.isEmpty else {
+            isAdding = false
+            errorMessage = "Please select or enter a size"
+            return
+        }
+
         let body: [String: Any] = [
             "clothesId": clothe.id,
             "price": price,
-            "status": "available"
+            "size": finalSize
+            // status est géré par défaut côté backend ("available")
         ]
-        
+
         StoreService.shared.createStoreItem(body: body)
             .sink { [weak self] completion in
                 guard let self = self else { return }
-                
+                self.isAdding = false
                 if case .failure(let error) = completion {
-                    self.isAdding = false
-                    self.errorMessage = "Erreur: \(error.localizedDescription)"
+                    self.errorMessage = "Error: \(error.localizedDescription)"
                 }
             } receiveValue: { [weak self] createdItem in
                 guard let self = self else { return }
-                
-                
-                
-                // 1. Réinitialiser les champs
+
+                // Reset complet
                 self.selectedClothe = nil
                 self.priceInput = ""
-                
-                // 2. Mettre isAdding = false
-                self.isAdding = false
-                
-                // 3. Fermer le sheet
+                self.sizeInput = ""
+                self.selectedSize = "M"
+                self.isShoes = false
                 self.showAddToStore = false
-                
-                // 4. RECHARGER la liste complète pour obtenir les objets populés
+
+                // Recharger pour avoir les données populées
                 self.loadMyStore()
             }
             .store(in: &cancellables)
@@ -182,6 +197,31 @@ class StoreViewModel: ObservableObject {
                     DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
                         self?.showToast = false
                     }
+                }
+            }
+            .store(in: &cancellables)
+    }
+    func updateStoreSize(_ storeId: String, newSize: String) {
+        isLoading = true
+        
+        StoreService.shared.updateStoreSize(storeId, size: newSize)
+            .sink { [weak self] completion in
+                self?.isLoading = false
+                if case .failure(let error) = completion {
+                    self?.errorMessage = "Échec mise à jour taille"
+                    print("ERREUR:", error)
+                }
+            } receiveValue: { [weak self] updatedStore in
+                // Mise à jour UI
+                if let index = self?.storeItems.firstIndex(where: { $0.id == updatedStore.id }) {
+                    self?.storeItems[index] = updatedStore
+                }
+                if let index = self?.discoverItems.firstIndex(where: { $0.id == updatedStore.id }) {
+                    self?.discoverItems[index] = updatedStore
+                }
+                self?.showToast = true
+                DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+                    self?.showToast = false
                 }
             }
             .store(in: &cancellables)
@@ -249,10 +289,10 @@ class StoreViewModel: ObservableObject {
         let ownerName = item.userInfo?.fullName?.lowercased() ?? ""
         
         return category.contains(query) ||
-               price.contains(query) ||
-               status.contains(query) ||
-               ownerName.contains(query)
+        price.contains(query) ||
+        status.contains(query) ||
+        ownerName.contains(query)
     }
-
+    
     
 }

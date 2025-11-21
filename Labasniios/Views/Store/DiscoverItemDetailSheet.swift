@@ -1,20 +1,16 @@
-
 import SwiftUI
 
 struct DiscoverItemDetailSheet: View {
     let storeItem: Store
     @Environment(\.dismiss) var dismiss
     
-    // À connecter plus tard avec ton système de panier et chat
     private func addToCart() {
         print("Ajouté au panier : \(storeItem.clothe?.category ?? "") – \(storeItem.price) DT")
-        // viewModel.addToCart(storeItem)
         dismiss()
     }
     
     private func openChatWithSeller() {
         print("Ouvrir le chat avec le vendeur de cet article")
-        // Navigation vers le chat avec le owner du storeItem
         dismiss()
     }
     
@@ -24,6 +20,7 @@ struct DiscoverItemDetailSheet: View {
                 // MARK: - Image + Infos principales
                 Section {
                     HStack(spacing: 16) {
+                        // Image
                         AsyncImage(url: URL(string: storeItem.clothe?.imageURL ?? "")) { image in
                             image
                                 .resizable()
@@ -40,12 +37,13 @@ struct DiscoverItemDetailSheet: View {
                         .frame(width: 80, height: 80)
                         .clipShape(RoundedRectangle(cornerRadius: 16))
                         .shadow(color: .black.opacity(0.1), radius: 4, x: 0, y: 2)
-
+                        
+                        // Infos
                         VStack(alignment: .leading, spacing: 6) {
-                            Text(storeItem.clothe?.category?.capitalized ?? "Item")
+                            Text(storeItem.clothe?.category?.capitalized ?? "Article")
                                 .font(.headline)
                                 .foregroundColor(.themeTeal)
-
+                            
                             HStack {
                                 Image(systemName: "tag.fill")
                                     .font(.caption)
@@ -54,16 +52,35 @@ struct DiscoverItemDetailSheet: View {
                                     .font(.subheadline.bold())
                                     .foregroundColor(.themePrimary)
                             }
-
-                            // Statut : Disponible ou Vendu
+                            
+                            // TAILLE – IDENTIQUE À EDITSTOREPOPUP
+                            if let size = storeItem.size, !size.isEmpty {
+                                HStack(spacing: 6) {
+                                    Image(systemName: "ruler")
+                                        .font(.caption)
+                                        .foregroundColor(.themeSecondary)
+                                    Text("Taille: \(size)")
+                                        .font(.caption.bold())
+                                        .foregroundColor(.themeSecondary)
+                                }
+                                .padding(.horizontal, 10)
+                                .padding(.vertical, 4)
+                                .background(Color.themeCard.opacity(0.8))
+                                .clipShape(Capsule())
+                                .overlay(
+                                    Capsule()
+                                        .stroke(Color.themePrimary.opacity(0.3), lineWidth: 1)
+                                )
+                            }
+                            
+                            // Statut
                             HStack(spacing: 4) {
                                 Image(systemName: storeItem.isAvailable ? "circle.fill" : "checkmark.circle.fill")
                                     .font(.caption2)
                                     .foregroundColor(storeItem.isAvailable ? .green : .gray)
-                                Text(storeItem.isAvailable ? "Available" : "Sold")
+                                Text(storeItem.isAvailable ? "Disponible" : "Vendu")
                                     .font(.caption.bold())
-                                    .foregroundColor(storeItem.isAvailable ? .green : .gray)
-                            }
+                                .foregroundColor(storeItem.isAvailable ? .green : .gray)                            }
                             .padding(.horizontal, 8)
                             .padding(.vertical, 4)
                             .background(
@@ -77,65 +94,44 @@ struct DiscoverItemDetailSheet: View {
                 }
                 .listRowBackground(Color.themeCard)
                 .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
-
                 
-                .listRowBackground(Color.themeSoftPink.opacity(0.15))
-
-                // MARK: - Actions (Add to Cart + Chat)
+                // MARK: - Boutons d'action
                 Section {
-                    // Bouton Add to Cart
                     Button {
                         addToCart()
                     } label: {
-                        HStack {
-                            Image(systemName: "cart.fill")
-                                .foregroundColor(.white)
-                            Text("Add to Cart")
-                                .font(.subheadline.bold())
-                                .foregroundColor(.white)
-                        }
-                        .frame(maxWidth: .infinity)
-                        .padding()
-                        .background(
-                            LinearGradient(
-                                colors: [.themePrimary, .themeSecondary],
-                                startPoint: .leading,
-                                endPoint: .trailing
+                        Label("Ajouter au panier", systemImage: "cart.fill")
+                            .font(.subheadline.bold())
+                            .foregroundColor(.white)
+                            .frame(maxWidth: .infinity)
+                            .padding()
+                            .background(
+                                LinearGradient(colors: [.themePrimary, .themeSecondary], startPoint: .leading, endPoint: .trailing)
+                                    .cornerRadius(12)
                             )
-                            .cornerRadius(12)
-                        )
                     }
                     .disabled(!storeItem.isAvailable)
                     .listRowBackground(Color.clear)
-
-                    // Bouton Chat with Seller
+                    
                     Button {
                         openChatWithSeller()
                     } label: {
-                        HStack {
-                            Image(systemName: "message.fill")
-                                .foregroundColor(.white)
-                            Text("Chat with Seller")
-                                .font(.subheadline.bold())
-                                .foregroundColor(.white)
-                        }
-                        .frame(maxWidth: .infinity)
-                        .padding()
-                        .background(
-                            LinearGradient(
-                                colors: [Color.themeTeal, Color.themeAqua],
-                                startPoint: .leading,
-                                endPoint: .trailing
+                        Label("Contacter le vendeur", systemImage: "message.fill")
+                            .font(.subheadline.bold())
+                            .foregroundColor(.white)
+                            .frame(maxWidth: .infinity)
+                            .padding()
+                            .background(
+                                LinearGradient(colors: [Color.themeTeal, Color.themeAqua], startPoint: .leading, endPoint: .trailing)
+                                    .cornerRadius(12)
                             )
-                            .cornerRadius(12)
-                        )
                     }
                     .disabled(!storeItem.isAvailable)
                     .listRowBackground(Color.clear)
                 }
                 .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
             }
-            .navigationTitle("Item Details")
+            .navigationTitle("Détails de l'article")
             .navigationBarTitleDisplayMode(.inline)
             .background(
                 Color.themeSoftPink.opacity(UITraitCollection.current.userInterfaceStyle == .dark ? 0.1 : 0.25)
@@ -143,7 +139,7 @@ struct DiscoverItemDetailSheet: View {
             )
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Close") {
+                    Button("Fermer") {
                         dismiss()
                     }
                     .foregroundColor(.themePrimary)
@@ -153,4 +149,3 @@ struct DiscoverItemDetailSheet: View {
         }
     }
 }
-
