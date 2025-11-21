@@ -1,6 +1,6 @@
 // DetectionResultView.swift
 import SwiftUI
-
+ 
 struct DetectionResultView: View {
     let image: UIImage?
     let resultText: String
@@ -14,8 +14,15 @@ struct DetectionResultView: View {
     @State private var detectedColorName = "Pink"
     @State private var detectedColor: Color = .pink
     @State private var isSaving = false
+    
+    // MARK: - Original Detection States (pour envoi au backend)
+    @State private var originalType = ""
+    @State private var originalColorHex = ""
+    @State private var originalStyle = ""
+    @State private var originalSeason = ""
+    
     @Environment(\.dismiss) private var dismiss
-    let imageURL: String?                      // ← NOUVEAU
+    let imageURL: String?
     
     // MARK: - Enums (English)
     enum Category: String, CaseIterable, Identifiable {
@@ -46,14 +53,14 @@ struct DetectionResultView: View {
                 HStack {
                     Text("Clothing Details")
                         .font(.system(size: 24, weight: .semibold))
-                        .foregroundColor(Color.themePrimary)   // ← corrigé
+                        .foregroundColor(Color.themePrimary)
                     
                     Spacer()
                     
                     Button { isShowing = false } label: {
                         Image(systemName: "xmark")
                             .font(.system(size: 24, weight: .medium))
-                            .foregroundColor(Color.themePrimary) // ← corrigé
+                            .foregroundColor(Color.themePrimary)
                     }
                 }
                 .padding(.horizontal, 24)
@@ -92,7 +99,7 @@ struct DetectionResultView: View {
                         .foregroundColor(.white)
                         .padding(.horizontal, 16)
                         .padding(.vertical, 9)
-                        .background(Color.themePrimary.opacity(0.95)) // ← corrigé
+                        .background(Color.themePrimary.opacity(0.95))
                         .cornerRadius(20)
                     }
                     .padding(16)
@@ -106,13 +113,13 @@ struct DetectionResultView: View {
                         VStack(alignment: .leading, spacing: 12) {
                             Text("Clothing Type")
                                 .font(.headline)
-                                .foregroundColor(Color.themePrimary) // ← corrigé
+                                .foregroundColor(Color.themePrimary)
                             
                             LazyVGrid(columns: Array(repeating: .init(.flexible()), count: 3), spacing: 12) {
                                 ForEach(Category.allCases) { cat in
                                     Text(cat.rawValue)
                                         .font(.system(size: 15, weight: .medium))
-                                        .foregroundColor(selectedCategory == cat ? .white : Color.themePrimary) // ← corrigé
+                                        .foregroundColor(selectedCategory == cat ? .white : Color.themePrimary)
                                         .padding(.vertical, 14)
                                         .frame(maxWidth: .infinity)
                                         .background(
@@ -130,7 +137,7 @@ struct DetectionResultView: View {
                         VStack(alignment: .leading, spacing: 12) {
                             Text("Detected Color")
                                 .font(.headline)
-                                .foregroundColor(Color.themePrimary) // ← corrigé
+                                .foregroundColor(Color.themePrimary)
                             
                             HStack(spacing: 16) {
                                 Circle()
@@ -149,7 +156,7 @@ struct DetectionResultView: View {
                                     
                                     HStack(spacing: 6) {
                                         Image(systemName: "sparkles")
-                                            .foregroundColor(Color.themePrimary) // ← corrigé
+                                            .foregroundColor(Color.themePrimary)
                                         Text("Automatically detected by AI")
                                             .font(.footnote)
                                             .foregroundColor(Color.themeSecondaryText)
@@ -158,7 +165,7 @@ struct DetectionResultView: View {
                                 Spacer()
                             }
                             .padding()
-                            .background(Color.themePrimary.opacity(0.08)) // ← corrigé
+                            .background(Color.themePrimary.opacity(0.08))
                             .cornerRadius(18)
                         }
                         
@@ -166,13 +173,13 @@ struct DetectionResultView: View {
                         VStack(alignment: .leading, spacing: 12) {
                             Text("Style")
                                 .font(.headline)
-                                .foregroundColor(Color.themePrimary) // ← corrigé
+                                .foregroundColor(Color.themePrimary)
                             
                             LazyVGrid(columns: Array(repeating: .init(.flexible()), count: 3), spacing: 12) {
                                 ForEach(Style.allCases) { style in
                                     Text(style.rawValue)
                                         .font(.system(size: 15, weight: .medium))
-                                        .foregroundColor(selectedStyle == style ? .white : Color.themeTeal) // ← corrigé
+                                        .foregroundColor(selectedStyle == style ? .white : Color.themeTeal)
                                         .padding(.vertical, 14)
                                         .frame(maxWidth: .infinity)
                                         .background(
@@ -190,13 +197,13 @@ struct DetectionResultView: View {
                         VStack(alignment: .leading, spacing: 12) {
                             Text("Season")
                                 .font(.headline)
-                                .foregroundColor(Color.themePrimary) // ← corrigé
+                                .foregroundColor(Color.themePrimary)
                             
                             LazyVGrid(columns: Array(repeating: .init(.flexible()), count: 2), spacing: 14) {
                                 ForEach(Season.allCases) { season in
                                     Text(season.rawValue)
                                         .font(.system(size: 15, weight: .medium))
-                                        .foregroundColor(selectedSeason == season ? .white : Color.themeTeal) // ← corrigé
+                                        .foregroundColor(selectedSeason == season ? .white : Color.themeTeal)
                                         .padding(.vertical, 16)
                                         .frame(maxWidth: .infinity)
                                         .background(
@@ -213,14 +220,14 @@ struct DetectionResultView: View {
                         // MARK: AI Suggestion Note
                         HStack {
                             Image(systemName: "sparkles")
-                                .foregroundColor(Color.themePrimary) // ← corrigé
+                                .foregroundColor(Color.themePrimary)
                             Text("The information above was pre-filled by our AI. Feel free to edit as you like!")
                                 .font(.footnote)
                                 .foregroundColor(Color.themeSecondaryText)
                             Spacer()
                         }
                         .padding()
-                        .background(Color.themeTeal.opacity(0.08)) // ← corrigé
+                        .background(Color.themeTeal.opacity(0.08))
                         .cornerRadius(14)
                     }
                     .padding(.horizontal, 20)
@@ -258,6 +265,8 @@ struct DetectionResultView: View {
             }
         }
     }
+    
+    // MARK: - Save to Database
     private func saveClotheToDatabase() async {
         guard let imageURL = imageURL else {
             print("Erreur : imageURL manquante")
@@ -267,12 +276,21 @@ struct DetectionResultView: View {
         isSaving = true
         
         do {
+            // Prépare l'objet originalDetection
+            let originalDetection: [String: String] = [
+                "type": originalType,
+                "color": originalColorHex,
+                "style": originalStyle,
+                "season": originalSeason.lowercased()
+            ]
+            
             try await ClothesService.shared.addClotheAsync(
                 imageURL: imageURL,
                 category: selectedCategory.rawValue,
                 color: detectedColorName,
                 style: selectedStyle.rawValue,
-                season: selectedSeason.rawValue
+                season: selectedSeason.rawValue,
+                originalDetection: originalDetection
             )
             
             await MainActor.run {
@@ -287,72 +305,8 @@ struct DetectionResultView: View {
             }
         }
     }
-    private func extractImageURLFromFullResponse() -> String? {
-        // On parse la réponse complète qui arrive dans `resultText` (c’est du JSON brut)
-        guard let data = resultText.data(using: .utf8),
-              let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-              let imageURL = json["image_url"] as? String else {
-            print("JSON parsing failed or image_url not found")
-            print("Raw resultText: \(resultText)")
-            return nil
-        }
-        
-        return imageURL
-    }
-    private func extractImageURL(from jsonString: String) -> String? {
-        // On cherche la partie "image_url": "https://..."
-        let pattern = #"\"image_url\"\s*:\s*\"(https?://[^\"]+)\""#
-        
-        if let regex = try? NSRegularExpression(pattern: pattern),
-           let match = regex.firstMatch(in: jsonString, range: NSRange(jsonString.startIndex..., in: jsonString)),
-           let range = Range(match.range(at: 1), in: jsonString) {
-            return String(jsonString[range])
-        }
-        
-        return nil
-    }
-    private func uploadImageToServer(_ image: UIImage) async throws -> String {
-        return try await withCheckedThrowingContinuation { continuation in
-            guard let imageData = image.jpegData(compressionQuality: 0.85) else {
-                continuation.resume(throwing: NSError(domain: "", code: -1, userInfo: [NSLocalizedDescriptionKey: "Image invalide"]))
-                return
-            }
-            
-            let url = URL(string: "\(APIConstants.baseURL)/upload")! // ← Crée cette route ou utilise Cloudinary
-            var request = URLRequest(url: url)
-            request.httpMethod = "POST"
-            
-            let boundary = "Boundary-\(UUID().uuidString)"
-            request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
-            request.setValue("Bearer \(TokenManager.shared.getToken() ?? "")", forHTTPHeaderField: "Authorization")
-            
-            var body = Data()
-            body.append("--\(boundary)\r\n".data(using: .utf8)!)
-            body.append("Content-Disposition: form-data; name=\"photo\"; filename=\"photo.jpg\"\r\n".data(using: .utf8)!)
-            body.append("Content-Type: image/jpeg\r\n\r\n".data(using: .utf8)!)
-            body.append(imageData)
-            body.append("\r\n--\(boundary)--\r\n".data(using: .utf8)!)
-            
-            request.httpBody = body
-            
-            URLSession.shared.dataTask(with: request) { data, response, error in
-                if let error = error {
-                    continuation.resume(throwing: error)
-                    return
-                }
-                
-                guard let data = data,
-                      let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-                      let url = json["url"] as? String else {
-                    continuation.resume(throwing: NSError(domain: "", code: -1, userInfo: [NSLocalizedDescriptionKey: "URL non retournée"]))
-                    return
-                }
-                
-                continuation.resume(returning: url)
-            }.resume()
-        }
-    }
-    // MARK: - Parsing (inchangé)
+    
+    // MARK: - Parsing
     private func parseResult() {
         print("Raw AI result:\n\(resultText)")
         
@@ -366,43 +320,91 @@ struct DetectionResultView: View {
             let key = trimmed[..<colonIndex].lowercased()
             let value = trimmed[trimmed.index(after: colonIndex)...].trimmingCharacters(in: .whitespaces)
             
+            // Type / Category
             if key.contains("type") || key.contains("clothing") || key.contains("vêtement") {
                 let v = value.lowercased()
-                if v.contains("top") || v.contains("shirt") || v.contains("haut") { selectedCategory = .top }
-                else if v.contains("bottom") || v.contains("pant") || v.contains("jean") { selectedCategory = .bottom }
-                else if v.contains("dress") || v.contains("robe") { selectedCategory = .dress }
-                else if v.contains("shoe") || v.contains("chaussure") { selectedCategory = .shoes }
-                else if v.contains("jacket") || v.contains("veste") { selectedCategory = .jacket }
-                else if v.contains("accessory") { selectedCategory = .accessory }
+                originalType = value // AJOUT : sauvegarde original
+                
+                if v.contains("top") || v.contains("shirt") || v.contains("haut") {
+                    selectedCategory = .top
+                }
+                else if v.contains("bottom") || v.contains("pant") || v.contains("jean") {
+                    selectedCategory = .bottom
+                }
+                else if v.contains("dress") || v.contains("robe") {
+                    selectedCategory = .dress
+                }
+                else if v.contains("shoe") || v.contains("chaussure") {
+                    selectedCategory = .shoes
+                }
+                else if v.contains("jacket") || v.contains("veste") {
+                    selectedCategory = .jacket
+                }
+                else if v.contains("accessory") {
+                    selectedCategory = .accessory
+                }
             }
+            // Color
             else if key.contains("color") || key.contains("couleur") {
                 detectedColorName = value.capitalized
+                
                 if let hexColor = extractHex(from: value) {
+                    originalColorHex = hexColor // AJOUT : sauvegarde original
                     detectedColor = Color(hex: hexColor) ?? .pink
                 } else {
                     detectedColor = colorFromName(value) ?? .pink
+                    originalColorHex = value // AJOUT : sauvegarde le nom si pas de hex
                 }
             }
+            // Style
             else if key.contains("style") {
                 let v = value.lowercased()
-                if v.contains("casual") { selectedStyle = .casual }
-                else if v.contains("elegant") || v.contains("chic") { selectedStyle = .elegant }
-                else if v.contains("sport") { selectedStyle = .sport }
-                else if v.contains("vintage") { selectedStyle = .vintage }
-                else if v.contains("modern") || v.contains("moderne") { selectedStyle = .modern }
-                else if v.contains("boho") || v.contains("boheme") { selectedStyle = .boho }
+                originalStyle = value // AJOUT : sauvegarde original
+                
+                if v.contains("casual") {
+                    selectedStyle = .casual
+                }
+                else if v.contains("elegant") || v.contains("chic") {
+                    selectedStyle = .elegant
+                }
+                else if v.contains("sport") {
+                    selectedStyle = .sport
+                }
+                else if v.contains("vintage") {
+                    selectedStyle = .vintage
+                }
+                else if v.contains("modern") || v.contains("moderne") {
+                    selectedStyle = .modern
+                }
+                else if v.contains("boho") || v.contains("boheme") {
+                    selectedStyle = .boho
+                }
             }
+            // Season
             else if key.contains("season") || key.contains("saison") {
                 let v = value.lowercased()
-                if v.contains("summer") || v.contains("été") { selectedSeason = .summer }
-                else if v.contains("winter") || v.contains("hiver") { selectedSeason = .winter }
-                else if v.contains("fall") || v.contains("autumn") || v.contains("automne") { selectedSeason = .fall }
-                else if v.contains("spring") || v.contains("printemps") { selectedSeason = .spring }
-                else { selectedSeason = .all }
+                originalSeason = value // AJOUT : sauvegarde original
+                
+                if v.contains("summer") || v.contains("été") {
+                    selectedSeason = .summer
+                }
+                else if v.contains("winter") || v.contains("hiver") {
+                    selectedSeason = .winter
+                }
+                else if v.contains("fall") || v.contains("autumn") || v.contains("automne") {
+                    selectedSeason = .fall
+                }
+                else if v.contains("spring") || v.contains("printemps") {
+                    selectedSeason = .spring
+                }
+                else {
+                    selectedSeason = .all
+                }
             }
         }
     }
     
+    // MARK: - Helper Functions
     private func extractHex(from text: String) -> String? {
         let pattern = "#?[A-Fa-f0-9]{6}"
         if let regex = try? NSRegularExpression(pattern: pattern),

@@ -5,6 +5,7 @@ class ClothesService {
     
     private let baseURL = APIConstants.baseURL
     
+    // MARK: - Fetch My Clothes
     func fetchMyClothes(completion: @escaping (Result<[Clothe], Error>) -> Void) {
         guard let url = URL(string: "\(baseURL)/cloth/my") else {
             completion(.failure(URLError(.badURL)))
@@ -35,6 +36,8 @@ class ClothesService {
             }
         }.resume()
     }
+    
+    // MARK: - Delete Clothe
     func deleteClothe(id: String, completion: @escaping (Result<Void, Error>) -> Void) {
         guard let token = TokenManager.shared.getToken() else {
             completion(.failure(NSError(domain: "", code: 401, userInfo: nil)))
@@ -58,12 +61,15 @@ class ClothesService {
             }
         }.resume()
     }
+    
+    // MARK: - Add Clothe (avec originalDetection)
     func addClothe(
         imageURL: String,
         category: String,
         color: String,
         style: String,
         season: String,
+        originalDetection: [String: String]? = nil,  // AJOUT
         completion: @escaping (Result<Void, Error>) -> Void
     ) {
         guard let url = URL(string: "\(baseURL)/cloth") else {
@@ -76,12 +82,14 @@ class ClothesService {
             return
         }
         
-        let body = [
+        // MODIFICATION : body avec originalDetection
+        var body: [String: Any] = [
             "imageURL": imageURL,
             "category": category,
             "color": color,
             "style": style,
-            "season": season
+            "season": season,
+            "originalDetection": originalDetection ?? [:]  // AJOUT
         ]
         
         var request = URLRequest(url: url)
@@ -100,17 +108,20 @@ class ClothesService {
                httpResponse.statusCode == 201 {
                 completion(.success(()))
             } else {
-                let msg = String(data: data ?? Data(), encoding: .utf8)  ?? "Erreur inconnue"
+                let msg = String(data: data ?? Data(), encoding: .utf8) ?? "Erreur inconnue"
                 completion(.failure(NSError(domain: "", code: -1, userInfo: [NSLocalizedDescriptionKey: msg])))
             }
         }.resume()
     }
+    
+    // MARK: - Add Clothe Async (version async/await)
     func addClotheAsync(
         imageURL: String,
         category: String,
         color: String,
         style: String,
-        season: String
+        season: String,
+        originalDetection: [String: String]? = nil  // AJOUT
     ) async throws {
         try await withCheckedThrowingContinuation { continuation in
             addClothe(
@@ -118,7 +129,8 @@ class ClothesService {
                 category: category,
                 color: color,
                 style: style,
-                season: season
+                season: season,
+                originalDetection: originalDetection  // AJOUT
             ) { result in
                 switch result {
                 case .success:
