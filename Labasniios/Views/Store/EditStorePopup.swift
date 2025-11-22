@@ -18,7 +18,7 @@ struct EditStorePopup: View {
     var body: some View {
         NavigationView {
             Form {
-                // MARK: - Image + Infos (compact, comme avant)
+                // MARK: - Image + Infos (compact, as before)
                 Section {
                     HStack(spacing: 16) {
                         AsyncImage(url: URL(string: storeItem.clothe?.imageURL ?? "")) { image in
@@ -39,7 +39,7 @@ struct EditStorePopup: View {
                         .shadow(color: .black.opacity(0.1), radius: 4, x: 0, y: 2)
                         
                         VStack(alignment: .leading, spacing: 6) {
-                            Text(storeItem.clothe?.category?.capitalized ?? "Article")
+                            Text(storeItem.clothe?.category?.capitalized ?? "Item")
                                 .font(.headline)
                                 .foregroundColor(.themeTeal)
                             
@@ -52,13 +52,13 @@ struct EditStorePopup: View {
                                     .foregroundColor(.themePrimary)
                             }
                             
-                            // TAILLE – Ajoutée ici, compacte et discrète
+                            // SIZE
                             if let size = storeItem.size, !size.isEmpty {
                                 HStack(spacing: 6) {
                                     Image(systemName: "ruler")
                                         .font(.caption)
                                         .foregroundColor(.themeSecondary)
-                                    Text("Taille: \(size)")
+                                    Text("Size: \(size)")
                                         .font(.caption.bold())
                                         .foregroundColor(.themeSecondary)
                                 }
@@ -69,12 +69,12 @@ struct EditStorePopup: View {
                                 .overlay(Capsule().stroke(Color.themePrimary.opacity(0.3), lineWidth: 1))
                             }
                             
-                            // Statut
+                            // STATUS
                             HStack(spacing: 4) {
                                 Image(systemName: storeItem.isAvailable ? "circle.fill" : "checkmark.circle.fill")
                                     .font(.caption2)
                                     .foregroundColor(storeItem.isAvailable ? .green : .gray)
-                                Text(storeItem.isAvailable ? "Disponible" : "Vendu")
+                                Text(storeItem.isAvailable ? "Available" : "Sold")
                                     .font(.caption.bold())
                                     .foregroundColor(storeItem.isAvailable ? .green : .gray)
                             }
@@ -89,8 +89,8 @@ struct EditStorePopup: View {
                 .listRowBackground(Color.themeCard)
                 .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
                 
-                // Prix actuel
-                Section("Prix actuel") {
+                // CURRENT PRICE
+                Section("Current price") {
                     HStack {
                         Image(systemName: "dollarsign.circle.fill")
                             .foregroundColor(.themeAqua)
@@ -101,13 +101,13 @@ struct EditStorePopup: View {
                 }
                 .listRowBackground(Color.themeSoftPink.opacity(0.15))
                 
-                // Nouveau prix
+                // NEW PRICE
                 if storeItem.isAvailable {
-                    Section("Nouveau prix") {
+                    Section("New price") {
                         HStack {
                             Image(systemName: "pencil.circle.fill")
                                 .foregroundColor(.themeSecondary)
-                            TextField("Ex: 75", text: $newPrice)
+                            TextField("e.g. 75", text: $newPrice)
                                 .keyboardType(.decimalPad)
                                 .font(.body)
                                 .foregroundColor(.themeText)
@@ -116,29 +116,29 @@ struct EditStorePopup: View {
                     .listRowBackground(Color.themeCard)
                 }
                 
-                // Modifier la taille
+                // SIZE UPDATE
                 if storeItem.isAvailable {
-                    Section("Modifier la taille") {
+                    Section("Update size") {
                         if isShoes {
-                            TextField("Pointure (ex: 42)", text: $newSize)
+                            TextField("Shoe size (e.g. 42)", text: $newSize)
                                 .keyboardType(.numberPad)
                         } else {
-                            Picker("Taille", selection: $newSize) {
-                                Text("Choisir").tag("")
+                            Picker("Size", selection: $newSize) {
+                                Text("Select").tag("")
                                 ForEach(["XS", "S", "M", "L", "XL", "XXL", "XXXL"], id: \.self) { size in
                                     Text(size).tag(size)
                                 }
                             }
                             .pickerStyle(.segmented)
                             .onChange(of: newSize) { _, newValue in
-                                if newValue == "" { newSize = storeItem.size ?? "" } // reset si on choisit "Choisir"
+                                if newValue == "" { newSize = storeItem.size ?? "" }
                             }
                         }
                     }
                     .listRowBackground(Color.themeCard)
                 }
                 
-                // Actions
+                // ACTIONS
                 Section {
                     if storeItem.isAvailable, !newPrice.isEmpty, Double(newPrice) != nil {
                         Button {
@@ -146,7 +146,7 @@ struct EditStorePopup: View {
                             viewModel.updateStorePrice(storeItem.id, price: price)
                             dismiss()
                         } label: {
-                            Label("Mettre à jour le prix", systemImage: "checkmark.circle.fill")
+                            Label("Update price", systemImage: "checkmark.circle.fill")
                                 .font(.subheadline.bold())
                                 .foregroundColor(.white)
                                 .frame(maxWidth: .infinity)
@@ -162,7 +162,7 @@ struct EditStorePopup: View {
                             viewModel.updateStoreSize(storeItem.id, newSize: newSize)
                             dismiss()
                         } label: {
-                            Label("Mettre à jour la taille", systemImage: "ruler.fill")
+                            Label("Update size", systemImage: "ruler.fill")
                                 .font(.subheadline.bold())
                                 .foregroundColor(.white)
                                 .frame(maxWidth: .infinity)
@@ -179,7 +179,7 @@ struct EditStorePopup: View {
                             dismiss()
                         }
                     } label: {
-                        Label("Marquer comme vendu", systemImage: "bag.fill")
+                        Label("Mark as sold", systemImage: "bag.fill")
                             .font(.subheadline.bold())
                             .foregroundColor(.white)
                             .frame(maxWidth: .infinity)
@@ -193,7 +193,7 @@ struct EditStorePopup: View {
                     Button {
                         showDeleteAlert = true
                     } label: {
-                        Label("Supprimer l’article", systemImage: "trash.fill")
+                        Label("Delete item", systemImage: "trash.fill")
                             .font(.subheadline.bold())
                             .foregroundColor(.white)
                             .frame(maxWidth: .infinity)
@@ -205,12 +205,12 @@ struct EditStorePopup: View {
                 }
                 .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
             }
-            .navigationTitle("Modifier l’article")
+            .navigationTitle("Edit item")
             .navigationBarTitleDisplayMode(.inline)
             .background(Color.themeBackground.ignoresSafeArea())
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Annuler") { dismiss() }
+                    Button("Cancel") { dismiss() }
                         .foregroundColor(.themePrimary)
                         .font(.subheadline.bold())
                 }
@@ -221,13 +221,13 @@ struct EditStorePopup: View {
                 let cat = (storeItem.clothe?.category ?? "").lowercased()
                 isShoes = cat.contains("shoe") || cat.contains("sneaker") || cat.contains("chaussure")
             }
-            .alert("Supprimer cet article ?", isPresented: $showDeleteAlert) {
-                Button("Annuler", role: .cancel) { }
-                Button("Supprimer", role: .destructive) {
+            .alert("Delete this item?", isPresented: $showDeleteAlert) {
+                Button("Cancel", role: .cancel) { }
+                Button("Delete", role: .destructive) {
                     viewModel.deleteStoreItem(storeItem)
                     dismiss()
                 }
-            } message: { Text("Cette action est irréversible.") }
+            } message: { Text("This action cannot be undone.") }
         }
     }
 }

@@ -1,8 +1,10 @@
+// Utils/NetworkError.swift
 import Foundation
 
 struct ErrorResponse: Decodable {
-    let statusCode: Int
+    let statusCode: Int?
     let message: String
+    let error: String?
 }
 
 enum NetworkError: LocalizedError {
@@ -11,8 +13,8 @@ enum NetworkError: LocalizedError {
     case requestFailed(Int)
     case decodingFailed
     case noData
-    case serverError           
-    case serverMessage(String)
+    case serverError
+    case serverMessage(String)   // ← garde ça, très utile
     case transport(Error)
     case invalidData
 
@@ -25,11 +27,11 @@ enum NetworkError: LocalizedError {
         case .requestFailed(let status):
             return "Échec de la requête (\(status))."
         case .decodingFailed:
-            return "Réponse invalide."
+            return "Erreur de décodage des données."
         case .noData:
             return "Aucune donnée reçue."
         case .serverError:
-            return "Erreur du serveur. Réessayez plus tard."
+            return "Erreur du serveur."
         case .serverMessage(let message):
             return message
         case .transport(let error):

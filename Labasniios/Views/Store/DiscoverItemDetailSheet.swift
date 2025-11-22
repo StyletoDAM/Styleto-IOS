@@ -4,20 +4,67 @@ struct DiscoverItemDetailSheet: View {
     let storeItem: Store
     @Environment(\.dismiss) var dismiss
     
+    @State private var isLoadingChat = false
+    @State private var showChatView = false
+    @State private var chatConversation: ChatConversationResponse?
+    @State private var errorMessage: String?
+    
     private func addToCart() {
-        print("Ajouté au panier : \(storeItem.clothe?.category ?? "") – \(storeItem.price) DT")
+        CartManager.shared.addToCart(storeItem: storeItem)
+        
+        // Haptic feedback + toast
+        let generator = UINotificationFeedbackGenerator()
+        generator.notificationOccurred(.success)
+        
         dismiss()
     }
     
     private func openChatWithSeller() {
-        print("Ouvrir le chat avec le vendeur de cet article")
-        dismiss()
+        guard let sellerId = storeItem.userInfo?.id else {
+            errorMessage = "Seller not found"
+            return
+        }
+        
+        isLoadingChat = true
+        errorMessage = nil
+        
+        Task {
+            do {
+                var conversation = try await ChatService.shared.createOrGetConversation(withUserId: sellerId)
+                
+                // Replace ghost participant with real seller
+                if let sellerInfo = storeItem.userInfo {
+                    let realSeller = ChatParticipant(
+                        id: sellerInfo.id,
+                        fullName: sellerInfo.fullName ?? "Seller",
+                        profilePicture: sellerInfo.profilePicture
+                    )
+                    
+                    conversation.participants = conversation.participants.map { p in
+                        p.id == sellerId ? realSeller : p
+                    }
+                }
+                
+                await MainActor.run {
+                    self.chatConversation = conversation
+                    self.showChatView = true
+                    self.isLoadingChat = false
+                }
+                
+            } catch {
+                await MainActor.run {
+                    self.errorMessage = "Unable to open chat"
+                    self.isLoadingChat = false
+                    print("Error:", error)
+                }
+            }
+        }
     }
     
     var body: some View {
         NavigationView {
             Form {
-                // MARK: - Image + Infos principales
+                // MARK: - Image + Main Infos
                 Section {
                     HStack(spacing: 16) {
                         // Image
@@ -40,7 +87,7 @@ struct DiscoverItemDetailSheet: View {
                         
                         // Infos
                         VStack(alignment: .leading, spacing: 6) {
-                            Text(storeItem.clothe?.category?.capitalized ?? "Article")
+                            Text(storeItem.clothe?.category?.capitalized ?? "Item")
                                 .font(.headline)
                                 .foregroundColor(.themeTeal)
                             
@@ -53,13 +100,13 @@ struct DiscoverItemDetailSheet: View {
                                     .foregroundColor(.themePrimary)
                             }
                             
-                            // TAILLE – IDENTIQUE À EDITSTOREPOPUP
+                            // SIZE
                             if let size = storeItem.size, !size.isEmpty {
                                 HStack(spacing: 6) {
                                     Image(systemName: "ruler")
                                         .font(.caption)
                                         .foregroundColor(.themeSecondary)
-                                    Text("Taille: \(size)")
+                                    Text("Size: \(size)")
                                         .font(.caption.bold())
                                         .foregroundColor(.themeSecondary)
                                 }
@@ -73,14 +120,15 @@ struct DiscoverItemDetailSheet: View {
                                 )
                             }
                             
-                            // Statut
+                            // Status
                             HStack(spacing: 4) {
                                 Image(systemName: storeItem.isAvailable ? "circle.fill" : "checkmark.circle.fill")
                                     .font(.caption2)
                                     .foregroundColor(storeItem.isAvailable ? .green : .gray)
-                                Text(storeItem.isAvailable ? "Disponible" : "Vendu")
+                                Text(storeItem.isAvailable ? "Available" : "Sold")
                                     .font(.caption.bold())
-                                .foregroundColor(storeItem.isAvailable ? .green : .gray)                            }
+                                    .foregroundColor(storeItem.isAvailable ? .green : .gray)
+                            }
                             .padding(.horizontal, 8)
                             .padding(.vertical, 4)
                             .background(
@@ -95,43 +143,84 @@ struct DiscoverItemDetailSheet: View {
                 .listRowBackground(Color.themeCard)
                 .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
                 
-                // MARK: - Boutons d'action
-                Section {
-                    Button {
-                        addToCart()
-                    } label: {
-                        Label("Ajouter au panier", systemImage: "cart.fill")
-                            .font(.subheadline.bold())
-                            .foregroundColor(.white)
-                            .frame(maxWidth: .infinity)
-                            .padding()
-                            .background(
-                                LinearGradient(colors: [.themePrimary, .themeSecondary], startPoint: .leading, endPoint: .trailing)
-                                    .cornerRadius(12)
-                            )
+                // MARK: - Error Message
+                if let errorMessage = errorMessage {
+                    Section {
+                        HStack {
+                            Image(systemName: "exclamationmark.triangle.fill")
+                                .foregroundColor(.orange)
+                            Text(errorMessage)
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
                     }
-                    .disabled(!storeItem.isAvailable)
-                    .listRowBackground(Color.clear)
+                    .listRowBackground(Color.orange.opacity(0.1))
+                }
+                
+                // MARK: - Sold Item Message
+                if !storeItem.isAvailable {
+                    Section {
+                        HStack {
+                            Image(systemName: "info.circle.fill")
+                                .foregroundColor(.gray)
+                            Text("This item has already been sold")
+                                .font(.subheadline)
+                                .foregroundColor(.secondary)
+                        }
+                        .padding(.vertical, 8)
+                    }
+                    .listRowBackground(Color.gray.opacity(0.1))
+                }
+                
+                // MARK: - Action Buttons
+                Section {
+                    // 🔹 Add to Cart button - only if available
+                    if storeItem.isAvailable {
+                        Button {
+                            addToCart()
+                        } label: {
+                            Label("Add to Cart", systemImage: "cart.fill")
+                                .font(.subheadline.bold())
+                                .foregroundColor(.white)
+                                .frame(maxWidth: .infinity)
+                                .padding()
+                                .background(
+                                    LinearGradient(colors: [.themePrimary, .themeSecondary], startPoint: .leading, endPoint: .trailing)
+                                        .cornerRadius(12)
+                                )
+                        }
+                        .listRowBackground(Color.clear)
+                    }
                     
+                    // 🔹 Contact Seller button - always visible
                     Button {
                         openChatWithSeller()
                     } label: {
-                        Label("Contacter le vendeur", systemImage: "message.fill")
-                            .font(.subheadline.bold())
-                            .foregroundColor(.white)
-                            .frame(maxWidth: .infinity)
-                            .padding()
-                            .background(
-                                LinearGradient(colors: [Color.themeTeal, Color.themeAqua], startPoint: .leading, endPoint: .trailing)
-                                    .cornerRadius(12)
-                            )
+                        HStack {
+                            if isLoadingChat {
+                                ProgressView()
+                                    .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                                    .scaleEffect(0.8)
+                            } else {
+                                Label(storeItem.isAvailable ? "Contact Seller" : "Ask a Question",
+                                      systemImage: "message.fill")
+                                    .font(.subheadline.bold())
+                            }
+                        }
+                        .foregroundColor(.white)
+                        .frame(maxWidth: .infinity)
+                        .padding()
+                        .background(
+                            LinearGradient(colors: [Color.themeTeal, Color.themeAqua], startPoint: .leading, endPoint: .trailing)
+                                .cornerRadius(12)
+                        )
                     }
-                    .disabled(!storeItem.isAvailable)
+                    .disabled(isLoadingChat)
                     .listRowBackground(Color.clear)
                 }
                 .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
             }
-            .navigationTitle("Détails de l'article")
+            .navigationTitle("Item Details")
             .navigationBarTitleDisplayMode(.inline)
             .background(
                 Color.themeSoftPink.opacity(UITraitCollection.current.userInterfaceStyle == .dark ? 0.1 : 0.25)
@@ -139,11 +228,17 @@ struct DiscoverItemDetailSheet: View {
             )
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Fermer") {
+                    Button("Close") {
                         dismiss()
                     }
                     .foregroundColor(.themePrimary)
                     .font(.subheadline.bold())
+                }
+            }
+            // ⭐ Chat navigation
+            .fullScreenCover(isPresented: $showChatView) {
+                if let conversation = chatConversation {
+                    ChatDetailView(conversation: conversation)
                 }
             }
         }

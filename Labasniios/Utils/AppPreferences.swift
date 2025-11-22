@@ -49,6 +49,9 @@ final class AppPreferences: ObservableObject {
         UserDefaults.standard.removeObject(forKey: isLoggedInKey)
         UserDefaults.standard.removeObject(forKey: currentUserKey)
         
+        // 🔹 NOUVEAU : Notifier le CartManager du logout
+            NotificationCenter.default.post(name: .didRequestNavigateToLogin, object: nil)
+            
         debugPrint("[AppPreferences] Login state cleared")
     }
     

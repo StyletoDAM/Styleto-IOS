@@ -9,6 +9,7 @@ struct LabasniiosApp: App {
     @UIApplicationDelegateAdaptor(AppDelegate.self) var delegate
     
     init() {
+        _ = ChatSocketManager.shared
         _ = NavigationTheme()
             // Forcer le bon thème dès le lancement de l'app
             DispatchQueue.main.async {

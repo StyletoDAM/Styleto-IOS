@@ -1,124 +1,33 @@
-// CartView.swift
 import SwiftUI
 
 struct CartView: View {
     @Environment(\.dismiss) private var dismiss
-    @ObservedObject private var themeManager = ThemeManager.shared
+    @ObservedObject private var cartManager = CartManager.shared
+    
+    // MARK: - Alert States
+    @State private var itemToDelete: CartItem?
+    @State private var showingDeleteAlert = false
     
     var body: some View {
         NavigationStack {
             ScrollView {
                 VStack(spacing: 20) {
-                    // MARK: - Articles
-                    CartItemRow(
-                        imageName: "logocercle",
-                        title: "Pink knitted sweater",
-                        size: "M",
-                        colorName: "Pink",
-                        price: 45.00
-                    )
-                    
-                    CartItemRow(
-                        imageName: "logocercle",
-                        title: "White sneakers",
-                        size: "38",
-                        colorName: "White",
-                        price: 120.00
-                    )
-                    
-                    CartItemRow(
-                        imageName: "logocercle",
-                        title: "Leather jacket",
-                        size: "L",
-                        colorName: "Black",
-                        price: 180.00
-                    )
-                    
-                    // MARK: - Livraison gratuite
-                    HStack {
-                        Image(systemName: "truck.box.fill")
-                            .foregroundColor(.themeTeal)
-                        Text("Free delivery!")
-                            .font(.system(size: 16, weight: .semibold))
-                            .foregroundColor(.themeTeal)
-                        Spacer()
-                        Image(systemName: "party.popper.fill")
-                            .foregroundColor(.orange)
+                    if cartManager.cartItems.isEmpty {
+                        emptyState
+                    } else {
+                        cartItemsList
+                        freeShippingBanner
+                        orderSummary
                     }
-                    .padding()
-                    .background(Color.themeCard)
-                    .cornerRadius(16)
-                    .padding(.horizontal)
-                    
-                    // MARK: - Résumé de la commande
-                    VStack(alignment: .leading, spacing: 14) {
-                        Text("Order Summary")
-                            .font(.title3.bold())
-                            .foregroundColor(.themePrimary)
-                        
-                        Divider().background(Color.themePrimary.opacity(0.3))
-                        
-                        HStack {
-                            Text("Subtotal")
-                                .foregroundColor(.themeTeal)
-                            Spacer()
-                            Text("525.00 DT")
-                                .foregroundColor(.themeTeal)
-                                .font(.system(size: 17, weight: .medium))
-                        }
-                        
-                        HStack {
-                            Text("Delivery")
-                                .foregroundColor(.themeTeal)
-
-                            Spacer()
-                            Text("Free")
-                                .foregroundColor(.green)
-                                .fontWeight(.semibold)
-                        }
-                        
-                        Divider().background(Color.themePrimary.opacity(0.3))
-                        
-                        HStack {
-                            Text("Total")
-                                .font(.title2.bold())
-                            Spacer()
-                            Text("525.00 DT")
-                                .font(.title2.bold())
-                                .foregroundColor(.themePrimary)
-                        }
-                        
-                        Button {
-                            // Checkout action
-                        } label: {
-                            HStack {
-                                Image(systemName: "creditcard.fill")
-                                Text("Proceed to Checkout")
-                                    .font(.title3.bold())
-                            }
-                            .foregroundColor(.white)
-                            .frame(maxWidth: .infinity)
-                            .padding()
-                            .background(Color.themePrimary)
-                            .cornerRadius(20)
-                            .shadow(color: .themePrimary.opacity(0.4), radius: 10, y: 5)
-                        }
-                        .padding(.top, 12)
-                    }
-                    .padding()
-                    .background(Color.themeCard)
-                    .cornerRadius(20)
-                    .shadow(color: .black.opacity(0.08), radius: 12)
-                    .padding(.horizontal)
                     
                     Spacer(minLength: 100)
                 }
                 .padding(.vertical, 10)
             }
             .background(Color.themeBackground.ignoresSafeArea())
-            .navigationTitle("My Cart")
+            .navigationTitle("My Cart (\(cartManager.itemCount))")
             .navigationBarTitleDisplayMode(.inline)
-            .foregroundColor(.themePrimary)  
+            .foregroundColor(.themePrimary)
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
                     Button {
@@ -130,26 +39,162 @@ struct CartView: View {
                     }
                 }
             }
+            // MARK: - Delete Confirmation Alert
+            .alert("Remove from cart?", isPresented: $showingDeleteAlert) {
+                Button("Cancel", role: .cancel) {
+                    itemToDelete = nil
+                }
+                Button("Remove", role: .destructive) {
+                    if let item = itemToDelete {
+                        withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
+                            cartManager.removeFromCart(item)
+                        }
+                    }
+                    itemToDelete = nil
+                }
+            } message: {
+                Text("This item will be removed from your cart.")
+            }
+        }
+    }
+    
+    // MARK: - Empty State
+    private var emptyState: some View {
+        VStack(spacing: 20) {
+            Image(systemName: "cart")
+                .font(.system(size: 60))
+                .foregroundColor(.gray.opacity(0.5))
+            
+            Text("Your cart is empty")
+                .font(.title2)
+                .foregroundColor(.gray)
+            
+            Text("Add items from the store!")
+                .font(.caption)
+                .foregroundColor(.secondary)
+        }
+        .padding(.top, 100)
+    }
+    
+    // MARK: - Cart Items List (avec alerte)
+    private var cartItemsList: some View {
+        ForEach(cartManager.cartItems, id: \.id) { item in
+            CartItemRow(
+                imageURL: item.imageURL,
+                title: item.title ?? "Item",
+                size: item.size ?? "One Size",
+                price: item.price,
+                onDelete: {
+                    itemToDelete = item
+                    showingDeleteAlert = true
+                }
+            )
+        }
+    }
+    
+    // MARK: - Free Shipping Banner
+    private var freeShippingBanner: some View {
+        HStack {
+            Image(systemName: "truck.box.fill")
+                .foregroundColor(.themeTeal)
+            Text("Free shipping!")
+                .font(.system(size: 16, weight: .semibold))
+                .foregroundColor(.themeTeal)
+            Spacer()
+            Image(systemName: "party.popper.fill")
+                .foregroundColor(.orange)
+        }
+        .padding()
+        .background(Color.themeCard)
+        .cornerRadius(16)
+        .padding(.horizontal)
+    }
+    
+    // MARK: - Order Summary
+    private var orderSummary: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            Text("Order Summary")
+                .font(.title3.bold())
+                .foregroundColor(.themePrimary)
+            
+            Divider().background(Color.themePrimary.opacity(0.3))
+            
+            Text("\(cartManager.totalPrice, specifier: "%.2f") DT")
+            summaryRow(title: "Shipping", value: "Free", color: .green, bold: true)
+            
+            Divider().background(Color.themePrimary.opacity(0.3))
+            
+            HStack {
+                Text("Total")
+                    .font(.title2.bold())
+                Spacer()
+                Text("\(cartManager.totalPrice, specifier: "%.2f") DT")
+                    .font(.title2.bold())
+                    .foregroundColor(.themePrimary)
+            }
+            
+            Button {
+                // Checkout action later
+                print("Proceed to checkout")
+            } label: {
+                HStack {
+                    Image(systemName: "creditcard.fill")
+                    Text("Proceed to Checkout")
+                        .font(.title3.bold())
+                }
+                .foregroundColor(.white)
+                .frame(maxWidth: .infinity)
+                .padding()
+                .background(Color.themePrimary)
+                .cornerRadius(20)
+                .shadow(color: .themePrimary.opacity(0.4), radius: 10, y: 5)
+            }
+            .padding(.top, 12)
+        }
+        .padding()
+        .background(Color.themeCard)
+        .cornerRadius(20)
+        .shadow(color: .black.opacity(0.08), radius: 12)
+        .padding(.horizontal)
+    }
+    
+    private func summaryRow(title: String, value: String, color: Color = Color("themeTeal"), bold: Bool = false) -> some View {        HStack {
+            Text(title)
+                .foregroundColor(.themeTeal)
+            Spacer()
+            Text(value)
+                .foregroundColor(color)
+                .font(.system(size: 17, weight: bold ? .semibold : .medium))
         }
     }
 }
 
-// MARK: - Article du panier (sans + / -)
+// MARK: - Cart Item Row
 struct CartItemRow: View {
-    let imageName: String
+    let imageURL: String?
     let title: String
     let size: String
-    let colorName: String
     let price: Double
+    let onDelete: () -> Void
     
     var body: some View {
         HStack(spacing: 16) {
-            Image(imageName)
-                .resizable()
-                .scaledToFill()
-                .frame(width: 90, height: 90)
-                .clipped()
-                .cornerRadius(16)
+            AsyncImage(url: URL(string: imageURL ?? "")) { image in
+                image
+                    .resizable()
+                    .scaledToFill()
+            } placeholder: {
+                Rectangle()
+                    .fill(Color.themeSoftPink.opacity(0.3))
+                    .overlay(
+                        Image(systemName: "tshirt")
+                            .font(.title2)
+                            .foregroundColor(.themeTeal.opacity(0.6))
+                    )
+            }
+            .frame(width: 90, height: 90)
+            .clipped()
+            .cornerRadius(16)
             
             VStack(alignment: .leading, spacing: 8) {
                 Text(title)
@@ -164,13 +209,6 @@ struct CartItemRow: View {
                         .padding(.vertical, 6)
                         .background(Color.themeSoftPink.opacity(0.4))
                         .cornerRadius(10)
-                    
-                    Text(colorName)
-                        .font(.caption)
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 6)
-                        .background(Color.themeAqua.opacity(0.4))
-                        .cornerRadius(10)
                 }
                 
                 Text("\(price, specifier: "%.2f") DT")
@@ -181,7 +219,7 @@ struct CartItemRow: View {
             Spacer()
             
             Button {
-                // Delete action (future)
+                onDelete()
             } label: {
                 Image(systemName: "trash")
                     .foregroundColor(.red.opacity(0.8))

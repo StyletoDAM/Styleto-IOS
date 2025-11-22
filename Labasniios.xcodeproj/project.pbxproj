@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		00431B212ED08FD0005C5B4C /* SocketIO in Frameworks */ = {isa = PBXBuildFile; productRef = 00431B202ED08FD0005C5B4C /* SocketIO */; };
 		00560EA62EC08F4D00D2AA0A /* GoogleSignIn in Frameworks */ = {isa = PBXBuildFile; productRef = 00560EA52EC08F4D00D2AA0A /* GoogleSignIn */; };
 		00560EA82EC08F4D00D2AA0A /* GoogleSignInSwift in Frameworks */ = {isa = PBXBuildFile; productRef = 00560EA72EC08F4D00D2AA0A /* GoogleSignInSwift */; };
 /* End PBXBuildFile section */
@@ -72,6 +73,7 @@
 			files = (
 				00560EA62EC08F4D00D2AA0A /* GoogleSignIn in Frameworks */,
 				00560EA82EC08F4D00D2AA0A /* GoogleSignInSwift in Frameworks */,
+				00431B212ED08FD0005C5B4C /* SocketIO in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -134,6 +136,7 @@
 			packageProductDependencies = (
 				00560EA52EC08F4D00D2AA0A /* GoogleSignIn */,
 				00560EA72EC08F4D00D2AA0A /* GoogleSignInSwift */,
+				00431B202ED08FD0005C5B4C /* SocketIO */,
 			);
 			productName = Labasniios;
 			productReference = FAE11C7B2EB7D2C300A1E406 /* Labasniios.app */;
@@ -219,6 +222,7 @@
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
 				00560EA42EC08F4D00D2AA0A /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */,
+				00431A762ED08D23005C5B4C /* XCRemoteSwiftPackageReference "socket" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = FAE11C7C2EB7D2C300A1E406 /* Products */;
@@ -583,6 +587,14 @@
 /* End XCConfigurationList section */
 
 /* Begin XCRemoteSwiftPackageReference section */
+		00431A762ED08D23005C5B4C /* XCRemoteSwiftPackageReference "socket" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/socketio/socket.io-client-swift";
+			requirement = {
+				branch = master;
+				kind = branch;
+			};
+		};
 		00560EA42EC08F4D00D2AA0A /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/google/GoogleSignIn-iOS";
@@ -594,6 +606,11 @@
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
+		00431B202ED08FD0005C5B4C /* SocketIO */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 00431A762ED08D23005C5B4C /* XCRemoteSwiftPackageReference "socket" */;
+			productName = SocketIO;
+		};
 		00560EA52EC08F4D00D2AA0A /* GoogleSignIn */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = 00560EA42EC08F4D00D2AA0A /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */;
