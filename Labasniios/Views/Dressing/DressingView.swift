@@ -16,19 +16,21 @@ struct DressingView: View {
     @State private var showAIErrorAlert = false
     @State private var aiErrorMessage = ""
     @State private var showPhotoGuide = false
+    @State private var selectedClothe: Clothe?
+    
     private let columns: [GridItem] = [
         GridItem(.flexible(), spacing: 16),
         GridItem(.flexible(), spacing: 16)
     ]
     
     private let categories = ["All", "Top", "Bottom", "Dress", "Shoes", "Accessory", "Jacket"]
+    
     var body: some View {
         ZStack {
             // Scrollable Content
             ScrollView {
                 VStack(alignment: .leading, spacing: 18) {
                     header
-                    //userInfoDebug // POUR TESTER
                     searchAndFilter
                     categoryChips
                     clothesGrid
@@ -76,12 +78,11 @@ struct DressingView: View {
                 }
             }
         }
-        // Remplace ton ancien fullScreenCover par ÇA :
+        // Loading Screen
         .fullScreenCover(isPresented: $isUploading) {
             AIAnalysisLoadingView(
                 image: capturedImage,
                 onAnalysisComplete: { resultText in
-                    // Quand l'analyse est finie → on ouvre le vrai popup
                     detectionText = resultText
                     detectedImage = capturedImage
                     showDetectionResult = true
@@ -89,15 +90,17 @@ struct DressingView: View {
                 }
             )
         }
+        // Detection Result
         .fullScreenCover(isPresented: $showDetectionResult) {
             DetectionResultView(
                 image: detectedImage,
                 resultText: detectionText,
                 isShowing: $showDetectionResult,
                 isUploading: $isUploading,
-                imageURL: detectedImageURL          // ← METS imageURL EN DERNIER
+                imageURL: detectedImageURL
             )
         }
+        // Error Alert
         .alert("Detection Error", isPresented: $showAIErrorAlert) {
             Button("OK") {
                 aiErrorMessage = ""
@@ -105,13 +108,12 @@ struct DressingView: View {
         } message: {
             Text(aiErrorMessage)
         }
-        
+        // Photo Guide Overlay
         .overlay {
             if showPhotoGuide {
                 PhotoGuidePopupView(
                     isShowing: $showPhotoGuide,
                     onContinue: {
-                        // Quand user clique "Got it!", ouvre la caméra
                         showCamera = true
                     }
                 )
@@ -119,8 +121,13 @@ struct DressingView: View {
                 .animation(.spring(response: 0.4), value: showPhotoGuide)
             }
         }
-        
+        // Clothing Detail Sheet
+        .sheet(item: $selectedClothe) { clothe in
+            ClothingDetailSheet(clothe: clothe, viewModel: viewModel)
+        }
     }
+    
+    // MARK: - Upload and Detect
     private func uploadAndDetect(image: UIImage) {
         guard let imageData = image.jpegData(compressionQuality: 0.85) else { return }
         
@@ -171,7 +178,6 @@ struct DressingView: View {
                     return
                 }
                 
-                // SEULEMENT ici on ouvre le vrai popup
                 self.detectionText = detectionResult
                 self.detectedImageURL = imageUrl
                 self.detectedImage = image
@@ -183,9 +189,9 @@ struct DressingView: View {
     private func showErrorAlert(_ message: String) {
         aiErrorMessage = message
         showAIErrorAlert = true
-        // On empêche le popup de s'ouvrir
         showDetectionResult = false
     }
+    
     // MARK: - Header
     private var header: some View {
         HStack {
@@ -195,58 +201,6 @@ struct DressingView: View {
             Spacer()
         }
         .padding(.top, 8)
-    }
-    
-    // MARK: - User Info Debug (POUR TESTER)
-    private var userInfoDebug: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            if let user = appPreferences.currentUser {
-                HStack {
-                    Text("👤 User:")
-                        .font(.system(size: 14, weight: .medium))
-                    Text(user.fullName)
-                        .font(.system(size: 14))
-                }
-                
-                HStack {
-                    Text("⚧ Gender:")
-                        .font(.system(size: 14, weight: .medium))
-                    Text(user.gender == .male ? "Male 👨 (Couleurs inversées)" : "Female 👩 (Couleurs normales)")
-                        .font(.system(size: 14))
-                        .foregroundColor(user.gender == .male ? .themeAqua : .themePrimary)
-                }
-                
-                HStack {
-                    Text("🎨 Theme:")
-                        .font(.system(size: 14, weight: .medium))
-                    Circle()
-                        .fill(Color.themePrimary)
-                        .frame(width: 20, height: 20)
-                    Circle()
-                        .fill(Color.themeSecondary)
-                        .frame(width: 20, height: 20)
-                    Circle()
-                        .fill(Color.themeSoftPink)
-                        .frame(width: 20, height: 20)
-                    Circle()
-                        .fill(Color.themeAqua)
-                        .frame(width: 20, height: 20)
-                    Circle()
-                        .fill(Color.themeTeal)
-                        .frame(width: 20, height: 20)
-                }
-            } else {
-                Text("Aucun utilisateur connecté")
-                    .font(.system(size: 14))
-                    .foregroundColor(.gray)
-            }
-        }
-        .padding(12)
-        .background(
-            RoundedRectangle(cornerRadius: 12)
-                .fill(Color.themeCard)
-                .shadow(color: .black.opacity(0.05), radius: 4)
-        )
     }
     
     // MARK: - Search & Filter
@@ -317,7 +271,11 @@ struct DressingView: View {
             } else {
                 LazyVGrid(columns: columns, spacing: 16) {
                     ForEach(viewModel.filteredClothes) { clothe in
-                        ClothingCard(clothe: clothe, viewModel: viewModel)
+                        ClothingCard(
+                            clothe: clothe,
+                            viewModel: viewModel,
+                            selectedClothe: $selectedClothe
+                        )
                     }
                 }
             }
@@ -328,7 +286,7 @@ struct DressingView: View {
     // MARK: - Floating Add Button
     private var floatingAddButton: some View {
         Button(action: {
-            showPhotoGuide = true  // ✨ CHANGÉ : showCamera → showPhotoGuide
+            showPhotoGuide = true
         }) {
             Image(systemName: "plus")
                 .font(.system(size: 24, weight: .bold))
@@ -365,6 +323,7 @@ private struct CategoryChip: View {
 private struct ClothingCard: View {
     let clothe: Clothe
     @ObservedObject var viewModel: DressingViewModel
+    @Binding var selectedClothe: Clothe?
     
     @State private var showDeleteAlert = false
     @State private var isDeleting = false
@@ -433,6 +392,9 @@ private struct ClothingCard: View {
         )
         .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
         .shadow(color: .black.opacity(0.08), radius: 8)
+        .onTapGesture {
+            selectedClothe = clothe
+        }
         .alert("Delete this item?", isPresented: $showDeleteAlert) {
             Button("Cancel", role: .cancel) { }
             Button("Delete", role: .destructive) {
@@ -447,12 +409,10 @@ private struct ClothingCard: View {
     }
     
     private func deleteItem() {
-        // 1. Animation immédiate
         withAnimation(.easeOut(duration: 0.25)) {
             isDeleting = true
         }
         
-        // 2. Suppression
         viewModel.deleteClothe(clothe) { success in
             DispatchQueue.main.async {
                 if !success {
@@ -504,6 +464,8 @@ struct ImagePicker: UIViewControllerRepresentable {
         }
     }
 }
+
+// MARK: - Notification Extension
 extension Notification.Name {
     static let refreshDressing = Notification.Name("refreshDressing")
 }
