@@ -5,7 +5,13 @@ struct DiscoverItemDetailSheet: View {
     @Environment(\.dismiss) var dismiss
     
     private func addToCart() {
-        print("Ajouté au panier : \(storeItem.clothe?.category ?? "") – \(storeItem.price) DT")
+        CartManager.shared.addToCart(storeItem: storeItem)
+        
+        // Feedback haptique + toast
+        let generator = UINotificationFeedbackGenerator()
+        generator.notificationOccurred(.success)
+        
+        // Tu peux afficher un petit toast si tu veux
         dismiss()
     }
     
@@ -13,6 +19,7 @@ struct DiscoverItemDetailSheet: View {
         print("Ouvrir le chat avec le vendeur de cet article")
         dismiss()
     }
+    
     
     var body: some View {
         NavigationView {

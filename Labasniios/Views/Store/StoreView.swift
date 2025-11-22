@@ -127,13 +127,29 @@ struct StoreView: View {
                 Button {
                     showCart = true
                 } label: {
-                    Image(systemName: "cart.fill")
-                        .font(.system(size: 22, weight: .semibold))
-                        .foregroundColor(.white)
-                        .frame(width: 48, height: 48)
-                        .background(Color.themePrimary)
-                        .clipShape(Circle())
-                        .shadow(color: .black.opacity(0.2), radius: 8)
+                    ZStack(alignment: .topTrailing) {  // ← la clé magique
+                        // Le bouton exactement comme avant
+                        Image(systemName: "cart.fill")
+                            .font(.system(size: 22, weight: .semibold))
+                            .foregroundColor(.white)
+                            .frame(width: 48, height: 48)
+                            .background(Color.themePrimary)
+                            .clipShape(Circle())
+                            .shadow(color: .black.opacity(0.2), radius: 8)
+                        
+                        // Le badge rouge – apparaît uniquement si > 0
+                        if CartManager.shared.itemCount > 0 {
+                            Text("\(CartManager.shared.itemCount)")
+                                .font(.system(size: 11, weight: .bold))
+                                .foregroundColor(.white)
+                                .frame(minWidth: 18, minHeight: 18)
+                                .background(Color.red)
+                                .clipShape(Circle())
+                                .padding(4)
+                                .transition(.scale.combined(with: .opacity))
+                                .animation(.spring(response: 0.3), value: CartManager.shared.itemCount)
+                        }
+                    }
                 }
                 .fullScreenCover(isPresented: $showCart) {
                     CartView()
