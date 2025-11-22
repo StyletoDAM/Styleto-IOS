@@ -277,8 +277,4 @@ extension Date {
     }
 }
 
-extension ChatMessage: Equatable {
-    static func == (lhs: ChatMessage, rhs: ChatMessage) -> Bool {
-        lhs.id == rhs.id
-    }
-}
+

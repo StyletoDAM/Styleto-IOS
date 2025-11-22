@@ -27,8 +27,13 @@ class ChatDetailViewModel: ObservableObject {
         // S'abonner aux nouveaux messages en temps réel
         setupRealtimeUpdates()
         
-        // Connecter le socket
+        // Connecter le socket et rejoindre la conversation
         ChatSocketManager.shared.connect()
+        
+        // ⭐ IMPORTANT : Rejoindre la room de la conversation
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+            ChatSocketManager.shared.joinConversation(self.conversation.id)
+        }
     }
     
     private func setupRealtimeUpdates() {
@@ -41,11 +46,19 @@ class ChatDetailViewModel: ObservableObject {
                 print("📨 Nouveau message reçu:", newMessage.content)
                 print("📨 Pour conversation:", newMessage.conversationId)
                 print("📨 Ma conversation:", self.conversation.id)
+                print("📨 Sender ID:", newMessage.senderId.id)
+                print("📨 Mon ID:", self.currentUserId ?? "nil")
                 
                 // Vérifier que le message appartient à cette conversation
                 guard newMessage.conversationId == self.conversation.id else {
                     print("⚠️ Message pour une autre conversation, ignoré")
                     return
+                }
+                
+                // ⭐ REMPLACER le message optimiste s'il existe
+                if let tempIndex = self.messages.firstIndex(where: { $0.id.hasPrefix("temp-") }) {
+                    print("🔄 Remplacement du message optimiste par le vrai")
+                    self.messages.remove(at: tempIndex)
                 }
                 
                 // Éviter les doublons
@@ -70,6 +83,11 @@ class ChatDetailViewModel: ObservableObject {
             .sink { [weak self] connected in
                 self?.isConnected = connected
                 print("🔌 Statut connexion:", connected ? "Connecté" : "Déconnecté")
+                
+                // ⭐ Rejoindre la conversation dès que connecté
+                if connected, let conversationId = self?.conversation.id {
+                    ChatSocketManager.shared.joinConversation(conversationId)
+                }
             }
             .store(in: &cancellables)
     }
@@ -83,32 +101,49 @@ class ChatDetailViewModel: ObservableObject {
         messageText = ""
         isSending = true
         
-        // Message optimiste (affichage immédiat)
-        let tempId = "temp-\(UUID().uuidString)"
-        let optimisticMessage = ChatMessage(
-            id: tempId,
-            conversationId: conversation.id,
-            senderId: ChatParticipant(
-                id: currentUserId ?? "me",
-                fullName: "Moi",
-                profilePicture: nil
-            ),
-            content: text,
-            createdAt: Date()
-        )
+        // ⭐ PAS de message optimiste - on attend le serveur
+        // Ça évite les doublons et garantit la cohérence
         
-        withAnimation {
-            messages.append(optimisticMessage)
-        }
-        
-        // ⭐ UNIQUEMENT envoi socket
+        // Envoi via socket
         if ChatSocketManager.shared.isConnected {
             print("✅ Envoi via socket...")
             ChatSocketManager.shared.sendMessage(text, in: conversation.id)
         } else {
-            print("❌ Socket non connecté !")
+            print("❌ Socket non connecté, envoi via REST API...")
+            // Fallback REST API si socket déconnecté
+            await sendViaAPI(text)
         }
         
         isSending = false
+    }
+    
+    // Fallback si socket déconnecté
+    private func sendViaAPI(_ text: String) async {
+        guard let url = URL(string: "\(APIConstants.baseURL)/chat/messages"),
+              let token = TokenManager.shared.getToken() else {
+            print("❌ URL ou token invalide")
+            return
+        }
+        
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        
+        let body: [String: Any] = [
+            "conversationId": conversation.id,
+            "content": text
+        ]
+        
+        request.httpBody = try? JSONSerialization.data(withJSONObject: body)
+        
+        do {
+            let (_, response) = try await URLSession.shared.data(for: request)
+            if let httpResponse = response as? HTTPURLResponse {
+                print("📡 REST API response:", httpResponse.statusCode)
+            }
+        } catch {
+            print("❌ Erreur REST API:", error)
+        }
     }
 }

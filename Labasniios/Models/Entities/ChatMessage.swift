@@ -8,8 +8,47 @@ struct ChatParticipant: Codable, Identifiable {
     
     enum CodingKeys: String, CodingKey {
         case id = "_id"
+        case altId = "id"
         case fullName
         case profilePicture
+    }
+    
+    // ⭐ Décodage flexible : accepte "_id" OU "id"
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        
+        // Essayer "_id" en premier, sinon "id"
+        if let objectId = try? container.decode(String.self, forKey: .id) {
+            self.id = objectId
+        } else if let simpleId = try? container.decode(String.self, forKey: .altId) {
+            self.id = simpleId
+        } else {
+            throw DecodingError.keyNotFound(
+                CodingKeys.id,
+                DecodingError.Context(
+                    codingPath: decoder.codingPath,
+                    debugDescription: "Ni _id ni id trouvé"
+                )
+            )
+        }
+        
+        self.fullName = try container.decode(String.self, forKey: .fullName)
+        self.profilePicture = try? container.decode(String.self, forKey: .profilePicture)
+    }
+    
+    // ⭐ Encodage (nécessaire pour Encodable)
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(id, forKey: .id)
+        try container.encode(fullName, forKey: .fullName)
+        try container.encodeIfPresent(profilePicture, forKey: .profilePicture)
+    }
+    
+    // Constructeur manuel
+    init(id: String, fullName: String, profilePicture: String?) {
+        self.id = id
+        self.fullName = fullName
+        self.profilePicture = profilePicture
     }
 }
 
@@ -28,7 +67,7 @@ struct ChatMessage: Codable, Identifiable {
         case createdAt
     }
     
-    // Constructeur manuel pour envoyer un message (sans decoder)
+    // Constructeur manuel
     init(id: String = UUID().uuidString,
          conversationId: String,
          senderId: ChatParticipant,
@@ -41,7 +80,7 @@ struct ChatMessage: Codable, Identifiable {
         self.createdAt = createdAt
     }
     
-    // Décodage flexible pour les dates
+    // Décodage flexible
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         self.id = try container.decode(String.self, forKey: .id)
@@ -60,5 +99,13 @@ struct ChatMessage: Codable, Identifiable {
         } else {
             self.createdAt = Date()
         }
+    }
+}
+
+// ⭐ IMPORTANT : Supprimez l'extension Equatable si elle existe déjà dans votre fichier
+// Cette extension est nécessaire pour utiliser .contains() et ==
+extension ChatMessage: Equatable {
+    static func == (lhs: ChatMessage, rhs: ChatMessage) -> Bool {
+        lhs.id == rhs.id
     }
 }
