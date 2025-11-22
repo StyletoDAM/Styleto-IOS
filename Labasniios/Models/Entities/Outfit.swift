@@ -30,10 +30,6 @@ struct Outfit: Identifiable, Codable {
 // MARK: - Local Favorites (CoreData)
 extension Outfit {
     var isLocallyFavorite: Bool {
-        let context = CoreDataManager.shared.container.viewContext
-        let request: NSFetchRequest<FavoriteOutfit> = FavoriteOutfit.fetchRequest()
-        request.predicate = NSPredicate(format: "outfitId == %@", id)
-        request.fetchLimit = 1
-        return (try? context.count(for: request)) ?? 0 > 0
+        return FavoritesManager.shared.isFavorite(outfitId: id)
     }
 }

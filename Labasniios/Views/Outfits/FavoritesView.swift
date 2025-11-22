@@ -1,16 +1,10 @@
 import SwiftUI
 
 struct FavoritesView: View {
-    @FetchRequest(
-        entity: FavoriteOutfit.entity(),
-        sortDescriptors: [NSSortDescriptor(keyPath: \FavoriteOutfit.createdAt, ascending: false)]
-    ) var favoriteOutfits: FetchedResults<FavoriteOutfit>
-    
     @Environment(\.managedObjectContext) private var context
-    
     @StateObject private var viewModel = OutfitsViewModel()
+    @ObservedObject private var favoritesManager = FavoritesManager.shared
     
-    // État pour forcer le rafraîchissement
     @State private var outfitsLoaded = false
     
     var body: some View {
@@ -23,10 +17,10 @@ struct FavoritesView: View {
                         ProgressView("Loading favorites...")
                             .frame(maxWidth: .infinity)
                             .padding()
-                    } else if favoriteOutfits.isEmpty {
+                    } else if favoritesManager.favoriteOutfits.isEmpty {
                         emptyState
                     } else if filteredFavorites.isEmpty {
-                        Text("No outfit found (check the IDs)")
+                        Text("No outfit found")
                             .foregroundColor(.red)
                     } else {
                         favoritesList
@@ -46,18 +40,16 @@ struct FavoritesView: View {
         }
     }
     
-    // MARK: - Chargement
     private func loadOutfitsAndFavorites() {
+        favoritesManager.fetchFavorites()
         viewModel.loadOutfits()
-        // Attendre que les outfits soient chargés
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
             outfitsLoaded = true
         }
     }
     
-    // MARK: - Outfits filtrés
     private var filteredFavorites: [Outfit] {
-        favoriteOutfits.compactMap { favorite in
+        favoritesManager.favoriteOutfits.compactMap { favorite in
             viewModel.outfits.first { $0.id == favorite.outfitId }
         }
     }
@@ -98,4 +90,3 @@ struct FavoritesView: View {
         }
     }
 }
-

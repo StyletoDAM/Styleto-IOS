@@ -320,6 +320,7 @@ private struct CategoryChip: View {
 }
 
 // MARK: - Clothing Card
+// MARK: - Clothing Card (avec bordure colorée fine et élégante)
 private struct ClothingCard: View {
     let clothe: Clothe
     @ObservedObject var viewModel: DressingViewModel
@@ -328,8 +329,29 @@ private struct ClothingCard: View {
     @State private var showDeleteAlert = false
     @State private var isDeleting = false
     
-    private var fillColor: Color {
-        CategoryColors.color(for: clothe.category ?? "")
+    // Couleur de bordure selon la catégorie (mappée proprement)
+    private var borderColor: Color {
+        let category = (clothe.category ?? "").lowercased()
+        
+        switch category {
+        case "top", "tshirt", "haut", "chemise", "shirt":
+            return Color(hex: "#A7E0E0") // Teal clair (Tops)
+        case "bottom", "pantalon", "jean", "bas", "pants":
+            return Color(hex: "#4D5F8F") // Bleu marine (Pants)
+        case "dress", "robe":
+            return Color(hex: "#DB6A8F") // Rose vif (Dress)
+        case "shoes", "chaussure", "basket", "shoe":
+            return Color(hex: "#4A4A4A") // Gris foncé (Shoes)
+        case "accessory", "accessoire", "sac", "bijou", "jacket", "manteau":
+            return Color(hex: "#E8AABE") // Rose doux (Accessories & Jacket)
+        default:
+            return Color(hex: "#D3D3D3") // Gris clair par défaut
+        }
+    }
+    
+    // Petite pastille de couleur en haut à gauche (optionnel mais très joli)
+    private var categoryDotColor: Color {
+        CategoryColors.color(for: clothe.category ?? "", in: .light)
     }
     
     var body: some View {
@@ -341,16 +363,24 @@ private struct ClothingCard: View {
                     .scaledToFill()
             } placeholder: {
                 Rectangle()
-                    .fill(fillColor.opacity(0.3))
+                    .fill(categoryDotColor.opacity(0.3))
                     .overlay(ProgressView().tint(.white))
             }
             .frame(height: 140)
             .clipped()
+            // Petit indicateur de catégorie en coin
+//            .overlay(alignment: .topLeading) {
+//                Circle()
+//                    .fill(categoryDotColor)
+//                    .frame(width: 12, height: 12)
+//                    .offset(x: 10, y: 10)
+//                    .shadow(radius: 2)
+//            }
             
-            // Infos + Trash
+            // Infos + Poubelle
             HStack {
                 VStack(alignment: .leading, spacing: 6) {
-                    Text(clothe.category?.capitalized ?? "Unknown")
+                    Text(clothe.category?.capitalized ?? "Inconnu")
                         .font(.system(size: 18, weight: .semibold))
                         .foregroundColor(.themeTeal)
                         .lineLimit(1)
@@ -363,7 +393,7 @@ private struct ClothingCard: View {
                 }
                 Spacer()
                 
-                // Trash Button
+                // Bouton supprimer
                 Button {
                     showDeleteAlert = true
                 } label: {
@@ -386,22 +416,27 @@ private struct ClothingCard: View {
             .padding(14)
             .background(Color.themeCard)
         }
+        // === LA MAGIE : Bordure colorée fine et élégante ===
+        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                .stroke(borderColor, lineWidth: 2.5) // Bordure fine mais visible
+        )
         .background(
-            RoundedRectangle(cornerRadius: 20)
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
                 .fill(Color.themeCard)
         )
-        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
-        .shadow(color: .black.opacity(0.08), radius: 8)
+        .shadow(color: .black.opacity(0.08), radius: 8, x: 0, y: 4)
         .onTapGesture {
             selectedClothe = clothe
         }
-        .alert("Delete this item?", isPresented: $showDeleteAlert) {
-            Button("Cancel", role: .cancel) { }
-            Button("Delete", role: .destructive) {
+        .alert("Supprimer cet article ?", isPresented: $showDeleteAlert) {
+            Button("Annuler", role: .cancel) { }
+            Button("Supprimer", role: .destructive) {
                 deleteItem()
             }
         } message: {
-            Text("This action cannot be undone.")
+            Text("Cette action est irréversible.")
         }
         .opacity(isDeleting ? 0.0 : 1.0)
         .scaleEffect(isDeleting ? 0.95 : 1.0)

@@ -15,35 +15,43 @@ class CartManager: ObservableObject {
     private var cachedUserId: String?
     
     private init() {
-        // Initialiser le cache utilisateur
-        Task { @MainActor in
-            self.cachedUserId = AppPreferences.shared.currentUser?.id
-        }
+        // 🔹 CORRECTION : Charger l'userId de manière synchrone au démarrage
+        loadUserIdAndFetchCart()
         
-        fetchCartItems()
-        
-        //  Observer les changements d'utilisateur
+        // Observer les changements d'utilisateur
         NotificationCenter.default.publisher(for: .userDidUpdate)
             .sink { [weak self] notification in
                 Task { @MainActor in
-                    // Mettre à jour le cache
                     self?.cachedUserId = AppPreferences.shared.currentUser?.id
-                    // Recharger le panier
                     self?.fetchCartItems()
                     print("🔄 [CartManager] Utilisateur mis à jour, panier rechargé")
                 }
             }
             .store(in: &cancellables)
         
-        //  Observer le logout
+        // Observer le logout
         NotificationCenter.default.publisher(for: .didRequestNavigateToLogin)
             .sink { [weak self] _ in
-                Task { @MainActor in
-                    self?.cachedUserId = nil
-                    self?.handleLogout()
-                }
+                self?.cachedUserId = nil
+                self?.handleLogout()
             }
             .store(in: &cancellables)
+    }
+    
+    /// 🔹 NOUVEAU : Charge l'userId et le panier de manière synchrone
+    private func loadUserIdAndFetchCart() {
+        Task { @MainActor in
+            self.cachedUserId = AppPreferences.shared.currentUser?.id
+            
+            if let userId = self.cachedUserId {
+                print("✅ [CartManager] Utilisateur chargé: \(userId)")
+            } else {
+                print("⚠️ [CartManager] Aucun utilisateur connecté au démarrage")
+            }
+            
+            // Charger le panier après avoir récupéré l'userId
+            self.fetchCartItems()
+        }
     }
     
     /// Récupère les articles du panier pour l'utilisateur connecté
@@ -76,20 +84,17 @@ class CartManager: ObservableObject {
     
     /// Ajoute un article au panier de l'utilisateur connecté
     func addToCart(storeItem: Store) {
-        // Vérifier l'utilisateur connecté de manière thread-safe
         guard let userId = cachedUserId else {
             print("⚠️ [CartManager] Impossible d'ajouter : utilisateur non connecté")
-            print("   cachedUserId = \(String(describing: cachedUserId))")
             
             // Tentative de récupération depuis AppPreferences
             Task { @MainActor in
                 if let currentUser = AppPreferences.shared.currentUser {
-                    print("   ⚠️ Utilisateur trouvé dans AppPreferences : \(currentUser.id)")
-                    print("   → Mise à jour du cache et nouvel essai")
+                    print("   ℹ️ Utilisateur trouvé dans AppPreferences : \(currentUser.id)")
                     self.cachedUserId = currentUser.id
                     self.addToCart(storeItem: storeItem)
                 } else {
-                    print("   ❌ Aucun utilisateur dans AppPreferences non plus")
+                    print("   ❌ Aucun utilisateur dans AppPreferences")
                 }
             }
             return

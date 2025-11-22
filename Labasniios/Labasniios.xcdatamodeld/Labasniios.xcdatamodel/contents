@@ -13,5 +13,6 @@
     <entity name="FavoriteOutfit" representedClassName=".FavoriteOutfit" syncable="YES" codeGenerationType="class">
         <attribute name="createdAt" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
         <attribute name="outfitId" optional="YES" attributeType="String"/>
+        <attribute name="userId" optional="YES" attributeType="String"/>
     </entity>
 </model>

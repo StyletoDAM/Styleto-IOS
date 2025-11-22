@@ -99,10 +99,11 @@ final class AppPreferences: ObservableObject {
     }
 }
 
+// MARK: - Notification Names
 extension Notification.Name {
     static let didRequestNavigateToLogin = Notification.Name("didRequestNavigateToLogin")
-}
-extension Notification.Name {
     static let userDidUpdate = Notification.Name("userDidUpdate")
+    static let favoritesDidChange = Notification.Name("favoritesDidChange") //  AJOUTER CETTE LIGNE
 }
+
 

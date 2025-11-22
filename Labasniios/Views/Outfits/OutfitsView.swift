@@ -167,8 +167,9 @@ struct OutfitsView: View {
 
 // MARK: - Tenue Card (mise à jour)
 struct TenueCard: View {
-    @State private var isFavorite: Bool = false
+    @ObservedObject private var favoritesManager = FavoritesManager.shared
     @ObservedObject private var themeManager = ThemeManager.shared
+    
     let outfit: Outfit
     var isSuggestion = false
     var onAccept: (() -> Void)?
@@ -187,20 +188,16 @@ struct TenueCard: View {
                 }
                 Spacer()
                 Button {
-                        isFavorite.toggle()
-                    FavoritesService.shared.toggleFavorite(outfitId: outfit.id)
-                    } label: {
-                        Image(systemName: isFavorite ? "heart.fill" : "heart")
-                            .font(.system(size: 20, weight: .semibold))
-                            .foregroundColor(isFavorite ? .themePrimary : .themeSecondary)
-                            .padding(8)
-                            .background(Color.themeCard.opacity(0.8))
-                            .clipShape(Circle())
-                            .shadow(radius: 2)
-                    }
-                    .onAppear {
-                        isFavorite = outfit.isLocallyFavorite
-                    }
+                    FavoritesManager.shared.toggleFavorite(outfitId: outfit.id)
+                } label: {
+                    Image(systemName: favoritesManager.isFavorite(outfitId: outfit.id) ? "heart.fill" : "heart")
+                        .font(.system(size: 20, weight: .semibold))
+                        .foregroundColor(favoritesManager.isFavorite(outfitId: outfit.id) ? .themePrimary : .themeSecondary)
+                        .padding(8)
+                        .background(Color.themeCard.opacity(0.8))
+                        .clipShape(Circle())
+                        .shadow(radius: 2)
+                }
             }
 
             HStack(spacing: 14) {
@@ -281,4 +278,3 @@ struct TenueCard: View {
             .frame(width: 56, height: 56)
     }
 }
-
