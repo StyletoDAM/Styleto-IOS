@@ -1,4 +1,3 @@
-// Views/Store/ChatDetailView.swift
 import SwiftUI
 
 struct ChatDetailView: View {
@@ -20,7 +19,31 @@ struct ChatDetailView: View {
                     connectionStatusBanner
                 }
                 
-                messagesList
+                // ⭐ Indicateur de chargement des messages
+                if viewModel.isLoadingMessages {
+                    VStack {
+                        Spacer()
+                        ProgressView("Chargement des messages...")
+                            .padding()
+                        Spacer()
+                    }
+                } else if viewModel.messages.isEmpty {
+                    // ⭐ Aucun message
+                    VStack(spacing: 16) {
+                        Image(systemName: "message")
+                            .font(.system(size: 50))
+                            .foregroundColor(.gray.opacity(0.5))
+                        Text("Aucun message pour le moment")
+                            .foregroundColor(.gray)
+                        Text("Envoyez le premier message !")
+                            .font(.caption)
+                            .foregroundColor(.gray.opacity(0.8))
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                } else {
+                    messagesList
+                }
+                
                 inputBar
             }
             .background(Color.themeBackground.ignoresSafeArea())
@@ -44,7 +67,7 @@ struct ChatDetailView: View {
         .background(Color.orange.opacity(0.1))
     }
 
-    // MARK: - Sous-vues séparées (le compilateur adore ça !)
+    // MARK: - Sous-vues séparées
     private var messagesList: some View {
         ScrollViewReader { proxy in
             ScrollView {
@@ -161,6 +184,8 @@ struct ChatDetailView: View {
                     }
                 }
             }
+            
+
         }
     }
     
@@ -180,7 +205,7 @@ struct ChatDetailView: View {
     }
 }
 
-// MARK: - Messages
+// MARK: - Messages (identiques à avant)
 struct IncomingMessage: View {
     let text: String
     let time: String
@@ -246,7 +271,7 @@ struct OutgoingMessage: View {
     }
 }
 
-// MARK: - Extension indispensable pour les coins arrondis
+// MARK: - Extensions
 extension View {
     func cornerRadius(_ radius: CGFloat, corners: UIRectCorner) -> some View {
         clipShape(RoundedCorner(radius: radius, corners: corners))
@@ -267,7 +292,6 @@ struct RoundedCorner: Shape {
     }
 }
 
-// MARK: - Extensions
 extension Date {
     func formatTime() -> String {
         let formatter = DateFormatter()
@@ -276,5 +300,3 @@ extension Date {
         return formatter.string(from: self)
     }
 }
-
-

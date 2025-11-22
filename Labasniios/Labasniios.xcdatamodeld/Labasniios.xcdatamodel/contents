@@ -8,7 +8,7 @@
         <attribute name="size" optional="YES" attributeType="String"/>
         <attribute name="storeItemID" optional="YES" attributeType="String"/>
         <attribute name="title" optional="YES" attributeType="String"/>
-        <attribute name="userID" optional="YES" attributeType="String"/>
+        <attribute name="userId" optional="YES" attributeType="String"/>
     </entity>
     <entity name="FavoriteOutfit" representedClassName=".FavoriteOutfit" syncable="YES" codeGenerationType="class">
         <attribute name="createdAt" optional="YES" attributeType="Date" usesScalarValueType="NO"/>

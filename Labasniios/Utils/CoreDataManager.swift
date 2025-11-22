@@ -1,4 +1,3 @@
-// Utils/CoreDataManager.swift
 import CoreData
 import Foundation
 

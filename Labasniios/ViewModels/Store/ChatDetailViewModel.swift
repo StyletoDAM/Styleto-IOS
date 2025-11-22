@@ -1,4 +1,3 @@
-// ViewModels/Store/ChatDetailViewModel.swift
 import Foundation
 import Combine
 import SwiftUI
@@ -9,6 +8,7 @@ class ChatDetailViewModel: ObservableObject {
     @Published var messageText = ""
     @Published var isSending = false
     @Published var isConnected = false
+    @Published var isLoadingMessages = false
     
     let conversation: ChatConversationResponse
     let currentUserId: String?
@@ -19,10 +19,12 @@ class ChatDetailViewModel: ObservableObject {
         self.conversation = conversation
         self.currentUserId = JWTDecoder.extractUserId(from: TokenManager.shared.getToken() ?? "")
         
-        // Charger les messages initiaux
-        self.messages = conversation.messages.sorted { $0.createdAt < $1.createdAt }
+        print("📱 ChatDetailViewModel init")
+        print("📦 Conversation ID:", conversation.id)
+        print("📦 Messages dans la conversation:", conversation.messages.count)
         
-        print("📱 ChatDetailViewModel init avec", messages.count, "messages")
+        // ⭐ Charger les messages initiaux
+        loadInitialMessages()
         
         // S'abonner aux nouveaux messages en temps réel
         setupRealtimeUpdates()
@@ -30,9 +32,43 @@ class ChatDetailViewModel: ObservableObject {
         // Connecter le socket et rejoindre la conversation
         ChatSocketManager.shared.connect()
         
-        // ⭐ IMPORTANT : Rejoindre la room de la conversation
+        // Rejoindre la room après connexion
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
             ChatSocketManager.shared.joinConversation(self.conversation.id)
+        }
+    }
+    
+    // ⭐ NOUVELLE MÉTHODE : Charger les messages initiaux
+    private func loadInitialMessages() {
+        // Si la conversation contient déjà des messages, les charger
+        if !conversation.messages.isEmpty {
+            self.messages = conversation.messages.sorted { $0.createdAt < $1.createdAt }
+            print("✅ \(self.messages.count) messages chargés depuis la conversation")
+        } else {
+            // Sinon, charger depuis l'API
+            Task {
+                await fetchMessages()
+            }
+        }
+    }
+    
+    // ⭐ NOUVELLE MÉTHODE : Récupérer les messages depuis l'API
+    func fetchMessages() async {
+        isLoadingMessages = true
+        
+        do {
+            let fetchedMessages = try await ChatService.shared.fetchMessages(conversationId: conversation.id)
+            
+            await MainActor.run {
+                self.messages = fetchedMessages.sorted { $0.createdAt < $1.createdAt }
+                print("✅ \(self.messages.count) messages récupérés depuis l'API")
+                self.isLoadingMessages = false
+            }
+        } catch {
+            print("❌ Erreur chargement messages:", error)
+            await MainActor.run {
+                self.isLoadingMessages = false
+            }
         }
     }
     
@@ -46,8 +82,6 @@ class ChatDetailViewModel: ObservableObject {
                 print("📨 Nouveau message reçu:", newMessage.content)
                 print("📨 Pour conversation:", newMessage.conversationId)
                 print("📨 Ma conversation:", self.conversation.id)
-                print("📨 Sender ID:", newMessage.senderId.id)
-                print("📨 Mon ID:", self.currentUserId ?? "nil")
                 
                 // Vérifier que le message appartient à cette conversation
                 guard newMessage.conversationId == self.conversation.id else {
@@ -55,7 +89,7 @@ class ChatDetailViewModel: ObservableObject {
                     return
                 }
                 
-                // ⭐ REMPLACER le message optimiste s'il existe
+                // Remplacer le message optimiste s'il existe
                 if let tempIndex = self.messages.firstIndex(where: { $0.id.hasPrefix("temp-") }) {
                     print("🔄 Remplacement du message optimiste par le vrai")
                     self.messages.remove(at: tempIndex)
@@ -84,7 +118,7 @@ class ChatDetailViewModel: ObservableObject {
                 self?.isConnected = connected
                 print("🔌 Statut connexion:", connected ? "Connecté" : "Déconnecté")
                 
-                // ⭐ Rejoindre la conversation dès que connecté
+                // Rejoindre la conversation dès que connecté
                 if connected, let conversationId = self?.conversation.id {
                     ChatSocketManager.shared.joinConversation(conversationId)
                 }
@@ -101,16 +135,12 @@ class ChatDetailViewModel: ObservableObject {
         messageText = ""
         isSending = true
         
-        // ⭐ PAS de message optimiste - on attend le serveur
-        // Ça évite les doublons et garantit la cohérence
-        
         // Envoi via socket
         if ChatSocketManager.shared.isConnected {
             print("✅ Envoi via socket...")
             ChatSocketManager.shared.sendMessage(text, in: conversation.id)
         } else {
             print("❌ Socket non connecté, envoi via REST API...")
-            // Fallback REST API si socket déconnecté
             await sendViaAPI(text)
         }
         

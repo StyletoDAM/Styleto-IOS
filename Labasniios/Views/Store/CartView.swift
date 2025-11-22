@@ -1,4 +1,3 @@
-// CartView.swift – Version finale complète (anglais + alerte de confirmation)
 import SwiftUI
 
 struct CartView: View {

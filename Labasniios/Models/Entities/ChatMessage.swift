@@ -1,4 +1,3 @@
-// Models/Chat/ChatMessage.swift
 import Foundation
 
 struct ChatParticipant: Codable, Identifiable {
@@ -13,7 +12,7 @@ struct ChatParticipant: Codable, Identifiable {
         case profilePicture
     }
     
-    // ⭐ Décodage flexible : accepte "_id" OU "id"
+    // Décodage flexible : accepte "_id" OU "id"
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         
@@ -36,7 +35,7 @@ struct ChatParticipant: Codable, Identifiable {
         self.profilePicture = try? container.decode(String.self, forKey: .profilePicture)
     }
     
-    // ⭐ Encodage (nécessaire pour Encodable)
+    // Encodage (nécessaire pour Encodable)
     func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
         try container.encode(id, forKey: .id)
@@ -102,10 +101,4 @@ struct ChatMessage: Codable, Identifiable {
     }
 }
 
-// ⭐ IMPORTANT : Supprimez l'extension Equatable si elle existe déjà dans votre fichier
-// Cette extension est nécessaire pour utiliser .contains() et ==
-extension ChatMessage: Equatable {
-    static func == (lhs: ChatMessage, rhs: ChatMessage) -> Bool {
-        lhs.id == rhs.id
-    }
-}
+

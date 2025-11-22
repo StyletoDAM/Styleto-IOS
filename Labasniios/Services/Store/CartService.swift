@@ -1,4 +1,3 @@
-// CartManager.swift
 import Foundation
 import CoreData
 import Combine
@@ -10,33 +9,108 @@ class CartManager: ObservableObject {
     
     @Published var cartItems: [CartItem] = []
     
+    private var cancellables = Set<AnyCancellable>()
+    
+    // Cache de l'ID utilisateur pour éviter les accès @MainActor répétés
+    private var cachedUserId: String?
+    
     private init() {
-        fetchCartItems()
-    }
-    
-    func fetchCartItems() {
-        let request: NSFetchRequest<CartItem> = CartItem.fetchRequest()
-        request.sortDescriptors = [NSSortDescriptor(keyPath: \CartItem.addedAt, ascending: false)]
-        
-        do {
-            cartItems = try context.fetch(request)
-        } catch {
-            print("Erreur fetch panier: \(error)")
+        // Initialiser le cache utilisateur
+        Task { @MainActor in
+            self.cachedUserId = AppPreferences.shared.currentUser?.id
         }
+        
+        fetchCartItems()
+        
+        //  Observer les changements d'utilisateur
+        NotificationCenter.default.publisher(for: .userDidUpdate)
+            .sink { [weak self] notification in
+                Task { @MainActor in
+                    // Mettre à jour le cache
+                    self?.cachedUserId = AppPreferences.shared.currentUser?.id
+                    // Recharger le panier
+                    self?.fetchCartItems()
+                    print("🔄 [CartManager] Utilisateur mis à jour, panier rechargé")
+                }
+            }
+            .store(in: &cancellables)
+        
+        //  Observer le logout
+        NotificationCenter.default.publisher(for: .didRequestNavigateToLogin)
+            .sink { [weak self] _ in
+                Task { @MainActor in
+                    self?.cachedUserId = nil
+                    self?.handleLogout()
+                }
+            }
+            .store(in: &cancellables)
     }
     
-    func addToCart(storeItem: Store) {
-        // Éviter les doublons
-        let request: NSFetchRequest<CartItem> = CartItem.fetchRequest()
-        request.predicate = NSPredicate(format: "storeItemID == %@", storeItem.id)
-        
-        if let existing = try? context.fetch(request).first {
-            print("Déjà dans le panier")
+    /// Récupère les articles du panier pour l'utilisateur connecté
+    func fetchCartItems() {
+        guard let userId = cachedUserId else {
+            print("⚠️ [CartManager] Aucun utilisateur connecté – panier vide")
+            DispatchQueue.main.async {
+                self.cartItems = []
+            }
             return
         }
         
+        let request: NSFetchRequest<CartItem> = CartItem.fetchRequest()
+        request.predicate = NSPredicate(format: "userId == %@", userId)
+        request.sortDescriptors = [NSSortDescriptor(keyPath: \CartItem.addedAt, ascending: false)]
+        
+        do {
+            let items = try context.fetch(request)
+            DispatchQueue.main.async {
+                self.cartItems = items
+                print("✅ [CartManager] \(items.count) articles chargés pour l'utilisateur \(userId)")
+            }
+        } catch {
+            print("❌ [CartManager] Erreur fetch panier: \(error)")
+            DispatchQueue.main.async {
+                self.cartItems = []
+            }
+        }
+    }
+    
+    /// Ajoute un article au panier de l'utilisateur connecté
+    func addToCart(storeItem: Store) {
+        // Vérifier l'utilisateur connecté de manière thread-safe
+        guard let userId = cachedUserId else {
+            print("⚠️ [CartManager] Impossible d'ajouter : utilisateur non connecté")
+            print("   cachedUserId = \(String(describing: cachedUserId))")
+            
+            // Tentative de récupération depuis AppPreferences
+            Task { @MainActor in
+                if let currentUser = AppPreferences.shared.currentUser {
+                    print("   ⚠️ Utilisateur trouvé dans AppPreferences : \(currentUser.id)")
+                    print("   → Mise à jour du cache et nouvel essai")
+                    self.cachedUserId = currentUser.id
+                    self.addToCart(storeItem: storeItem)
+                } else {
+                    print("   ❌ Aucun utilisateur dans AppPreferences non plus")
+                }
+            }
+            return
+        }
+        
+        // Vérifier si l'article existe déjà
+        let request: NSFetchRequest<CartItem> = CartItem.fetchRequest()
+        request.predicate = NSPredicate(
+            format: "storeItemID == %@ AND userId == %@",
+            storeItem.id, userId
+        )
+        
+        if let existing = try? context.fetch(request).first {
+            print("ℹ️ [CartManager] Article déjà dans le panier")
+            return
+        }
+        
+        // Créer un nouvel article
         let newItem = CartItem(context: context)
         newItem.id = UUID().uuidString
+        newItem.userId = userId
         newItem.storeItemID = storeItem.id
         newItem.title = storeItem.clothe?.category?.capitalized ?? "Article"
         newItem.size = storeItem.size
@@ -46,36 +120,63 @@ class CartManager: ObservableObject {
         
         saveContext()
         fetchCartItems()
+        
+        print("✅ [CartManager] Article ajouté au panier de \(userId)")
     }
     
+    /// Supprime un article du panier
     func removeFromCart(_ cartItem: CartItem) {
         context.delete(cartItem)
         saveContext()
         fetchCartItems()
+        
+        print("🗑️ [CartManager] Article supprimé du panier")
     }
     
+    /// Vide tout le panier de l'utilisateur connecté
     func clearCart() {
-        for item in cartItems {
-            context.delete(item)
+        guard let userId = cachedUserId else {
+            print("⚠️ [CartManager] Impossible de vider le panier : utilisateur non connecté")
+            return
         }
-        saveContext()
-        fetchCartItems()
+        
+        let request: NSFetchRequest<CartItem> = CartItem.fetchRequest()
+        request.predicate = NSPredicate(format: "userId == %@", userId)
+        
+        if let items = try? context.fetch(request) {
+            items.forEach { context.delete($0) }
+            saveContext()
+            fetchCartItems()
+            
+            print("🗑️ [CartManager] Panier vidé pour l'utilisateur \(userId)")
+        }
     }
     
+    /// Prix total du panier
     var totalPrice: Double {
         cartItems.reduce(0) { $0 + $1.price }
     }
     
+    /// Nombre d'articles dans le panier
     var itemCount: Int {
         cartItems.count
     }
     
+    /// Gère le logout en vidant le panier local
+    private func handleLogout() {
+        DispatchQueue.main.async {
+            self.cartItems = []
+        }
+        print("👋 [CartManager] Panier vidé après logout")
+    }
+    
+    /// Sauvegarde le contexte Core Data
     private func saveContext() {
         if context.hasChanges {
             do {
                 try context.save()
             } catch {
-                print("Erreur sauvegarde panier: \(error)")
+                print("❌ [CartManager] Erreur sauvegarde: \(error)")
             }
         }
     }

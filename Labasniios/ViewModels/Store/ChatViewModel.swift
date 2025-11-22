@@ -1,4 +1,3 @@
-// ViewModels/Chat/ChatViewModel.swift
 import Foundation
 import Combine
 
