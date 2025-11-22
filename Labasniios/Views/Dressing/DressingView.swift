@@ -15,6 +15,7 @@ struct DressingView: View {
     @State private var detectedImageURL: String?
     @State private var showAIErrorAlert = false
     @State private var aiErrorMessage = ""
+    @State private var showPhotoGuide = false
     private let columns: [GridItem] = [
         GridItem(.flexible(), spacing: 16),
         GridItem(.flexible(), spacing: 16)
@@ -104,6 +105,21 @@ struct DressingView: View {
         } message: {
             Text(aiErrorMessage)
         }
+        
+        .overlay {
+            if showPhotoGuide {
+                PhotoGuidePopupView(
+                    isShowing: $showPhotoGuide,
+                    onContinue: {
+                        // Quand user clique "Got it!", ouvre la caméra
+                        showCamera = true
+                    }
+                )
+                .transition(.opacity.combined(with: .scale))
+                .animation(.spring(response: 0.4), value: showPhotoGuide)
+            }
+        }
+        
     }
     private func uploadAndDetect(image: UIImage) {
         guard let imageData = image.jpegData(compressionQuality: 0.85) else { return }
@@ -312,7 +328,7 @@ struct DressingView: View {
     // MARK: - Floating Add Button
     private var floatingAddButton: some View {
         Button(action: {
-            showCamera = true
+            showPhotoGuide = true  // ✨ CHANGÉ : showCamera → showPhotoGuide
         }) {
             Image(systemName: "plus")
                 .font(.system(size: 24, weight: .bold))

@@ -68,12 +68,22 @@ struct DetectionResultView: View {
                 
                 // MARK: Image + AI Badge
                 ZStack(alignment: .topTrailing) {
+                    // ✨ AJOUTE un fond en damier pour voir la transparence
+                    Rectangle()
+                        .fill(
+                            LinearGradient(
+                                colors: [Color.gray.opacity(0.1), Color.gray.opacity(0.05)],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
+                        .frame(height: 340)
+                    
                     if let uiImage = image {
                         Image(uiImage: uiImage)
                             .resizable()
-                            .scaledToFill()
+                            .scaledToFit()  // ✨ CHANGÉ : scaledToFill → scaledToFit pour voir entièrement
                             .frame(height: 340)
-                            .clipped()
                     } else {
                         Rectangle()
                             .fill(LinearGradient(
@@ -88,6 +98,7 @@ struct DetectionResultView: View {
                             )
                     }
                     
+                    // Badge AI
                     Button {
                         // Re-run AI analysis
                     } label: {
