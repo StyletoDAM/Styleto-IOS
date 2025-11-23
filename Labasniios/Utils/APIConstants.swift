@@ -1,8 +1,12 @@
 import Foundation
 
 enum APIConstants {
+<<<<<<< Updated upstream
     static let baseURL = URL(string: "http://192.168.100.89:3000")!
 
+=======
+    static let baseURL = URL(string: "http://192.168.50.201:3000")!
+>>>>>>> Stashed changes
     // AUTH
     static let signupPath = "/auth/signup"
     static let signinPath = "/auth/signin"
