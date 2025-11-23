@@ -97,6 +97,7 @@ struct SettingsView: View {
     
     @State private var showAboutSheet = false
     @State private var showContactSheet = false
+    @State private var showColorThemePicker = false
     
     
     init(user: User? = nil, onLogout: (() -> Void)? = nil) {
@@ -355,6 +356,7 @@ struct SettingsView: View {
                                 onDeleteAccount: { showDeleteConfirmation = true },
                                 showAboutSheet: $showAboutSheet,
                                 showContactSheet: $showContactSheet,   // ← AJOUTÉ ICI
+                                showColorThemePicker: $showColorThemePicker,
                                 viewModel: viewModel
                             )
                         }
@@ -495,6 +497,9 @@ struct SettingsView: View {
         .sheet(isPresented: $showThemePicker) {
             ThemePickerSheet(themeManager: themeManager)
         }
+        .sheet(isPresented: $showColorThemePicker) {
+            ColorThemePickerSheet(themeManager: themeManager)
+        }
         .sheet(isPresented: $showCamera) {
             ImagePicker(sourceType: .camera) { image in
                 if let image = image {
@@ -601,6 +606,76 @@ private struct ThemePickerSheet: View {
                 }
             }
         }
+    }
+}
+
+// MARK: - Color Theme Picker Sheet
+private struct ColorThemePickerSheet: View {
+    @Environment(\.dismiss) private var dismiss
+    @ObservedObject var themeManager: ThemeManager
+    
+    var body: some View {
+        VStack(spacing: 0) {
+            // Titre
+            Text("Color Theme")
+                .font(.system(size: 22, weight: .bold))
+                .foregroundColor(.themePrimary)
+                .padding(.top, 24)
+                .padding(.bottom, 20)
+            
+            // Liste des options
+            VStack(spacing: 0) {
+                ForEach(ThemeVariant.allCases, id: \.self) { variant in
+                    Button {
+                        themeManager.setThemeVariant(variant)
+                        dismiss()
+                    } label: {
+                        HStack {
+                            Text(variant.rawValue)
+                                .font(.system(size: 17, weight: .regular))
+                                .foregroundColor(.themeText)
+                            Spacer()
+                            if themeManager.getThemeVariant() == variant {
+                                Image(systemName: "checkmark")
+                                    .foregroundColor(.themePrimary)
+                                    .font(.system(size: 16, weight: .semibold))
+                            }
+                        }
+                        .padding(.horizontal, 24)
+                        .padding(.vertical, 16)
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    
+                    if variant != ThemeVariant.allCases.last {
+                        Divider()
+                            .padding(.leading, 80)
+                    }
+                }
+            }
+            .background(Color.themeCard)
+            .cornerRadius(20)
+            .padding(.horizontal, 24)
+            
+            Spacer()
+            
+            // Bouton Cancel
+            Button {
+                dismiss()
+            } label: {
+                Text("Cancel")
+                    .font(.system(size: 17, weight: .bold))
+                    .foregroundColor(.themePrimary)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 16)
+            }
+            .padding(.horizontal, 24)
+            .padding(.bottom, 24)
+        }
+        .frame(maxWidth: .infinity)
+        .background(Color.themeBackground.ignoresSafeArea())
+        .presentationDetents([.medium])
+        .presentationDragIndicator(.visible)
     }
 }
 
@@ -856,6 +931,7 @@ private struct SettingsSectionCard: View {
                         option: option,
                         themeManager: themeManager,
                         showThemePicker: option.title == "Theme" ? $showThemePicker : nil,
+                        showColorThemePicker: option.title == "Color Theme" ? $showColorThemePicker : nil,
                         onPasswordChange: option.title == "Change Password" ? onPasswordChange : nil,
                         onDeleteAccount: option.title == "Delete Account" ? onDeleteAccount : nil,
                         showAboutSheet: option.title == "About" ? $showAboutSheet : nil,
@@ -884,6 +960,7 @@ private struct SettingsOptionRow: View {
     let option: SettingsOption
     @ObservedObject var themeManager: ThemeManager
     var showThemePicker: Binding<Bool>?
+    var showColorThemePicker: Binding<Bool>?
     var onPasswordChange: (() -> Void)?
     var onDeleteAccount: (() -> Void)?
     var showAboutSheet: Binding<Bool>?
@@ -894,6 +971,7 @@ private struct SettingsOptionRow: View {
         option: SettingsOption,
         themeManager: ThemeManager,
         showThemePicker: Binding<Bool>? = nil,
+        showColorThemePicker: Binding<Bool>? = nil,
         onPasswordChange: (() -> Void)? = nil,
         onDeleteAccount: (() -> Void)? = nil,
         showAboutSheet: Binding<Bool>? = nil,
@@ -902,6 +980,7 @@ private struct SettingsOptionRow: View {
         self.option = option
         self.themeManager = themeManager
         self.showThemePicker = showThemePicker
+        self.showColorThemePicker = showColorThemePicker
         self.onPasswordChange = onPasswordChange
         self.onDeleteAccount = onDeleteAccount
         self.showAboutSheet = showAboutSheet
@@ -918,6 +997,8 @@ private struct SettingsOptionRow: View {
         Button {
             if option.title == "Theme" {
                 showThemePicker?.wrappedValue = true
+            } else if option.title == "Color Theme" {
+                showColorThemePicker?.wrappedValue = true
             } else if option.title == "Change Password" {
                 onPasswordChange?()
             } else if option.title == "Delete Account" {

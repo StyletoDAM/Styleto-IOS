@@ -8,6 +8,12 @@ enum ThemeMode: String, CaseIterable {
     case system = "System"
 }
 
+// MARK: - Theme Variant
+enum ThemeVariant: String, CaseIterable {
+    case pink = "Pink"
+    case blue = "Blue"
+}
+
 // MARK: - Theme Protocol
 protocol Theme {
     var primary: Color { get }
@@ -96,6 +102,7 @@ class ThemeManager: ObservableObject {
     
     @Published var currentTheme: Theme
     @AppStorage("selectedTheme") private var selectedThemeMode: String = ThemeMode.system.rawValue
+    @AppStorage("selectedThemeVariant") private var selectedThemeVariant: String = ThemeVariant.pink.rawValue
     
     private var themeMode: ThemeMode {
         get {
@@ -108,6 +115,11 @@ class ThemeManager: ObservableObject {
     }
     
     private init() {
+        // Initialiser la variante de thème basée sur le genre de l'utilisateur si disponible
+        if let user = AppPreferences.shared.currentUser {
+            let isMale = user.gender == .male
+            selectedThemeVariant = isMale ? ThemeVariant.blue.rawValue : ThemeVariant.pink.rawValue
+        }
         self.currentTheme = LightTheme(isMale: false)
         updateTheme()
     }
@@ -120,11 +132,21 @@ class ThemeManager: ObservableObject {
     func getThemeMode() -> ThemeMode {
         return themeMode
     }
-    func updateThemeBasedOnUser() {
-            updateTheme() // C’est tout ! Elle fait déjà tout le boulot
-        }
     
-    // NOUVELLE MÉTHODE: Met à jour le thème en fonction du sexe de l'utilisateur
+    func getThemeVariant() -> ThemeVariant {
+        return ThemeVariant(rawValue: selectedThemeVariant) ?? .pink
+    }
+    
+    func setThemeVariant(_ variant: ThemeVariant) {
+        selectedThemeVariant = variant.rawValue
+        updateTheme()
+    }
+    
+    func updateThemeBasedOnUser() {
+        updateTheme() // C'est tout ! Elle fait déjà tout le boulot
+    }
+    
+    // NOUVELLE MÉTHODE: Met à jour le thème en fonction du sexe de l'utilisateur ou de la variante choisie
     func updateTheme() {
         let shouldUseDark: Bool
         switch themeMode {
@@ -141,8 +163,9 @@ class ThemeManager: ObservableObject {
             }
         }
         
-        // Récupérer le sexe de l'utilisateur connecté
-        let isMale = AppPreferences.shared.currentUser?.gender == .male
+        // Utiliser la variante de thème choisie (Pink = Female, Blue = Male)
+        let variant = getThemeVariant()
+        let isMale = variant == .blue
         
         withAnimation(.easeInOut(duration: 0.35)) {
             currentTheme = shouldUseDark ? DarkTheme(isMale: isMale) : LightTheme(isMale: isMale)
