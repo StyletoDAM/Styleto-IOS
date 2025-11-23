@@ -292,11 +292,8 @@ struct DetectionResultView: View {
                 "type": originalType,
                 "color": originalColorHex,
                 "style": originalStyle,
-<<<<<<< Updated upstream
                 "season": originalSeason.lowercased()
-=======
-                "season": originalSeason
->>>>>>> Stashed changes
+
             ]
             
             try await ClothesService.shared.addClotheAsync(
@@ -338,11 +335,9 @@ struct DetectionResultView: View {
             // Type / Category
             if key.contains("type") || key.contains("clothing") || key.contains("vêtement") {
                 let v = value.lowercased()
-<<<<<<< Updated upstream
+
                 originalType = value // AJOUT : sauvegarde original
-=======
-                originalType = value // Sauvegarde la valeur originale
->>>>>>> Stashed changes
+
                 
                 if v.contains("top") || v.contains("shirt") || v.contains("haut") {
                     selectedCategory = .top
@@ -368,12 +363,10 @@ struct DetectionResultView: View {
                 detectedColorName = value.capitalized
                 
                 if let hexColor = extractHex(from: value) {
-<<<<<<< Updated upstream
+
                     originalColorHex = hexColor // AJOUT : sauvegarde original
-=======
-                    originalColorHex = hexColor // Sauvegarde le hex original
->>>>>>> Stashed changes
-                    detectedColor = Color(hex: hexColor) ?? .pink
+
+                    detectedColor = Color(hex: hexColor)
                 } else {
                     originalColorHex = value // Sauvegarde le nom si pas de hex
                     detectedColor = colorFromName(value) ?? .pink
@@ -383,11 +376,9 @@ struct DetectionResultView: View {
             // Style
             else if key.contains("style") {
                 let v = value.lowercased()
-<<<<<<< Updated upstream
+
                 originalStyle = value // AJOUT : sauvegarde original
-=======
-                originalStyle = value // Sauvegarde la valeur originale
->>>>>>> Stashed changes
+
                 
                 if v.contains("casual") {
                     selectedStyle = .casual
@@ -411,11 +402,10 @@ struct DetectionResultView: View {
             // Season
             else if key.contains("season") || key.contains("saison") {
                 let v = value.lowercased()
-<<<<<<< Updated upstream
+
                 originalSeason = value // AJOUT : sauvegarde original
-=======
-                originalSeason = value // Sauvegarde la valeur originale
->>>>>>> Stashed changes
+
+
                 
                 if v.contains("summer") || v.contains("été") {
                     selectedSeason = .summer

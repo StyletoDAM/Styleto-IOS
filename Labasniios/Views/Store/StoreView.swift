@@ -115,7 +115,7 @@ struct StoreView: View {
             .toolbar(.hidden, for: .navigationBar)
             .onAppear {
                 viewModel.loadMyStore()
-                viewModel.loadDiscoverStore()  // Charge aussi les items à découvrir
+                // ← SUPPRIME loadDiscoverStore(), c'est déjà appelé dans loadMyStore()
             }
 
             // Bouton + flottant (inchangé)

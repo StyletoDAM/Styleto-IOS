@@ -34,11 +34,12 @@ class StoreViewModel: ObservableObject {
                 if case .failure(let error) = completion {
                     self?.errorMessage = error.localizedDescription
                 }
-            } receiveValue: { [weak self] myItems in
+            }
+            receiveValue: { [weak self] myItems in
                 guard let self = self else { return }
                 self.rawStoreItems = myItems
                 self.storeItems = myItems
-                self.loadDiscoverItems()
+                self.loadDiscoverItems()  // ← Déjà appelé automatiquement ici !
             }
             .store(in: &cancellables)
     }
