@@ -142,9 +142,10 @@ struct SettingsView: View {
     // MARK: - Contact Actions
     private func openPhone() {
         let phoneNumber = "+21652904114" // Numéro sans espaces pour l'URL
-        guard let url = URL(string: "tel://\(phoneNumber)") else { return }
-        if UIApplication.shared.canOpenURL(url) {
-            UIApplication.shared.open(url)
+        if let url = URL(string: "tel://\(phoneNumber)") {
+            if UIApplication.shared.canOpenURL(url) {
+                UIApplication.shared.open(url, options: [:], completionHandler: nil)
+            }
         }
     }
 
@@ -152,7 +153,7 @@ struct SettingsView: View {
         let email = "labasni@gmail.com"
         if let url = URL(string: "mailto:\(email)?subject=Contact%20from%20Labasni%20App") {
             if UIApplication.shared.canOpenURL(url) {
-                UIApplication.shared.open(url)
+                UIApplication.shared.open(url, options: [:], completionHandler: nil)
             }
         }
     }
@@ -925,9 +926,9 @@ private struct SettingsOptionRow: View {
                 onDeleteAccount?()
             }else if option.title == "About" {
                 showAboutSheet?.wrappedValue = true
-            }else if option.title == "Contact Us" {
-                // On montre le petit menu comme sur ta capture
-                showContactSheet?.wrappedValue = true            }
+            } else if option.title == "Contact Us" {
+                showContactSheet?.wrappedValue = true
+            }
         } label: {
             HStack(spacing: 16) {
                 Image(systemName: option.icon)
@@ -1025,104 +1026,105 @@ private struct ContactSheet: View {
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
-        NavigationStack {
+        VStack(spacing: 0) {
+            // Titre
+            Text("Contact Us")
+                .font(.system(size: 22, weight: .bold))
+                .foregroundColor(.themePrimary)
+                .padding(.top, 24)
+                .padding(.bottom, 20)
+            
+            // Carte avec les deux boutons
             VStack(spacing: 0) {
-                // Titre
-                Text("Contact Us")
-                    .font(.system(size: 22, weight: .bold))
-                    .foregroundColor(.themePrimary)
-                    .padding(.top, 24)
-                    .padding(.bottom, 20)
-                
-                VStack(spacing: 0) {
-                    // Bouton Téléphone
-                    Button {
-                        onPhone()
-                    } label: {
-                        HStack(spacing: 12) {
-                            Image(systemName: "phone.fill")
-                                .font(.system(size: 20))
-                                .foregroundColor(.themePrimary)
-                                .frame(width: 24)
-                            
-                            VStack(alignment: .leading, spacing: 4) {
-                                Text("Phone")
-                                    .font(.system(size: 17, weight: .semibold))
-                                    .foregroundColor(.themeText)
-                                Text("+216 52904114")
-                                    .font(.system(size: 15))
-                                    .foregroundColor(.themeText.opacity(0.7))
-                            }
-                            
-                            Spacer()
-                            
-                            Image(systemName: "chevron.right")
-                                .font(.system(size: 14, weight: .semibold))
-                                .foregroundColor(.themeText.opacity(0.6))
-                        }
-                        .padding(.horizontal, 24)
-                        .padding(.vertical, 16)
-                        .background(Color.themeCard)
-                    }
-                    .buttonStyle(.plain)
-                    
-                    // Séparateur
-                    Divider()
-                        .padding(.leading, 80)
-                    
-                    // Bouton Email
-                    Button {
-                        onEmail()
-                    } label: {
-                        HStack(spacing: 12) {
-                            Image(systemName: "envelope.fill")
-                                .font(.system(size: 20))
-                                .foregroundColor(.themePrimary)
-                                .frame(width: 24)
-                            
-                            VStack(alignment: .leading, spacing: 4) {
-                                Text("Email")
-                                    .font(.system(size: 17, weight: .semibold))
-                                    .foregroundColor(.themeText)
-                                Text("labasni@gmail.com")
-                                    .font(.system(size: 15))
-                                    .foregroundColor(.themeText.opacity(0.7))
-                            }
-                            
-                            Spacer()
-                            
-                            Image(systemName: "chevron.right")
-                                .font(.system(size: 14, weight: .semibold))
-                                .foregroundColor(.themeText.opacity(0.6))
-                        }
-                        .padding(.horizontal, 24)
-                        .padding(.vertical, 16)
-                        .background(Color.themeCard)
-                    }
-                    .buttonStyle(.plain)
-                }
-                .background(Color.themeCard)
-                .cornerRadius(20)
-                .padding(.horizontal, 24)
-                
-                Spacer()
-                
-                // Bouton Cancel
+                // Bouton Téléphone
                 Button {
-                    dismiss()
+                    onPhone()
                 } label: {
-                    Text("Cancel")
-                        .font(.system(size: 17, weight: .bold))
-                        .foregroundColor(.themePrimary)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 16)
+                    HStack(spacing: 12) {
+                        Image(systemName: "phone.fill")
+                            .font(.system(size: 20))
+                            .foregroundColor(.themePrimary)
+                            .frame(width: 24)
+                        
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("Phone")
+                                .font(.system(size: 17, weight: .semibold))
+                                .foregroundColor(.themeText)
+                            Text("+216 52904114")
+                                .font(.system(size: 15))
+                                .foregroundColor(.themeText.opacity(0.7))
+                        }
+                        
+                        Spacer()
+                        
+                        Image(systemName: "chevron.right")
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundColor(.themeText.opacity(0.6))
+                    }
+                    .padding(.horizontal, 24)
+                    .padding(.vertical, 16)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .contentShape(Rectangle())
                 }
-                .padding(.horizontal, 24)
-                .padding(.bottom, 24)
+                .buttonStyle(.plain)
+                
+                // Séparateur
+                Divider()
+                    .padding(.leading, 80)
+                
+                // Bouton Email
+                Button {
+                    onEmail()
+                } label: {
+                    HStack(spacing: 12) {
+                        Image(systemName: "envelope.fill")
+                            .font(.system(size: 20))
+                            .foregroundColor(.themePrimary)
+                            .frame(width: 24)
+                        
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("Email")
+                                .font(.system(size: 17, weight: .semibold))
+                                .foregroundColor(.themeText)
+                            Text("labasni@gmail.com")
+                                .font(.system(size: 15))
+                                .foregroundColor(.themeText.opacity(0.7))
+                        }
+                        
+                        Spacer()
+                        
+                        Image(systemName: "chevron.right")
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundColor(.themeText.opacity(0.6))
+                    }
+                    .padding(.horizontal, 24)
+                    .padding(.vertical, 16)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
             }
-            .background(Color.themeBackground.ignoresSafeArea())
-            .navigationBarTitleDisplayMode(.inline)
+            .background(Color.themeCard)
+            .cornerRadius(20)
+            .padding(.horizontal, 24)
+            
+            Spacer()
+            
+            // Bouton Cancel
+            Button {
+                dismiss()
+            } label: {
+                Text("Cancel")
+                    .font(.system(size: 17, weight: .bold))
+                    .foregroundColor(.themePrimary)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 16)
+            }
+            .padding(.horizontal, 24)
+            .padding(.bottom, 24)
         }
+        .frame(maxWidth: .infinity)
+        .background(Color.themeBackground.ignoresSafeArea())
         .presentationDetents([.medium])
         .presentationDragIndicator(.visible)
     }
