@@ -385,29 +385,7 @@ struct SettingsView: View {
                 .padding(.vertical, 16)
             }
             .background(Color.themeBackground.ignoresSafeArea())
-            
             .navigationBarBackButtonHidden(true)
-            .sheet(isPresented: $showThemePicker) {
-                ThemePickerSheet(themeManager: themeManager)
-            }
-            
-            
-            .sheet(isPresented: $showCamera) {
-                ImagePicker(sourceType: .camera) { image in
-                    if let image = image {
-                        pendingPhoto = image
-                        showPhotoConfirmation = true
-                    }
-                }
-            }
-            .sheet(isPresented: $showPhotoPicker) {
-                ImagePicker(sourceType: .photoLibrary) { image in
-                    if let image = image {
-                        pendingPhoto = image
-                        showPhotoConfirmation = true
-                    }
-                }
-            }
             .alert("Confirm Modification", isPresented: $showSaveConfirmation) {
                 Button("Cancel", role: .cancel) {}
                 Button("Confirm") { Task { await saveProfile() } }
@@ -513,15 +491,34 @@ struct SettingsView: View {
                 } message: {
                     Text("Are you sure you want to delete your profile picture?")
                 }
-                .sheet(isPresented: $showAboutSheet) {
-                    AboutSheet()
+        }
+        .sheet(isPresented: $showThemePicker) {
+            ThemePickerSheet(themeManager: themeManager)
+        }
+        .sheet(isPresented: $showCamera) {
+            ImagePicker(sourceType: .camera) { image in
+                if let image = image {
+                    pendingPhoto = image
+                    showPhotoConfirmation = true
                 }
-                .sheet(isPresented: $showContactSheet) {
-                    ContactSheet(
-                        onPhone: openPhone,
-                        onEmail: openEmail
-                    )
+            }
+        }
+        .sheet(isPresented: $showPhotoPicker) {
+            ImagePicker(sourceType: .photoLibrary) { image in
+                if let image = image {
+                    pendingPhoto = image
+                    showPhotoConfirmation = true
                 }
+            }
+        }
+        .sheet(isPresented: $showAboutSheet) {
+            AboutSheet()
+        }
+        .sheet(isPresented: $showContactSheet) {
+            ContactSheet(
+                onPhone: openPhone,
+                onEmail: openEmail
+            )
         }
     }
     
@@ -908,6 +905,7 @@ private struct SettingsOptionRow: View {
         self.onPasswordChange = onPasswordChange
         self.onDeleteAccount = onDeleteAccount
         self.showAboutSheet = showAboutSheet
+        self.showContactSheet = showContactSheet
         _toggleValue = State(initialValue: option.toggleValue)
     }
     
@@ -927,7 +925,9 @@ private struct SettingsOptionRow: View {
             }else if option.title == "About" {
                 showAboutSheet?.wrappedValue = true
             } else if option.title == "Contact Us" {
-                showContactSheet?.wrappedValue = true
+                if let binding = showContactSheet {
+                    binding.wrappedValue = true
+                }
             }
         } label: {
             HStack(spacing: 16) {
