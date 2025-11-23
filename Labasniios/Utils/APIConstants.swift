@@ -1,8 +1,7 @@
 import Foundation
 
 enum APIConstants {
-
-    static let baseURL = URL(string: "http://192.168.1.33:3000")!
+    static let baseURL = URL(string: "http://192.168.100.89:3000")!
 
     // AUTH
     static let signupPath = "/auth/signup"
@@ -25,7 +24,10 @@ enum APIConstants {
     // STORE
     static let storePath = "/store"
     static let storeMyPath = "/store/my"
-
+    
+    // PAYMENT (CORRIGÉ)
+    static let testPurchasePath = "/store/test-purchase"
+    static let confirmPurchasePath = "/store/purchase"  // + /:id dans l'URL
         
     // HEADERS
     static let jsonContentType = "application/json"

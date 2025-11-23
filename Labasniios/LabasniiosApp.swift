@@ -9,6 +9,7 @@ struct LabasniiosApp: App {
     @UIApplicationDelegateAdaptor(AppDelegate.self) var delegate
     
     init() {
+        StripeConfig.shared.initialize()
         _ = ChatSocketManager.shared
         _ = NavigationTheme()
             // Forcer le bon thème dès le lancement de l'app

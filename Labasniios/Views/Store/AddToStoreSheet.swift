@@ -119,13 +119,7 @@ struct AddToStoreSheet: View {
             LazyVStack(spacing: 12) {
                 ForEach(viewModel.myClothes) { clothe in
                     let isAlreadyInStore = viewModel.storeItems.contains { storeItem in
-                        if case .clotheId(let id) = storeItem.clothesId {
-                            return id == clothe.id
-                        }
-                        if case .clothe(let c) = storeItem.clothesId {
-                            return c.id == clothe.id
-                        }
-                        return false
+                        storeItem.clothesId == clothe.id
                     }
                     let isSelected = viewModel.selectedClothe?.id == clothe.id
 

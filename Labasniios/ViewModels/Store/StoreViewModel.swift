@@ -1,4 +1,3 @@
-
 import Foundation
 import Combine
 
@@ -38,12 +37,11 @@ class StoreViewModel: ObservableObject {
             } receiveValue: { [weak self] myItems in
                 guard let self = self else { return }
                 self.rawStoreItems = myItems
-                self.storeItems = myItems  // ← Affiche tout au début
+                self.storeItems = myItems
                 self.loadDiscoverItems()
             }
             .store(in: &cancellables)
     }
-    
     
     // MARK: - Update Store Item
     func updateStoreStatus(_ store: Store, status: String) {
@@ -66,34 +64,26 @@ class StoreViewModel: ObservableObject {
                 }
             } receiveValue: { [weak self] in
                 DispatchQueue.main.async {
-                    // Supprime de l'UI
                     self?.storeItems.removeAll { $0.id == store.id }
                     self?.discoverItems.removeAll { $0.id == store.id }
                     
-                    // Toast
                     self?.showToast = true
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 2) { [weak self] in  // ✅ CORRIGÉ
                         self?.showToast = false
                     }
                 }
             }
             .store(in: &cancellables)
     }
+    
     func loadMyClothes() {
         ClothesService.shared.fetchMyClothes { result in
             DispatchQueue.main.async {
                 switch result {
                 case .success(let clothes):
-                    // Exclure les vêtements déjà en vente
                     self.myClothes = clothes.filter { clothe in
                         !self.storeItems.contains { storeItem in
-                            if case .clotheId(let id) = storeItem.clothesId {
-                                return id == clothe.id
-                            }
-                            if case .clothe(let c) = storeItem.clothesId {
-                                return c.id == clothe.id
-                            }
-                            return false
+                            storeItem.clothesId == clothe.id
                         }
                     }
                 case .failure(let error):
@@ -111,7 +101,6 @@ class StoreViewModel: ObservableObject {
 
         isAdding = true
 
-        // Déterminer la taille finale
         let finalSize: String = {
             if isShoes {
                 return sizeInput.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -120,7 +109,6 @@ class StoreViewModel: ObservableObject {
             }
         }()
 
-        // Validation taille
         guard !finalSize.isEmpty else {
             isAdding = false
             errorMessage = "Please select or enter a size"
@@ -131,7 +119,6 @@ class StoreViewModel: ObservableObject {
             "clothesId": clothe.id,
             "price": price,
             "size": finalSize
-            // status est géré par défaut côté backend ("available")
         ]
 
         StoreService.shared.createStoreItem(body: body)
@@ -144,7 +131,6 @@ class StoreViewModel: ObservableObject {
             } receiveValue: { [weak self] createdItem in
                 guard let self = self else { return }
 
-                // Reset complet
                 self.selectedClothe = nil
                 self.priceInput = ""
                 self.sizeInput = ""
@@ -152,11 +138,11 @@ class StoreViewModel: ObservableObject {
                 self.isShoes = false
                 self.showAddToStore = false
 
-                // Recharger pour avoir les données populées
                 self.loadMyStore()
             }
             .store(in: &cancellables)
     }
+    
     func loadDiscoverItems() {
         guard !rawStoreItems.isEmpty else { return }
         
@@ -171,10 +157,11 @@ class StoreViewModel: ObservableObject {
                 let filtered = allItems.filter { !myIds.contains($0.id) }
                 self.rawDiscoverItems = filtered
                 self.discoverItems = filtered
-                self.filterItems() // ← Applique le filtre actuel
+                self.filterItems()
             }
             .store(in: &cancellables)
     }
+    
     func updateStorePrice(_ storeId: String, price: Double) {
         isLoading = true
         StoreService.shared.updateStorePrice(storeId, price: price)
@@ -194,13 +181,14 @@ class StoreViewModel: ObservableObject {
                         self?.discoverItems[index] = updatedStore
                     }
                     self?.showToast = true
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 2) { [weak self] in  // ✅ CORRIGÉ
                         self?.showToast = false
                     }
                 }
             }
             .store(in: &cancellables)
     }
+    
     func updateStoreSize(_ storeId: String, newSize: String) {
         isLoading = true
         
@@ -212,7 +200,6 @@ class StoreViewModel: ObservableObject {
                     print("ERREUR:", error)
                 }
             } receiveValue: { [weak self] updatedStore in
-                // Mise à jour UI
                 if let index = self?.storeItems.firstIndex(where: { $0.id == updatedStore.id }) {
                     self?.storeItems[index] = updatedStore
                 }
@@ -220,7 +207,7 @@ class StoreViewModel: ObservableObject {
                     self?.discoverItems[index] = updatedStore
                 }
                 self?.showToast = true
-                DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 2) { [weak self] in  // ✅ CORRIGÉ
                     self?.showToast = false
                 }
             }
@@ -243,13 +230,14 @@ class StoreViewModel: ObservableObject {
                         self?.storeItems[index] = updatedStore
                     }
                     self?.showToast = true
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 2) { [weak self] in  // ✅ CORRIGÉ
                         self?.showToast = false
                     }
                 }
             }
             .store(in: &cancellables)
     }
+    
     init() {
         setupSearchBinding()
     }
@@ -264,7 +252,6 @@ class StoreViewModel: ObservableObject {
             .store(in: &cancellables)
     }
     
-    // Appelé à chaque changement de searchText
     private func filterItems() {
         let query = searchText.lowercased().trimmingCharacters(in: .whitespaces)
         
@@ -281,18 +268,15 @@ class StoreViewModel: ObservableObject {
         discoverItems = filteredDiscover
     }
     
-    // matchesSearch
     private func matchesSearch(_ item: Store, query: String) -> Bool {
         let category = item.clothe?.category?.lowercased() ?? ""
         let price = "\(item.price)"
-        let status = item.status.lowercased()
-        let ownerName = item.userInfo?.fullName?.lowercased() ?? ""
+        let status = item.status.rawValue.lowercased()  // ✅ CORRIGÉ
+        let ownerName = item.user?.fullName.lowercased() ?? ""  // ✅ CORRIGÉ
         
         return category.contains(query) ||
-        price.contains(query) ||
-        status.contains(query) ||
-        ownerName.contains(query)
+               price.contains(query) ||
+               status.contains(query) ||
+               ownerName.contains(query)
     }
-    
-    
 }

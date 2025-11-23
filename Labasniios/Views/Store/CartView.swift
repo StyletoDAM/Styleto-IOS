@@ -1,8 +1,12 @@
 import SwiftUI
 
+import Stripe
+import StripePaymentSheet
+
 struct CartView: View {
     @Environment(\.dismiss) private var dismiss
     @ObservedObject private var cartManager = CartManager.shared
+    @StateObject private var paymentViewModel = PaymentViewModel()
     
     // MARK: - Alert States
     @State private var itemToDelete: CartItem?
@@ -10,21 +14,41 @@ struct CartView: View {
     
     var body: some View {
         NavigationStack {
-            ScrollView {
-                VStack(spacing: 20) {
-                    if cartManager.cartItems.isEmpty {
-                        emptyState
-                    } else {
-                        cartItemsList
-                        freeShippingBanner
-                        orderSummary
+            ZStack {
+                ScrollView {
+                    VStack(spacing: 20) {
+                        if cartManager.cartItems.isEmpty {
+                            emptyState
+                        } else {
+                            cartItemsList
+                            freeShippingBanner
+                            orderSummary
+                        }
+                        
+                        Spacer(minLength: 100)
                     }
-                    
-                    Spacer(minLength: 100)
+                    .padding(.vertical, 10)
                 }
-                .padding(.vertical, 10)
+                .background(Color.themeBackground.ignoresSafeArea())
+                
+                // Loading overlay
+                if paymentViewModel.isProcessing {
+                    Color.black.opacity(0.4)
+                        .ignoresSafeArea()
+                    
+                    VStack(spacing: 20) {
+                        ProgressView()
+                            .scaleEffect(1.5)
+                            .tint(.white)
+                        Text("Processing payment...")
+                            .foregroundColor(.white)
+                            .font(.headline)
+                    }
+                    .padding(30)
+                    .background(Color.themePrimary)
+                    .cornerRadius(20)
+                }
             }
-            .background(Color.themeBackground.ignoresSafeArea())
             .navigationTitle("My Cart (\(cartManager.itemCount))")
             .navigationBarTitleDisplayMode(.inline)
             .foregroundColor(.themePrimary)
@@ -55,6 +79,40 @@ struct CartView: View {
             } message: {
                 Text("This item will be removed from your cart.")
             }
+            // MARK: - Error Alert
+            .alert("Payment Error", isPresented: Binding(
+                get: { paymentViewModel.errorMessage != nil },
+                set: { if !$0 { paymentViewModel.errorMessage = nil } }
+            )) {
+                Button("OK", role: .cancel) {
+                    paymentViewModel.errorMessage = nil
+                }
+            } message: {
+                if let error = paymentViewModel.errorMessage {
+                    Text(error)
+                }
+            }
+            // MARK: - Success Alert
+            .alert("Purchase Successful! 🎉", isPresented: $paymentViewModel.showSuccess) {
+                Button("OK") {
+                    paymentViewModel.resetAfterSuccess()
+                    dismiss()
+                }
+            } message: {
+                Text("Your items have been purchased successfully!")
+            }
+            // MARK: - Payment Sheet
+            .sheet(isPresented: Binding(
+                get: { paymentViewModel.paymentSheet != nil },
+                set: { if !$0 { paymentViewModel.paymentSheet = nil } }
+            )) {
+                if let paymentSheet = paymentViewModel.paymentSheet {
+                    PaymentSheetView(
+                        paymentSheet: paymentSheet,
+                        onCompletion: paymentViewModel.onPaymentCompletion
+                    )
+                }
+            }
         }
     }
     
@@ -76,7 +134,7 @@ struct CartView: View {
         .padding(.top, 100)
     }
     
-    // MARK: - Cart Items List (avec alerte)
+    // MARK: - Cart Items List
     private var cartItemsList: some View {
         ForEach(cartManager.cartItems, id: \.id) { item in
             CartItemRow(
@@ -119,7 +177,7 @@ struct CartView: View {
             
             Divider().background(Color.themePrimary.opacity(0.3))
             
-            Text("\(cartManager.totalPrice, specifier: "%.2f") DT")
+            Text(String(format: "%.2f DT", cartManager.totalPrice))
             summaryRow(title: "Shipping", value: "Free", color: .green, bold: true)
             
             Divider().background(Color.themePrimary.opacity(0.3))
@@ -133,22 +191,40 @@ struct CartView: View {
                     .foregroundColor(.themePrimary)
             }
             
+            // MARK: - Checkout Button
             Button {
-                // Checkout action later
-                print("Proceed to checkout")
+                Task {
+                    await paymentViewModel.startCheckout()
+                }
             } label: {
                 HStack {
-                    Image(systemName: "creditcard.fill")
-                    Text("Proceed to Checkout")
+                    if paymentViewModel.isProcessing {
+                        ProgressView()
+                            .tint(.white)
+                    } else {
+                        Image(systemName: "creditcard.fill")
+                    }
+                    Text(paymentViewModel.isProcessing ? "Processing..." : "Proceed to Checkout")
                         .font(.title3.bold())
                 }
                 .foregroundColor(.white)
                 .frame(maxWidth: .infinity)
                 .padding()
-                .background(Color.themePrimary)
+                .background(
+                    paymentViewModel.isProcessing
+                        ? Color.gray
+                        : Color.themePrimary
+                )
                 .cornerRadius(20)
-                .shadow(color: .themePrimary.opacity(0.4), radius: 10, y: 5)
+                .shadow(
+                    color: paymentViewModel.isProcessing
+                        ? .clear
+                        : .themePrimary.opacity(0.4),
+                    radius: 10,
+                    y: 5
+                )
             }
+            .disabled(paymentViewModel.isProcessing)
             .padding(.top, 12)
         }
         .padding()
@@ -158,7 +234,8 @@ struct CartView: View {
         .padding(.horizontal)
     }
     
-    private func summaryRow(title: String, value: String, color: Color = Color("themeTeal"), bold: Bool = false) -> some View {        HStack {
+    private func summaryRow(title: String, value: String, color: Color = Color("themeTeal"), bold: Bool = false) -> some View {
+        HStack {
             Text(title)
                 .foregroundColor(.themeTeal)
             Spacer()
@@ -230,7 +307,7 @@ struct CartItemRow: View {
         .background(Color.themeCard)
         .cornerRadius(20)
         .padding(.horizontal)
-        .shadow(color: .black.opacity(0.05), radius: 8)
+        .shadow(color: .black.opacity(0.05), radius:8)
     }
 }
 

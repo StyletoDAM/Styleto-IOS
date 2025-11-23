@@ -20,7 +20,7 @@ struct DiscoverItemDetailSheet: View {
     }
     
     private func openChatWithSeller() {
-        guard let sellerId = storeItem.userInfo?.id else {
+        guard let sellerId = storeItem.user?.id else {  // ✅ CORRIGÉ
             errorMessage = "Seller not found"
             return
         }
@@ -33,7 +33,7 @@ struct DiscoverItemDetailSheet: View {
                 var conversation = try await ChatService.shared.createOrGetConversation(withUserId: sellerId)
                 
                 // Replace ghost participant with real seller
-                if let sellerInfo = storeItem.userInfo {
+                if let sellerInfo = storeItem.user {  // ✅ CORRIGÉ
                     let realSeller = ChatParticipant(
                         id: sellerInfo.id,
                         fullName: sellerInfo.fullName ?? "Seller",
@@ -95,7 +95,7 @@ struct DiscoverItemDetailSheet: View {
                                 Image(systemName: "tag.fill")
                                     .font(.caption)
                                     .foregroundColor(.themePrimary)
-                                Text("\(Int(storeItem.price)) DT")
+                                Text(String(format: "%.0f DT", storeItem.price))  // ✅ Format corrigé
                                     .font(.subheadline.bold())
                                     .foregroundColor(.themePrimary)
                             }
