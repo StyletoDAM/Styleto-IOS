@@ -45,11 +45,65 @@ struct StoreView: View {
                         if !viewModel.storeItems.isEmpty {
                             myItemsGrid
                                 .padding(.horizontal, 16)
+                        } else {
+                            // Message quand l'utilisateur n'a rien à vendre
+                            VStack(spacing: 16) {
+                                Image(systemName: "tshirt")
+                                    .font(.system(size: 60))
+                                    .foregroundColor(.themePrimary.opacity(0.3))
+                                    .padding(.top, 60)
+                                
+                                Text("No items in your store yet")
+                                    .font(.system(size: 20, weight: .semibold))
+                                    .foregroundColor(.themeText)
+                                
+                                Text("Add clothes from your wardrobe to start selling")
+                                    .font(.system(size: 15))
+                                    .foregroundColor(.themeSecondaryText)
+                                    .multilineTextAlignment(.center)
+                                    .padding(.horizontal, 40)
+                                
+                                Button {
+                                    viewModel.showAddToStore = true
+                                    viewModel.loadMyClothes()
+                                } label: {
+                                    Text("Add your first item")
+                                        .font(.system(size: 16, weight: .semibold))
+                                        .foregroundColor(.white)
+                                        .padding(.horizontal, 24)
+                                        .padding(.vertical, 12)
+                                        .background(Color.themePrimary)
+                                        .clipShape(Capsule())
+                                }
+                                .padding(.top, 8)
+                            }
+                            .frame(maxWidth: .infinity)
+                            .padding(.horizontal, 16)
                         }
                     } else {
                         if !viewModel.discoverItems.isEmpty {
                             discoverGrid
                                 .padding(.horizontal, 16)
+                        } else {
+                            // Message quand il n'y a rien à découvrir
+                            VStack(spacing: 16) {
+                                Image(systemName: "magnifyingglass")
+                                    .font(.system(size: 60))
+                                    .foregroundColor(.themePrimary.opacity(0.3))
+                                    .padding(.top, 60)
+                                
+                                Text("No items to discover")
+                                    .font(.system(size: 20, weight: .semibold))
+                                    .foregroundColor(.themeText)
+                                
+                                Text("Check back later for new items")
+                                    .font(.system(size: 15))
+                                    .foregroundColor(.themeSecondaryText)
+                                    .multilineTextAlignment(.center)
+                                    .padding(.horizontal, 40)
+                            }
+                            .frame(maxWidth: .infinity)
+                            .padding(.horizontal, 16)
                         }
                     }
 
@@ -61,6 +115,7 @@ struct StoreView: View {
             .toolbar(.hidden, for: .navigationBar)
             .onAppear {
                 viewModel.loadMyStore()
+                viewModel.loadDiscoverStore()  // Charge aussi les items à découvrir
             }
 
             // Bouton + flottant (inchangé)
@@ -108,8 +163,7 @@ struct StoreView: View {
         }
     }
 
-    // MARK: - Segment horizontal EXACTEMENT comme sur ta photo
-    // MARK: - Segment horizontal – maintenant les deux onglets ont le même style rose/blanc quand actifs
+    // MARK: - Segment horizontal
     private var tabSegment: some View {
         HStack(spacing: 0) {
             // Bouton "My Items"
@@ -128,7 +182,7 @@ struct StoreView: View {
                     )
             }
             
-            // Bouton "Discover" → maintenant identique à My Items quand actif
+            // Bouton "Discover"
             Button {
                 withAnimation(.easeInOut(duration: 0.25)) {
                     selectedTab = .discover
@@ -136,11 +190,11 @@ struct StoreView: View {
             } label: {
                 Text("Discover")
                     .font(.system(size: 17, weight: .semibold))
-                    .foregroundColor(selectedTab == .discover ? .white : Color.themePrimary.opacity(0.6))  // ← même couleur inactive
+                    .foregroundColor(selectedTab == .discover ? .white : Color.themePrimary.opacity(0.6))
                     .frame(maxWidth: .infinity, maxHeight: 50)
                     .background(
                         RoundedRectangle(cornerRadius: 25)
-                            .fill(selectedTab == .discover ? Color.themePrimary : Color.clear)       // ← fond rose quand actif
+                            .fill(selectedTab == .discover ? Color.themePrimary : Color.clear)
                     )
             }
         }
@@ -155,8 +209,6 @@ struct StoreView: View {
                 .stroke(Color.themePrimary.opacity(0.2), lineWidth: 1)
         )
     }
-
-    
 
     // MARK: - Header avec Chat + Panier
     private var headerWithTopButtons: some View {
@@ -186,7 +238,7 @@ struct StoreView: View {
                 Button {
                     showCart = true
                 } label: {
-                    ZStack(alignment: .topTrailing) {  // ← la clé magique
+                    ZStack(alignment: .topTrailing) {
                         // Le bouton exactement comme avant
                         Image(systemName: "cart.fill")
                             .font(.system(size: 22, weight: .semibold))
@@ -287,13 +339,13 @@ struct StoreView: View {
     }
 }
 
-// MARK: - ProductCard CORRIGÉE (la ligne qui posait problème est maintenant OK)
+// MARK: - ProductCard
 private struct ProductCard: View {
     let storeItem: Store
     let viewModel: StoreViewModel?
 
     @State private var showEditPopup = false
-    @State private var showDiscoverDetail = false   // AJOUTÉ ICI !
+    @State private var showDiscoverDetail = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -348,7 +400,7 @@ private struct ProductCard: View {
             if viewModel != nil {
                 showEditPopup = true
             } else {
-                showDiscoverDetail = true  // Maintenant reconnu !
+                showDiscoverDetail = true
             }
         }
         .sheet(isPresented: $showEditPopup) {

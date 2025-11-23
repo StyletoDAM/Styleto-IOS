@@ -95,6 +95,10 @@ struct SettingsView: View {
     @State private var showPhotoPicker = false
     @State private var showDeletePhotoConfirmation = false
     
+    @State private var showAboutSheet = false
+    @State private var showContactSheet = false
+    
+    
     init(user: User? = nil, onLogout: (() -> Void)? = nil) {
         self.user = user
         self.onLogout = onLogout
@@ -135,7 +139,22 @@ struct SettingsView: View {
         _originalPhone = State(initialValue: resolvedPhone)
         _originalGender = State(initialValue: resolvedGender)
     }
-    
+    // MARK: - Contact Actions
+    private func openPhone() {
+        guard let url = URL(string: "tel://+21652904114") else { return }
+        if UIApplication.shared.canOpenURL(url) {
+            UIApplication.shared.open(url)
+        }
+    }
+
+    private func openEmail() {
+        let email = "labasni@gmail.com"
+        if let url = URL(string: "mailto:\(email)") {
+            if UIApplication.shared.canOpenURL(url) {
+                UIApplication.shared.open(url)
+            }
+        }
+    }
     private let sections: [SettingsSection] = [
         SettingsSection(
             icon: "person.circle",
@@ -175,9 +194,7 @@ struct SettingsView: View {
             icon: "questionmark.circle",
             title: "Help & Support",
             options: [
-                SettingsOption(icon: "envelope.badge", title: "Contact Us", hasToggle: false, toggleValue: false, hasChevron: true),
-                SettingsOption(icon: "doc.text", title: "FAQ", hasToggle: false, toggleValue: false, hasChevron: true),
-                SettingsOption(icon: "info.circle", title: "About", hasToggle: false, toggleValue: false, hasChevron: true),
+                SettingsOption(icon: "envelope.badge", title: "Contact Us", hasToggle: false, toggleValue: false, hasChevron: true),                SettingsOption(icon: "info.circle", title: "About", hasToggle: false, toggleValue: false, hasChevron: true),
                 SettingsOption(icon: "app.badge", title: "Version 1.0.0", hasToggle: false, toggleValue: false, hasChevron: false)
             ],
             isEditProfile: false
@@ -334,6 +351,8 @@ struct SettingsView: View {
                                 password: $password,
                                 onPasswordChange: { showPasswordUpdate = true },
                                 onDeleteAccount: { showDeleteConfirmation = true },
+                                showAboutSheet: $showAboutSheet,
+                                showContactSheet: $showContactSheet,   // ← AJOUTÉ ICI
                                 viewModel: viewModel
                             )
                         }
@@ -491,6 +510,15 @@ struct SettingsView: View {
                     }
                 } message: {
                     Text("Are you sure you want to delete your profile picture?")
+                }
+                .sheet(isPresented: $showAboutSheet) {
+                    AboutSheet()
+                }
+                .sheet(isPresented: $showContactSheet) {
+                    ContactSheet(
+                        onPhone: openPhone,
+                        onEmail: openEmail
+                    )
                 }
         }
     }
@@ -755,6 +783,8 @@ private struct SettingsSectionCard: View {
     @Binding var password: String
     var onPasswordChange: (() -> Void)?
     var onDeleteAccount: (() -> Void)?
+    @Binding var showAboutSheet: Bool
+    @Binding var showContactSheet: Bool   // ← Doit être présent
     @ObservedObject var viewModel: SettingsViewModel
     
     var body: some View {
@@ -828,7 +858,9 @@ private struct SettingsSectionCard: View {
                         themeManager: themeManager,
                         showThemePicker: option.title == "Theme" ? $showThemePicker : nil,
                         onPasswordChange: option.title == "Change Password" ? onPasswordChange : nil,
-                        onDeleteAccount: option.title == "Delete Account" ? onDeleteAccount : nil
+                        onDeleteAccount: option.title == "Delete Account" ? onDeleteAccount : nil,
+                        showAboutSheet: option.title == "About" ? $showAboutSheet : nil,
+                        showContactSheet: option.title == "Contact Us" ? $showContactSheet : nil   // ← AJOUTE ÇA
                     )
                 }
                 
@@ -855,6 +887,8 @@ private struct SettingsOptionRow: View {
     var showThemePicker: Binding<Bool>?
     var onPasswordChange: (() -> Void)?
     var onDeleteAccount: (() -> Void)?
+    var showAboutSheet: Binding<Bool>?
+    var showContactSheet: Binding<Bool>?
     @State private var toggleValue: Bool
     
     init(
@@ -862,13 +896,16 @@ private struct SettingsOptionRow: View {
         themeManager: ThemeManager,
         showThemePicker: Binding<Bool>? = nil,
         onPasswordChange: (() -> Void)? = nil,
-        onDeleteAccount: (() -> Void)? = nil
+        onDeleteAccount: (() -> Void)? = nil,
+        showAboutSheet: Binding<Bool>? = nil,
+        showContactSheet: Binding<Bool>? = nil
     ) {
         self.option = option
         self.themeManager = themeManager
         self.showThemePicker = showThemePicker
         self.onPasswordChange = onPasswordChange
         self.onDeleteAccount = onDeleteAccount
+        self.showAboutSheet = showAboutSheet
         _toggleValue = State(initialValue: option.toggleValue)
     }
     
@@ -885,7 +922,11 @@ private struct SettingsOptionRow: View {
                 onPasswordChange?()
             } else if option.title == "Delete Account" {
                 onDeleteAccount?()
-            }
+            }else if option.title == "About" {
+                showAboutSheet?.wrappedValue = true
+            }else if option.title == "Contact Us" {
+                // On montre le petit menu comme sur ta capture
+                showContactSheet?.wrappedValue = true            }
         } label: {
             HStack(spacing: 16) {
                 Image(systemName: option.icon)
@@ -920,6 +961,127 @@ private struct SettingsOptionRow: View {
             .padding(.vertical, 16)
         }
         .buttonStyle(.plain)
+        
     }
 }
 
+private struct AboutSheet: View {
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 24) {
+                    // Image ou logo de l’app (optionnel)
+//                    Image("app-logo") // remplace par ton asset ou enlève
+//                        .resizable()
+//                        .scaledToFit()
+//                        .frame(height: 120)
+//                        .frame(maxWidth: .infinity)
+
+                    VStack(alignment: .leading, spacing: 16) {
+                        Text("About")
+                            .font(.title2).bold()
+                            .foregroundColor(.themePrimary)
+
+                        Text("""
+                        Labasni is an innovative fashion app that lets you discover, share, and sell your clothes.
+
+                        Create your virtual wardrobe in seconds, get personalized outfit suggestions every day, explore the latest trends, and connect with thousands of women who love fashion just like you.
+
+                        Whether you want to refresh your style, make some extra money by selling pieces you no longer wear, or simply find daily inspiration — Labasni is made for you.
+
+                        Join a caring, creative, and passionate community.
+                        Because every woman deserves to feel beautiful and confident every single day.
+
+                        Thank you for being part of the Labasni adventure
+
+                        Version 1.0.0 • 2025
+                        """)
+                        .font(.body)
+                        .foregroundColor(.themeText)
+                        .lineSpacing(6)
+                    }
+                    .padding(.horizontal, 24)
+
+                    Spacer()
+                }
+                .padding(.top, 20)
+            }
+            .background(Color.themeBackground.ignoresSafeArea())
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Close") { dismiss() }
+                        .foregroundColor(.themePrimary)
+                }
+            }
+        }
+    }
+}
+private struct ContactSheet: View {
+    let onPhone: () -> Void
+    let onEmail: () -> Void
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        NavigationStack {
+            VStack(spacing: 20) {
+                Spacer().frame(height: 20)
+
+                Text("Contact Us")
+                    .font(.title2.bold())
+                    .foregroundColor(.themePrimary)
+
+                VStack(spacing: 16) {
+                    Button {
+                        onPhone()
+                        dismiss()
+                    } label: {
+                        HStack {
+                            Image(systemName: "phone.fill")
+                            Text("Phone +216 52 904 114")
+                            Spacer()
+                            Image(systemName: "chevron.right")
+                        }
+                        .foregroundColor(.themeText)
+                        .font(.system(size: 17))
+                        .padding()
+                        .background(Color.themeCard)
+                        .cornerRadius(12)
+                    }
+
+                    Button {
+                        onEmail()
+                        dismiss()
+                    } label: {
+                        HStack {
+                            Image(systemName: "envelope.fill")
+                            Text("Email labasni@gmail.com")
+                            Spacer()
+                            Image(systemName: "chevron.right")
+                        }
+                        .foregroundColor(.themeText)
+                        .font(.system(size: 17))
+                        .padding()
+                        .background(Color.themeCard)
+                        .cornerRadius(12)
+                    }
+                }
+                .padding(.horizontal, 24)
+
+                Spacer()
+            }
+            .background(Color.themeBackground.ignoresSafeArea())
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { dismiss() }
+                        .foregroundColor(.themePrimary)
+                        .fontWeight(.medium)
+                }
+            }
+        }
+        .presentationDetents([.medium])
+        .presentationDragIndicator(.visible)
+    }
+}
