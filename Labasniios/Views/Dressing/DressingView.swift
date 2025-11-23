@@ -210,7 +210,7 @@ struct DressingView: View {
                 Image(systemName: "magnifyingglass")
                     .foregroundColor(.themeSecondary)
                 
-                TextField("Rechercher...", text: $searchText)
+                TextField("Search...", text: $searchText)
                     .textInputAutocapitalization(.never)
                     .autocorrectionDisabled(true)
                     .onChange(of: searchText) { newValue in
@@ -227,15 +227,16 @@ struct DressingView: View {
                     )
             )
             
-            Circle()
-                .fill(Color.themeAqua)
-                .frame(width: 48, height: 48)
-                .overlay(
-                    Image(systemName: "line.3.horizontal.decrease.circle")
-                        .font(.system(size: 22, weight: .semibold))
-                        .foregroundColor(.white)
-                )
-                .shadow(color: .black.opacity(0.1), radius: 6, x: 0, y: 4)
+//            Circle()
+//                .fill(Color.themeAqua)
+//                .frame(width: 48, height: 48)
+//                .overlay(
+//                    Image(systemName: "line.3.horizontal.decrease.circle")
+//                        .font(.system(size: 22, weight: .semibold))
+//                        .foregroundColor(.white)
+//                )
+//                .shadow(color: .black.opacity(0.1), radius: 6, x: 0, y: 4)
+            Spacer()
         }
     }
     

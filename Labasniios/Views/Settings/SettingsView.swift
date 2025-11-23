@@ -149,7 +149,7 @@ struct SettingsView: View {
             options: [
                 SettingsOption(icon: "bell", title: "Notifications", hasToggle: true, toggleValue: true, hasChevron: false),
                 SettingsOption(icon: "globe", title: "Language", hasToggle: false, toggleValue: false, hasChevron: true),
-                SettingsOption(icon: "textformat.size", title: "Font Size", hasToggle: false, toggleValue: false, hasChevron: true)
+                
             ],
             isEditProfile: false
         ),
@@ -159,9 +159,6 @@ struct SettingsView: View {
             options: [
                 SettingsOption(icon: "moon", title: "Theme", hasToggle: false, toggleValue: false, hasChevron: true),
                 SettingsOption(icon: "paintpalette", title: "Color Theme", hasToggle: false, toggleValue: false, hasChevron: true),
-                SettingsOption(icon: "square.grid.2x2", title: "Interface Layout", hasToggle: false, toggleValue: false, hasChevron: true),
-                SettingsOption(icon: "sparkles", title: "Animation Style", hasToggle: false, toggleValue: false, hasChevron: true),
-                SettingsOption(icon: "heart", title: "Favorite Styles", hasToggle: false, toggleValue: false, hasChevron: true)
             ],
             isEditProfile: false
         ),

@@ -11,10 +11,19 @@ struct StoreView: View {
     @State private var searchText = ""
     @State private var showCart = false
     @State private var showChat = false
+    
+    // AJOUT : état pour savoir quel onglet est actif
+    @State private var selectedTab: StoreTab = .myItems
+    
     private let columns: [GridItem] = [
         GridItem(.flexible(), spacing: 16),
         GridItem(.flexible(), spacing: 16)
     ]
+    
+    // Enum pour les deux onglets
+    private enum StoreTab {
+        case myItems, discover
+    }
 
     var body: some View {
         ZStack {
@@ -27,18 +36,18 @@ struct StoreView: View {
                     .padding(.horizontal, 16)
                     .padding(.top, 8)
 
-                    if !viewModel.storeItems.isEmpty {
-                        myItemsHeaderWithPlusButton
-                            .padding(.horizontal, 16)
-                    }
+                    // NOUVEAU : Le segment horizontal comme sur ta photo
+                    tabSegment
+                        .padding(.horizontal, 16)
 
-                    if !viewModel.storeItems.isEmpty {
-                        myItemsGrid
-                            .padding(.horizontal, 16)
-                    }
-
-                    if !viewModel.discoverItems.isEmpty {
-                        sectionHeader(title: "Discover", items: viewModel.discoverItems) {
+                    // Contenu qui change selon l'onglet sélectionné
+                    if selectedTab == .myItems {
+                        if !viewModel.storeItems.isEmpty {
+                            myItemsGrid
+                                .padding(.horizontal, 16)
+                        }
+                    } else {
+                        if !viewModel.discoverItems.isEmpty {
                             discoverGrid
                                 .padding(.horizontal, 16)
                         }
@@ -54,7 +63,7 @@ struct StoreView: View {
                 viewModel.loadMyStore()
             }
 
-            // Bouton + flottant "+"
+            // Bouton + flottant (inchangé)
             VStack {
                 Spacer()
                 HStack {
@@ -76,7 +85,7 @@ struct StoreView: View {
                 }
             }
 
-            // Toast suppression
+            // Toast suppression (inchangé)
             if viewModel.showToast {
                 VStack {
                     Text("Item deleted")
@@ -98,6 +107,56 @@ struct StoreView: View {
             AddToStoreSheet(viewModel: viewModel)
         }
     }
+
+    // MARK: - Segment horizontal EXACTEMENT comme sur ta photo
+    // MARK: - Segment horizontal – maintenant les deux onglets ont le même style rose/blanc quand actifs
+    private var tabSegment: some View {
+        HStack(spacing: 0) {
+            // Bouton "My Items"
+            Button {
+                withAnimation(.easeInOut(duration: 0.25)) {
+                    selectedTab = .myItems
+                }
+            } label: {
+                Text("My Items")
+                    .font(.system(size: 17, weight: .semibold))
+                    .foregroundColor(selectedTab == .myItems ? .white : Color.themePrimary.opacity(0.6))
+                    .frame(maxWidth: .infinity, maxHeight: 50)
+                    .background(
+                        RoundedRectangle(cornerRadius: 25)
+                            .fill(selectedTab == .myItems ? Color.themePrimary : Color.clear)
+                    )
+            }
+            
+            // Bouton "Discover" → maintenant identique à My Items quand actif
+            Button {
+                withAnimation(.easeInOut(duration: 0.25)) {
+                    selectedTab = .discover
+                }
+            } label: {
+                Text("Discover")
+                    .font(.system(size: 17, weight: .semibold))
+                    .foregroundColor(selectedTab == .discover ? .white : Color.themePrimary.opacity(0.6))  // ← même couleur inactive
+                    .frame(maxWidth: .infinity, maxHeight: 50)
+                    .background(
+                        RoundedRectangle(cornerRadius: 25)
+                            .fill(selectedTab == .discover ? Color.themePrimary : Color.clear)       // ← fond rose quand actif
+                    )
+            }
+        }
+        .padding(4)
+        .background(
+            Capsule()
+                .fill(Color.white)
+                .shadow(color: .black.opacity(0.08), radius: 8, x: 0, y: 4)
+        )
+        .overlay(
+            Capsule()
+                .stroke(Color.themePrimary.opacity(0.2), lineWidth: 1)
+        )
+    }
+
+    
 
     // MARK: - Header avec Chat + Panier
     private var headerWithTopButtons: some View {
