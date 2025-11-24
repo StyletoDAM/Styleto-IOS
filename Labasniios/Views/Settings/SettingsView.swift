@@ -207,184 +207,7 @@ struct SettingsView: View {
     var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(spacing: 16) {
-                    Text("Settings")
-                        .font(.system(size: 36, weight: .bold))
-                        .foregroundColor(.themePrimary)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(.horizontal, 20)
-                        .padding(.top, 12)
-                    // Profile Photo
-                    VStack(spacing: 12) {
-                        Button {
-                            showImageSourcePicker = true
-                        } label: {
-                            ZStack {
-                                Circle()
-                                    .fill(Color.themePrimary.opacity(0.15))
-                                    .frame(width: 80, height: 80)
-                                
-                                if let img = profileImage ?? viewModel.profileImage {
-                                    Image(uiImage: img)
-                                        .resizable()
-                                        .scaledToFill()
-                                        .frame(width: 80, height: 80)
-                                        .clipShape(Circle())
-                                } else if let updatedUser = viewModel.updatedUser,
-                                          let pic = updatedUser.profilePicture,
-                                          !pic.isEmpty,
-                                          let url = URL(string: pic) {
-                                    AsyncImage(url: url) { image in
-                                        image
-                                            .resizable()
-                                            .scaledToFill()
-                                    } placeholder: {
-                                        Text(initials(from: fullName))
-                                            .font(.system(size: 28, weight: .bold))
-                                            .foregroundColor(.themePrimary)
-                                    }
-                                    .frame(width: 80, height: 80)
-                                    .clipShape(Circle())
-                                } else if let pic = user?.profilePicture, !pic.isEmpty, let url = URL(string: pic) {
-                                    AsyncImage(url: url) { image in
-                                        image
-                                            .resizable()
-                                            .scaledToFill()
-                                    } placeholder: {
-                                        Text(initials(from: fullName))
-                                            .font(.system(size: 28, weight: .bold))
-                                            .foregroundColor(.themePrimary)
-                                    }
-                                    .frame(width: 80, height: 80)
-                                    .clipShape(Circle())
-                                } else {
-                                    Text(initials(from: fullName))
-                                        .font(.system(size: 28, weight: .bold))
-                                        .foregroundColor(.themePrimary)
-                                }
-                                
-                                // Icône d'édition
-                                VStack {
-                                    Spacer()
-                                    HStack {
-                                        Spacer()
-                                        ZStack {
-                                            Circle()
-                                                .fill(Color.themePrimary)
-                                                .frame(width: 28, height: 28)
-                                            Image(systemName: "camera.fill")
-                                                .font(.system(size: 12, weight: .semibold))
-                                                .foregroundColor(.white)
-                                        }
-                                    }
-                                }
-                                .frame(width: 80, height: 80)
-                            }
-                        }
-                        .buttonStyle(.plain)
-                        .confirmationDialog("Choose an option", isPresented: $showImageSourcePicker) {
-                            Button("Take a new photo") {
-                                showCamera = true
-                            }
-                            Button("Choose from gallery") {
-                                showPhotoPicker = true
-                            }
-                            
-                            if hasProfilePhoto {
-                                Button("Delete photo", role: .destructive) {
-                                    showDeletePhotoConfirmation = true
-                                }
-                            }
-                            
-                            Button("Cancel", role: .cancel) {}
-                        }
-                        
-                        Text(fullName)
-                            .font(.system(size: 18, weight: .semibold))
-                            .foregroundColor(.themeText)
-                    }
-                    .padding(.top, 20)
-                    
-                    // Sections
-                    ForEach(sections) { section in
-                        if section.isEditProfile {
-                            EditProfileSectionCard(
-                                isExpanded: expandedSections.contains(section.id),
-                                onToggle: {
-                                    withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
-                                        if expandedSections.contains(section.id) {
-                                            expandedSections.remove(section.id)
-                                        } else {
-                                            expandedSections.insert(section.id)
-                                        }
-                                    }
-                                },
-                                fullName: $fullName,
-                                email: $email,
-                                phone: $phone,
-                                gender: $gender,
-                                selectedStyles: $selectedStyles,
-                                viewModel: viewModel,
-                                onSave: { showSaveConfirmation = true },
-                                onCancel: {
-                                    fullName = originalFullName
-                                    phone = originalPhone
-                                    gender = originalGender
-                                    selectedStyles = originalStyles
-                                },
-                                hasChanges: hasChanges,
-                                user: user
-                            )
-                        } else {
-                            SettingsSectionCard(
-                                section: section,
-                                isExpanded: expandedSections.contains(section.id),
-                                onToggle: {
-                                    withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
-                                        if expandedSections.contains(section.id) {
-                                            expandedSections.remove(section.id)
-                                        } else {
-                                            expandedSections.insert(section.id)
-                                        }
-                                    }
-                                },
-                                themeManager: themeManager,
-                                showThemePicker: $showThemePicker,
-                                showPasswordUpdate: $showPasswordUpdate,
-                                password: $password,
-                                onPasswordChange: { showPasswordUpdate = true },
-                                onDeleteAccount: { showDeleteConfirmation = true },
-                                showAboutSheet: $showAboutSheet,
-                                showContactSheet: $showContactSheet,   // ← AJOUTÉ ICI
-                                showColorThemePicker: $showColorThemePicker,
-                                viewModel: viewModel
-                            )
-                        }
-                    }
-                    
-                    // Logout Button
-                    Button {
-                        showLogoutConfirmation = true
-                    } label: {
-                        Group {
-                            if viewModel.isLoading {
-                                ProgressView()
-                                    .progressViewStyle(.circular)
-                            } else {
-                                Text("Logout")
-                                    .font(.system(size: 17, weight: .semibold))
-                            }
-                        }
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 16)
-                    }
-                    .buttonStyle(PillButtonStyle(background: .themePrimary, foreground: .white))
-                    .padding(.horizontal, 22)
-                    .padding(.top, 32)
-                    .padding(.bottom, 20)
-                }
-                .padding(.horizontal, 20)
-                .padding(.vertical, 16)
+                mainContent
             }
             .background(Color.themeBackground.ignoresSafeArea())
             .navigationBarBackButtonHidden(true)
@@ -525,6 +348,200 @@ struct SettingsView: View {
                 onEmail: openEmail
             )
         }
+    }
+    
+    @ViewBuilder
+    private var mainContent: some View {
+        VStack(spacing: 16) {
+            settingsTitle
+            profileSection
+            sectionsList
+            logoutSection
+        }
+        .padding(.horizontal, 20)
+        .padding(.vertical, 16)
+    }
+    
+    private var settingsTitle: some View {
+        Text("Settings")
+            .font(.system(size: 36, weight: .bold))
+            .foregroundColor(.themePrimary)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, 20)
+            .padding(.top, 12)
+    }
+    
+    @ViewBuilder
+    private var profileSection: some View {
+        VStack(spacing: 12) {
+            Button {
+                showImageSourcePicker = true
+            } label: {
+                ZStack {
+                    Circle()
+                        .fill(Color.themePrimary.opacity(0.15))
+                        .frame(width: 80, height: 80)
+                    
+                    if let img = profileImage ?? viewModel.profileImage {
+                        Image(uiImage: img)
+                            .resizable()
+                            .scaledToFill()
+                            .frame(width: 80, height: 80)
+                            .clipShape(Circle())
+                    } else if let updatedUser = viewModel.updatedUser,
+                              let pic = updatedUser.profilePicture,
+                              !pic.isEmpty,
+                              let url = URL(string: pic) {
+                        AsyncImage(url: url) { image in
+                            image
+                                .resizable()
+                                .scaledToFill()
+                        } placeholder: {
+                            Text(initials(from: fullName))
+                                .font(.system(size: 28, weight: .bold))
+                                .foregroundColor(.themePrimary)
+                        }
+                        .frame(width: 80, height: 80)
+                        .clipShape(Circle())
+                    } else if let pic = user?.profilePicture, !pic.isEmpty, let url = URL(string: pic) {
+                        AsyncImage(url: url) { image in
+                            image
+                                .resizable()
+                                .scaledToFill()
+                        } placeholder: {
+                            Text(initials(from: fullName))
+                                .font(.system(size: 28, weight: .bold))
+                                .foregroundColor(.themePrimary)
+                        }
+                        .frame(width: 80, height: 80)
+                        .clipShape(Circle())
+                    } else {
+                        Text(initials(from: fullName))
+                            .font(.system(size: 28, weight: .bold))
+                            .foregroundColor(.themePrimary)
+                    }
+                    
+                    VStack {
+                        Spacer()
+                        HStack {
+                            Spacer()
+                            ZStack {
+                                Circle()
+                                    .fill(Color.themePrimary)
+                                    .frame(width: 28, height: 28)
+                                Image(systemName: "camera.fill")
+                                    .font(.system(size: 12, weight: .semibold))
+                                    .foregroundColor(.white)
+                            }
+                        }
+                    }
+                    .frame(width: 80, height: 80)
+                }
+            }
+            .buttonStyle(.plain)
+            .confirmationDialog("Choose an option", isPresented: $showImageSourcePicker) {
+                Button("Take a new photo") {
+                    showCamera = true
+                }
+                Button("Choose from gallery") {
+                    showPhotoPicker = true
+                }
+                
+                if hasProfilePhoto {
+                    Button("Delete photo", role: .destructive) {
+                        showDeletePhotoConfirmation = true
+                    }
+                }
+                
+                Button("Cancel", role: .cancel) {}
+            }
+            
+            Text(fullName)
+                .font(.system(size: 18, weight: .semibold))
+                .foregroundColor(.themeText)
+        }
+        .padding(.top, 20)
+    }
+    
+    @ViewBuilder
+    private var sectionsList: some View {
+        ForEach(sections) { section in
+            if section.isEditProfile {
+                EditProfileSectionCard(
+                    isExpanded: expandedSections.contains(section.id),
+                    onToggle: {
+                        withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
+                            if expandedSections.contains(section.id) {
+                                expandedSections.remove(section.id)
+                            } else {
+                                expandedSections.insert(section.id)
+                            }
+                        }
+                    },
+                    fullName: $fullName,
+                    email: $email,
+                    phone: $phone,
+                    gender: $gender,
+                    selectedStyles: $selectedStyles,
+                    viewModel: viewModel,
+                    onSave: { showSaveConfirmation = true },
+                    onCancel: {
+                        fullName = originalFullName
+                        phone = originalPhone
+                        gender = originalGender
+                        selectedStyles = originalStyles
+                    },
+                    hasChanges: hasChanges,
+                    user: user
+                )
+            } else {
+                SettingsSectionCard(
+                    section: section,
+                    isExpanded: expandedSections.contains(section.id),
+                    onToggle: {
+                        withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
+                            if expandedSections.contains(section.id) {
+                                expandedSections.remove(section.id)
+                            } else {
+                                expandedSections.insert(section.id)
+                            }
+                        }
+                    },
+                    themeManager: themeManager,
+                    showThemePicker: $showThemePicker,
+                    showColorThemePicker: $showColorThemePicker,
+                    showPasswordUpdate: $showPasswordUpdate,
+                    password: $password,
+                    onPasswordChange: { showPasswordUpdate = true },
+                    onDeleteAccount: { showDeleteConfirmation = true },
+                    showAboutSheet: $showAboutSheet,
+                    showContactSheet: $showContactSheet,   // ← AJOUTÉ ICI
+                    viewModel: viewModel
+                )
+            }
+        }
+    }
+    
+    private var logoutSection: some View {
+        Button {
+            showLogoutConfirmation = true
+        } label: {
+            Group {
+                if viewModel.isLoading {
+                    ProgressView()
+                        .progressViewStyle(.circular)
+                } else {
+                    Text("Logout")
+                        .font(.system(size: 17, weight: .semibold))
+                }
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 16)
+        }
+        .buttonStyle(PillButtonStyle(background: .themePrimary, foreground: .white))
+        .padding(.horizontal, 22)
+        .padding(.top, 32)
+        .padding(.bottom, 20)
     }
     
     private var hasChanges: Bool {
@@ -853,6 +870,7 @@ private struct SettingsSectionCard: View {
     let onToggle: () -> Void
     @ObservedObject var themeManager: ThemeManager
     @Binding var showThemePicker: Bool
+    @Binding var showColorThemePicker: Bool
     @Binding var showPasswordUpdate: Bool
     @Binding var password: String
     var onPasswordChange: (() -> Void)?
