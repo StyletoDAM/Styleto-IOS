@@ -4,9 +4,9 @@ struct ChatConversationResponse: Codable, Identifiable {
     let id: String
     var participants: [ChatParticipant]
     let isGroup: Bool
-    let messages: [ChatMessage]
+    var messages: [ChatMessage]
     let createdAt: Date
-    let updatedAt: Date
+    var updatedAt: Date
     
     enum CodingKeys: String, CodingKey {
         case id = "_id"
@@ -64,5 +64,21 @@ struct ChatConversationResponse: Codable, Identifiable {
         } else {
             self.updatedAt = Date()
         }
+    }
+    
+    init(
+        id: String,
+        participants: [ChatParticipant],
+        isGroup: Bool,
+        messages: [ChatMessage],
+        createdAt: Date,
+        updatedAt: Date
+    ) {
+        self.id = id
+        self.participants = participants
+        self.isGroup = isGroup
+        self.messages = messages
+        self.createdAt = createdAt
+        self.updatedAt = updatedAt
     }
 }

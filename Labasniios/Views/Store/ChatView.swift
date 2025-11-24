@@ -140,6 +140,11 @@ struct ChatView: View {
             .fullScreenCover(item: $selectedConversation) { conv in
                 ChatDetailView(conversation: conv)
             }
+            .onChange(of: selectedConversation) { newValue in
+                if newValue == nil {
+                    Task { await viewModel.loadConversations(showLoader: false) }
+                }
+            }
             // Hide keyboard on tap
             .contentShape(Rectangle())
             .onTapGesture {

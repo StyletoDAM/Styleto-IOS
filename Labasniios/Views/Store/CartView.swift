@@ -118,20 +118,78 @@ struct CartView: View {
     
     // MARK: - Empty State
     private var emptyState: some View {
-        VStack(spacing: 20) {
-            Image(systemName: "cart")
-                .font(.system(size: 60))
-                .foregroundColor(.gray.opacity(0.5))
+        VStack(spacing: 28) {
+            ZStack {
+                Circle()
+                    .fill(
+                        LinearGradient(
+                            colors: [Color.themeSoftPink.opacity(0.3), Color.themePrimary.opacity(0.2)],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+                    .frame(width: 160, height: 160)
+                    .overlay(
+                        Circle()
+                            .stroke(Color.themePrimary.opacity(0.2), lineWidth: 2)
+                    )
+                
+                Image(systemName: "bag.badge.plus")
+                    .font(.system(size: 58, weight: .bold))
+                    .foregroundColor(.themePrimary)
+            }
+            .padding(.top, 40)
             
-            Text("Your cart is empty")
-                .font(.title2)
-                .foregroundColor(.gray)
+            VStack(spacing: 8) {
+                Text("Your cart is feeling lonely")
+                    .font(.system(size: 22, weight: .bold))
+                    .foregroundColor(.themePrimary)
+                
+                Text("Discover new outfits and add them to your cart to continue.")
+                    .font(.system(size: 15))
+                    .foregroundColor(.themeSecondaryText)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 32)
+            }
             
-            Text("Add items from the store!")
-                .font(.caption)
-                .foregroundColor(.secondary)
+            VStack(spacing: 12) {
+                Button {
+                    dismiss()
+                } label: {
+                    Text("Browse Discover")
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundColor(.white)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 15)
+                        .background(
+                            LinearGradient(
+                                colors: [Color.themePrimary, Color.themeTeal],
+                                startPoint: .leading,
+                                endPoint: .trailing
+                            )
+                        )
+                        .clipShape(Capsule())
+                        .shadow(color: .themePrimary.opacity(0.35), radius: 10, y: 4)
+                }
+                .padding(.horizontal, 40)
+                
+                Button {
+                    dismiss()
+                } label: {
+                    Text("Back to Store")
+                        .font(.system(size: 15, weight: .semibold))
+                        .foregroundColor(.themePrimary)
+                        .padding(.horizontal, 24)
+                        .padding(.vertical, 10)
+                        .background(
+                            Capsule()
+                                .stroke(Color.themePrimary.opacity(0.4), lineWidth: 1.5)
+                        )
+                }
+            }
+            
+            Spacer()
         }
-        .padding(.top, 100)
     }
     
     // MARK: - Cart Items List

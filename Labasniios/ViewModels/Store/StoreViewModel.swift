@@ -145,8 +145,6 @@ class StoreViewModel: ObservableObject {
     }
     
     func loadDiscoverItems() {
-        guard !rawStoreItems.isEmpty else { return }
-        
         StoreService.shared.fetchAllStoreItems()
             .sink { [weak self] completion in
                 if case .failure(let error) = completion {
