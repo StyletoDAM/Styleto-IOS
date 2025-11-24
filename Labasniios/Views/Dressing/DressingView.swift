@@ -6,6 +6,8 @@ struct DressingView: View {
     @ObservedObject private var themeManager = ThemeManager.shared
     @ObservedObject private var appPreferences = AppPreferences.shared
     @State private var showCamera = false
+    @State private var showPhotoPicker = false
+    @State private var showImageSourceSheet = false
     @State private var capturedImage: UIImage?
     @State private var searchText = ""
     @State private var showDetectionResult = false
@@ -71,11 +73,13 @@ struct DressingView: View {
         // MODAL CAMERA UNIQUEMENT
         .sheet(isPresented: $showCamera) {
             ImagePicker(sourceType: .camera) { image in
-                capturedImage = image
-                isUploading = true
-                if let image = image {
-                    uploadAndDetect(image: image)
-                }
+                handleSelectedImage(image)
+            }
+        }
+        // MODAL GALERIE
+        .sheet(isPresented: $showPhotoPicker) {
+            ImagePicker(sourceType: .photoLibrary) { image in
+                handleSelectedImage(image)
             }
         }
         // Loading Screen
@@ -114,12 +118,23 @@ struct DressingView: View {
                 PhotoGuidePopupView(
                     isShowing: $showPhotoGuide,
                     onContinue: {
-                        showCamera = true
+                        showImageSourceSheet = true
                     }
                 )
                 .transition(.opacity.combined(with: .scale))
                 .animation(.spring(response: 0.4), value: showPhotoGuide)
             }
+        }
+        // Image Source Sheet (Camera / Gallery)
+        .sheet(isPresented: $showImageSourceSheet) {
+            ImageSourceSheet(
+                onCamera: {
+                    showCamera = true
+                },
+                onGallery: {
+                    showPhotoPicker = true
+                }
+            )
         }
         // Clothing Detail Sheet
         .sheet(item: $selectedClothe) { clothe in
@@ -184,6 +199,13 @@ struct DressingView: View {
                 self.showDetectionResult = true
             }
         }.resume()
+    }
+    
+    private func handleSelectedImage(_ image: UIImage?) {
+        guard let image = image else { return }
+        capturedImage = image
+        isUploading = true
+        uploadAndDetect(image: image)
     }
 
     private func showErrorAlert(_ message: String) {
@@ -458,6 +480,104 @@ private struct ClothingCard: View {
                 }
             }
         }
+    }
+}
+
+// MARK: - Image Source Sheet
+private struct ImageSourceSheet: View {
+    let onCamera: () -> Void
+    let onGallery: () -> Void
+    @Environment(\.dismiss) private var dismiss
+    
+    var body: some View {
+        VStack(spacing: 0) {
+            Text("Add clothing")
+                .font(.system(size: 22, weight: .bold))
+                .foregroundColor(.themePrimary)
+                .padding(.top, 24)
+                .padding(.bottom, 20)
+            
+            VStack(spacing: 0) {
+                imageSourceRow(
+                    icon: "camera.fill",
+                    title: "Take a Photo",
+                    subtitle: "Use the camera",
+                    action: onCamera
+                )
+                
+                Divider().padding(.leading, 72)
+                
+                imageSourceRow(
+                    icon: "photo.on.rectangle",
+                    title: "Choose from Gallery",
+                    subtitle: "Select an existing photo",
+                    action: onGallery
+                )
+            }
+            .background(Color.themeCard)
+            .cornerRadius(20)
+            .padding(.horizontal, 24)
+            
+            Spacer(minLength: 16)
+            
+            Button {
+                dismiss()
+            } label: {
+                Text("Cancel")
+                    .font(.system(size: 17, weight: .bold))
+                    .foregroundColor(.themePrimary)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 16)
+            }
+            .padding(.horizontal, 24)
+            .padding(.bottom, 24)
+        }
+        .frame(maxWidth: .infinity)
+        .background(Color.themeBackground.ignoresSafeArea())
+        .presentationDetents([.medium])
+        .presentationDragIndicator(.visible)
+    }
+    
+    private func imageSourceRow(
+        icon: String,
+        title: String,
+        subtitle: String,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button {
+            action()
+            dismiss()
+        } label: {
+            HStack(spacing: 16) {
+                ZStack {
+                    Circle()
+                        .fill(Color.themePrimary.opacity(0.15))
+                        .frame(width: 52, height: 52)
+                    Image(systemName: icon)
+                        .font(.system(size: 22))
+                        .foregroundColor(.themePrimary)
+                }
+                
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(title)
+                        .font(.system(size: 17, weight: .semibold))
+                        .foregroundColor(.themeText)
+                    Text(subtitle)
+                        .font(.system(size: 15))
+                        .foregroundColor(.themeText.opacity(0.7))
+                }
+                
+                Spacer()
+                
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundColor(.themeText.opacity(0.6))
+            }
+            .padding(.horizontal, 20)
+            .padding(.vertical, 16)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
     }
 }
 
