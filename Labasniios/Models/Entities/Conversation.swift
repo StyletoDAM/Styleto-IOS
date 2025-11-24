@@ -65,20 +65,4 @@ struct ChatConversationResponse: Codable, Identifiable {
             self.updatedAt = Date()
         }
     }
-    
-    init(
-        id: String,
-        participants: [ChatParticipant],
-        isGroup: Bool,
-        messages: [ChatMessage],
-        createdAt: Date,
-        updatedAt: Date
-    ) {
-        self.id = id
-        self.participants = participants
-        self.isGroup = isGroup
-        self.messages = messages
-        self.createdAt = createdAt
-        self.updatedAt = updatedAt
-    }
 }
