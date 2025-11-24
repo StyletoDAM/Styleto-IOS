@@ -1,6 +1,6 @@
 import Foundation
 
-struct ChatConversationResponse: Codable, Identifiable {
+struct ChatConversationResponse: Codable, Identifiable, Equatable {
     let id: String
     var participants: [ChatParticipant]
     let isGroup: Bool
@@ -64,5 +64,9 @@ struct ChatConversationResponse: Codable, Identifiable {
         } else {
             self.updatedAt = Date()
         }
+    }
+    
+    static func == (lhs: ChatConversationResponse, rhs: ChatConversationResponse) -> Bool {
+        lhs.id == rhs.id
     }
 }
