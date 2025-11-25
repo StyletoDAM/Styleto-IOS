@@ -13,6 +13,7 @@ struct User: Codable, Identifiable {
     let googleId: String?
     let appleId: String?
     let profilePicture: String?
+    let balance: Double?
 
     enum Gender: String, Codable {
         case male
@@ -51,6 +52,7 @@ struct User: Codable, Identifiable {
         googleId = try container.decodeIfPresent(String.self, forKey: .googleId)
         appleId = try container.decodeIfPresent(String.self, forKey: .appleId)
         profilePicture = try container.decodeIfPresent(String.self, forKey: .profilePicture)
+        balance = try container.decodeIfPresent(Double.self, forKey: .balance)
     }
     
     func encode(to encoder: Encoder) throws {
@@ -67,6 +69,7 @@ struct User: Codable, Identifiable {
         try container.encodeIfPresent(googleId, forKey: .googleId)
         try container.encodeIfPresent(appleId, forKey: .appleId)
         try container.encodeIfPresent(profilePicture, forKey: .profilePicture)
+        try container.encodeIfPresent(balance, forKey: .balance)
     }
 
     private enum CodingKeys: String, CodingKey {
@@ -83,5 +86,6 @@ struct User: Codable, Identifiable {
         case googleId
         case appleId
         case profilePicture
+        case balance
     }
 }

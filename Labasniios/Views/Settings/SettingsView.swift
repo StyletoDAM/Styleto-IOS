@@ -354,6 +354,7 @@ struct SettingsView: View {
     private var mainContent: some View {
         VStack(spacing: 16) {
             settingsTitle
+            balanceCard
             profileSection
             sectionsList
             logoutSection
@@ -369,6 +370,52 @@ struct SettingsView: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.horizontal, 20)
             .padding(.top, 12)
+    }
+    
+    // MARK: - Balance Card (identique à Android)
+    private var balanceCard: some View {
+        HStack {
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Mon Solde")
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundColor(.white.opacity(0.9))
+                
+                Text("\(String(format: "%.2f", (user?.balance ?? 0.0) / 100)) TND")
+                    .font(.system(size: 26, weight: .bold))
+                    .foregroundColor(.white)
+                
+                Text("Disponible pour retrait")
+                    .font(.system(size: 11, weight: .regular))
+                    .foregroundColor(.white.opacity(0.8))
+            }
+            
+            Spacer()
+            
+            Circle()
+                .fill(Color.white.opacity(0.2))
+                .frame(width: 56, height: 56)
+                .overlay(
+                    Image(systemName: "creditcard.fill")
+                        .font(.system(size: 26))
+                        .foregroundColor(.white)
+                )
+        }
+        .padding(.horizontal, 20)
+        .padding(.vertical, 16)
+        .background(
+            LinearGradient(
+                colors: [
+                    Color.themePrimary.opacity(0.8),
+                    Color.themeTeal.opacity(0.9),
+                    Color.themeSecondary.opacity(0.7)
+                ],
+                startPoint: .leading,
+                endPoint: .trailing
+            )
+        )
+        .cornerRadius(20)
+        .padding(.horizontal, 20)
+        .padding(.vertical, 8)
     }
     
     @ViewBuilder

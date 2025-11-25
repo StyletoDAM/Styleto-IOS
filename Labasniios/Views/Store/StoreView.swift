@@ -8,6 +8,7 @@ import SwiftUI
 struct StoreView: View {
     @ObservedObject private var themeManager = ThemeManager.shared
     @StateObject private var viewModel = StoreViewModel()
+    @ObservedObject private var cartManager = CartManager.shared
     @State private var searchText = ""
     @State private var showCart = false
     @State private var showChat = false
@@ -249,8 +250,8 @@ struct StoreView: View {
                             .shadow(color: .black.opacity(0.2), radius: 8)
                         
                         // Le badge rouge – apparaît uniquement si > 0
-                        if CartManager.shared.itemCount > 0 {
-                            Text("\(CartManager.shared.itemCount)")
+                        if cartManager.itemCount > 0 {
+                            Text("\(cartManager.itemCount)")
                                 .font(.system(size: 11, weight: .bold))
                                 .foregroundColor(.white)
                                 .frame(minWidth: 18, minHeight: 18)
