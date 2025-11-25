@@ -215,84 +215,33 @@ struct DressingView: View {
     }
 
     private func validateAIResult(_ resultText: String, imageUrl: String?) -> Bool {
-        // Validation comme Android DressingRepository
+        // Validation simplifiée - juste vérifier les erreurs explicites
+        let text = resultText.lowercased()
         
-        // 1. Vérifier imageUrl (comme Android)
-        guard let imageUrl = imageUrl, !imageUrl.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
-            print("iOS Validation: imageUrl manquante")
+        // Mots-clés d'erreur explicites
+        let errorKeywords = [
+            "aucun vêtement", "aucun vetement", "no clothing", "no clothes",
+            "no item", "nothing detected", "cannot detect", "erreur", "error",
+            "failed", "échec", "impossible", "invalid", "invalide"
+        ]
+        
+        // Si erreur explicite, rejeter
+        if errorKeywords.contains(where: text.contains) {
+            print("iOS Validation: Erreur explicite détectée")
             return false
         }
         
-        // 2. Vérifier detectionResult vide (comme Android)
-        if resultText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-            print("iOS Validation: detectionResult vide")
+        // Si le texte est trop court (moins de 5 caractères), rejeter
+        if resultText.trimmingCharacters(in: .whitespacesAndNewlines).count < 5 {
+            print("iOS Validation: Résultat trop court")
             return false
         }
         
-        // 3. Essayer de parser le résultat (comme Android DetectionResultParser)
-        do {
-            let _ = try parseDetectionResult(resultText)
-            print("iOS Validation: Parsing réussi")
-            return true
-        } catch {
-            print("iOS Validation: Erreur parsing - \(error)")
-            return false
-        }
+        // Sinon, accepter (même sans structure parfaite)
+        print("iOS Validation: Résultat accepté")
+        return true
     }
     
-    private func parseDetectionResult(_ rawText: String) throws -> (type: String, color: String, style: String, season: String) {
-        // Parser similaire à Android DetectionResultParser
-        let lines = rawText.components(separatedBy: .newlines)
-        
-        var type = "Other"
-        var color = "Unknown"
-        var style = "casual"
-        var season = "all"
-        var foundValidData = false
-        
-        for line in lines {
-            let trimmed = line.trimmingCharacters(in: .whitespacesAndNewlines)
-            
-            // Ignorer lignes vides ou séparateurs
-            if trimmed.isEmpty || trimmed.allSatisfy({ $0 == "-" || $0 == "=" }) {
-                continue
-            }
-            
-            // Ignorer lignes comme "Résultat final"
-            if trimmed.lowercased().contains("résultat") && !trimmed.contains(":") {
-                continue
-            }
-            
-            guard let colonIndex = trimmed.firstIndex(of: ":"),
-                  colonIndex != trimmed.startIndex,
-                  colonIndex != trimmed.index(before: trimmed.endIndex) else {
-                continue
-            }
-            
-            let key = String(trimmed[..<colonIndex]).lowercased()
-            let value = String(trimmed[trimmed.index(after: colonIndex)...]).trimmingCharacters(in: .whitespacesAndNewlines)
-            
-            if value.isEmpty { continue }
-            
-            foundValidData = true
-            
-            if key.contains("type") || key.contains("vêtement") || key.contains("clothing") {
-                type = value
-            } else if key.contains("color") || key.contains("couleur") {
-                color = value
-            } else if key.contains("style") {
-                style = value
-            } else if key.contains("season") || key.contains("saison") {
-                season = value
-            }
-        }
-        
-        if !foundValidData {
-            throw NSError(domain: "DetectionParser", code: 1, userInfo: [NSLocalizedDescriptionKey: "Aucune donnée structurée trouvée"])
-        }
-        
-        return (type: type, color: color, style: style, season: season)
-    }
     
     private func showErrorAlert(_ message: String) {
         aiErrorMessage = message

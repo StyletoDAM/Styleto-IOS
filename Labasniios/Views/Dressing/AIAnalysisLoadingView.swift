@@ -130,18 +130,7 @@ struct AIAnalysisLoadingView: View {
                 // Récupérer imageUrl comme Android
                 let imageUrl = json["image_url"] as? String
                 
-                // Validation comme Android - vérifier les données de base
-                if result.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                    onAnalysisComplete("Résultat de détection vide", nil)
-                    return
-                }
-                
-                if let imageUrl = imageUrl, imageUrl.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                    onAnalysisComplete("URL d'image manquante dans la réponse", nil)
-                    return
-                }
-                
-                // Passer les données brutes - validation détaillée dans DressingView
+                // Passer les données brutes - validation dans DressingView
                 onAnalysisComplete(result, imageUrl)
             }
         }.resume()
