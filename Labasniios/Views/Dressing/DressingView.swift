@@ -215,7 +215,6 @@ struct DressingView: View {
     }
 
     private func validateAIResult(_ resultText: String, imageUrl: String?) -> Bool {
-        // Validation très permissive - juste vérifier que ce n'est pas complètement vide
         let trimmedText = resultText.trimmingCharacters(in: .whitespacesAndNewlines)
         
         print("iOS Validation: Résultat reçu - '\(resultText)'")
@@ -226,9 +225,37 @@ struct DressingView: View {
             return false
         }
         
-        // Accepter tout le reste pour le moment
-        print("iOS Validation: Résultat accepté (longueur: \(trimmedText.count))")
-        return true
+        // Messages d'erreur spécifiques du backend à rejeter
+        let errorMessages = [
+            "erreur: image invalide",
+            "aucun vêtement détecté",
+            "aucun vetement détecté",
+            "no clothing detected",
+            "no clothes detected",
+            "error: invalid image",
+            "cannot detect",
+            "detection failed"
+        ]
+        
+        let lowerText = trimmedText.lowercased()
+        
+        // Si c'est un message d'erreur spécifique, rejeter
+        for errorMsg in errorMessages {
+            if lowerText.contains(errorMsg) {
+                print("iOS Validation: Message d'erreur détecté - '\(errorMsg)'")
+                return false
+            }
+        }
+        
+        // Vérifier qu'il y a au moins une structure de données (contient ":")
+        if lowerText.contains(":") {
+            print("iOS Validation: Résultat avec structure accepté")
+            return true
+        }
+        
+        // Si pas de structure et pas d'erreur explicite, probablement invalide
+        print("iOS Validation: Résultat sans structure rejeté")
+        return false
     }
     
     
