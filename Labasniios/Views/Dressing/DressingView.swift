@@ -185,11 +185,26 @@ struct DressingView: View {
                 
                 let errorKeywords = [
                     "aucun vêtement", "aucun vetement", "no clothing", "no clothes",
-                    "no item", "nothing detected", "cannot detect", "erreur", "error"
+                    "no item", "nothing detected", "cannot detect", "erreur", "error",
+                    "failed", "échec", "impossible", "invalid", "invalide"
                 ]
                 
+                // Vérifier les erreurs explicites
                 if errorKeywords.contains(where: text.contains) {
                     self.showErrorAlert("Error: No clothing detected. Please take a clear photo of a single item on a plain background.")
+                    return
+                }
+                
+                // Vérifier si le résultat contient des données structurées
+                let hasStructuredData = text.contains(":") && (
+                    text.contains("type") || text.contains("color") || 
+                    text.contains("style") || text.contains("season") ||
+                    text.contains("couleur") || text.contains("saison")
+                )
+                
+                // Si pas de données structurées, considérer comme erreur
+                if !hasStructuredData {
+                    self.showErrorAlert("AI analysis returned incomplete data. Please try again with a clearer photo.")
                     return
                 }
                 

@@ -21,6 +21,10 @@ struct DetectionResultView: View {
     @State private var originalStyle = ""
     @State private var originalSeason = ""
     
+    // MARK: - Validation States
+    @State private var hasValidDetection = false
+    @State private var showInvalidResultAlert = false
+    
     @Environment(\.dismiss) private var dismiss
     let imageURL: String?
     
@@ -257,7 +261,9 @@ struct DetectionResultView: View {
                         .frame(height: 58)
                         .background(
                             LinearGradient(
-                                colors: [Color.themePrimary, Color.themePrimary.opacity(0.8)],
+                                colors: hasValidDetection ? 
+                                    [Color.themePrimary, Color.themePrimary.opacity(0.8)] :
+                                    [Color.gray.opacity(0.6), Color.gray.opacity(0.4)],
                                 startPoint: .leading,
                                 endPoint: .trailing
                             )
@@ -265,7 +271,7 @@ struct DetectionResultView: View {
                         .cornerRadius(22)
                         .shadow(color: Color.themePrimary.opacity(0.4), radius: 12, y: 6)
                 }
-                .disabled(isSaving)
+                .disabled(isSaving || !hasValidDetection)
                 .padding(.horizontal, 20)
                 .padding(.bottom, 30)
             }
@@ -273,7 +279,18 @@ struct DetectionResultView: View {
         .onAppear {
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
                 parseResult()
+                validateDetection()
             }
+        }
+        .alert("Résultat invalide", isPresented: $showInvalidResultAlert) {
+            Button("Réessayer") {
+                isShowing = false
+            }
+            Button("Continuer quand même") {
+                hasValidDetection = true
+            }
+        } message: {
+            Text("L'analyse IA n'a pas pu détecter correctement les caractéristiques du vêtement. Voulez-vous réessayer avec une autre photo ou continuer avec les valeurs par défaut ?")
         }
     }
     
@@ -316,6 +333,46 @@ struct DetectionResultView: View {
                 print("Erreur ajout: \(error)")
             }
         }
+    }
+    
+    // MARK: - Validation
+    private func validateDetection() {
+        // Vérifier si le résultat contient des données valides
+        let text = resultText.lowercased()
+        
+        // Mots-clés d'erreur
+        let errorKeywords = [
+            "aucun vêtement", "aucun vetement", "no clothing", "no clothes",
+            "no item", "nothing detected", "cannot detect", "erreur", "error",
+            "failed", "échec", "impossible", "invalid", "invalide"
+        ]
+        
+        // Vérifier les erreurs explicites
+        let hasError = errorKeywords.contains { text.contains($0) }
+        
+        // Vérifier si on a des données structurées valides
+        let hasStructuredData = text.contains(":") && (
+            text.contains("type") || text.contains("color") || 
+            text.contains("style") || text.contains("season") ||
+            text.contains("couleur") || text.contains("saison")
+        )
+        
+        // Vérifier si les valeurs originales ont été remplies
+        let hasOriginalData = !originalType.isEmpty || !originalColorHex.isEmpty || 
+                             !originalStyle.isEmpty || !originalSeason.isEmpty
+        
+        // Le résultat est valide si pas d'erreur ET (données structurées OU données originales)
+        hasValidDetection = !hasError && (hasStructuredData || hasOriginalData)
+        
+        // Si invalide, montrer l'alerte après un délai
+        if !hasValidDetection {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                showInvalidResultAlert = true
+            }
+        }
+        
+        print("Validation result: hasValidDetection = \(hasValidDetection)")
+        print("hasError: \(hasError), hasStructuredData: \(hasStructuredData), hasOriginalData: \(hasOriginalData)")
     }
     
     // MARK: - Parsing
