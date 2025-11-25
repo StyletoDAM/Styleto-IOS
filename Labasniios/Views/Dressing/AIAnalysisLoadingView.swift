@@ -127,31 +127,7 @@ struct AIAnalysisLoadingView: View {
                     return
                 }
                 
-                // Vérifier si le résultat est valide avant de le passer
-                let text = result.lowercased()
-                let errorKeywords = [
-                    "aucun vêtement", "aucun vetement", "no clothing", "no clothes",
-                    "no item", "nothing detected", "cannot detect", "erreur", "error",
-                    "failed", "échec", "impossible", "invalid", "invalide"
-                ]
-                
-                if errorKeywords.contains(where: text.contains) {
-                    onAnalysisComplete("Erreur: Aucun vêtement détecté")
-                    return
-                }
-                
-                // Vérifier si le résultat contient des données structurées
-                let hasStructuredData = text.contains(":") && (
-                    text.contains("type") || text.contains("color") || 
-                    text.contains("style") || text.contains("season") ||
-                    text.contains("couleur") || text.contains("saison")
-                )
-                
-                if !hasStructuredData {
-                    onAnalysisComplete("Erreur: Données incomplètes")
-                    return
-                }
-                
+                // Passer le résultat brut - la validation se fait maintenant dans DressingView
                 onAnalysisComplete(result)
             }
         }.resume()

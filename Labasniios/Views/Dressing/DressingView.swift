@@ -87,9 +87,15 @@ struct DressingView: View {
             AIAnalysisLoadingView(
                 image: capturedImage,
                 onAnalysisComplete: { resultText in
-                    detectionText = resultText
-                    detectedImage = capturedImage
-                    showDetectionResult = true
+                    // Valider le résultat AVANT d'afficher DetectionResultView
+                    if validateAIResult(resultText) {
+                        detectionText = resultText
+                        detectedImage = capturedImage
+                        showDetectionResult = true
+                    } else {
+                        // Résultat invalide - afficher erreur et rester sur Dressing
+                        showErrorAlert("AI analysis failed. Please try again with a clearer photo.")
+                    }
                     isUploading = false
                 }
             )
@@ -183,30 +189,7 @@ struct DressingView: View {
                 let imageUrl = json["image_url"] as? String
                 let text = detectionResult.lowercased()
                 
-                let errorKeywords = [
-                    "aucun vêtement", "aucun vetement", "no clothing", "no clothes",
-                    "no item", "nothing detected", "cannot detect", "erreur", "error",
-                    "failed", "échec", "impossible", "invalid", "invalide"
-                ]
-                
-                // Vérifier les erreurs explicites
-                if errorKeywords.contains(where: text.contains) {
-                    self.showErrorAlert("Error: No clothing detected. Please take a clear photo of a single item on a plain background.")
-                    return
-                }
-                
-                // Vérifier si le résultat contient des données structurées
-                let hasStructuredData = text.contains(":") && (
-                    text.contains("type") || text.contains("color") || 
-                    text.contains("style") || text.contains("season") ||
-                    text.contains("couleur") || text.contains("saison")
-                )
-                
-                // Si pas de données structurées, considérer comme erreur
-                if !hasStructuredData {
-                    self.showErrorAlert("AI analysis returned incomplete data. Please try again with a clearer photo.")
-                    return
-                }
+                // Validation centralisée maintenant dans validateAIResult
                 
                 self.detectionText = detectionResult
                 self.detectedImageURL = imageUrl
@@ -223,6 +206,34 @@ struct DressingView: View {
         uploadAndDetect(image: image)
     }
 
+    private func validateAIResult(_ resultText: String) -> Bool {
+        let text = resultText.lowercased()
+        
+        // Mots-clés d'erreur
+        let errorKeywords = [
+            "aucun vêtement", "aucun vetement", "no clothing", "no clothes",
+            "no item", "nothing detected", "cannot detect", "erreur", "error",
+            "failed", "échec", "impossible", "invalid", "invalide"
+        ]
+        
+        // Vérifier les erreurs explicites
+        if errorKeywords.contains(where: text.contains) {
+            return false
+        }
+        
+        // Vérifier si le résultat contient des données structurées
+        let hasStructuredData = text.contains(":") && (
+            text.contains("type") || text.contains("color") || 
+            text.contains("style") || text.contains("season") ||
+            text.contains("couleur") || text.contains("saison")
+        )
+        
+        // Vérifier si le résultat n'est pas vide ou trop court
+        let hasMinimumContent = resultText.trimmingCharacters(in: .whitespacesAndNewlines).count > 10
+        
+        return hasStructuredData && hasMinimumContent
+    }
+    
     private func showErrorAlert(_ message: String) {
         aiErrorMessage = message
         showAIErrorAlert = true
