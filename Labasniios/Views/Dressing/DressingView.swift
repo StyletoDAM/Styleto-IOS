@@ -86,19 +86,10 @@ struct DressingView: View {
         .fullScreenCover(isPresented: $isUploading) {
             AIAnalysisLoadingView(
                 image: capturedImage,
-                onAnalysisComplete: { resultText, imageUrl in
-                    // Validation comme Android DressingRepository
-                    if validateAIResult(resultText, imageUrl: imageUrl) {
-                        detectionText = resultText
-                        detectedImageURL = imageUrl
-                        detectedImage = capturedImage
-                        showDetectionResult = true
-                        print("iOS: Validation réussie, affichage DetectionResultView")
-                    } else {
-                        // Échec validation - afficher erreur comme Android
-                        showErrorAlert("AI analysis failed. Please try again with a clearer photo.")
-                        print("iOS: Validation échouée, affichage erreur")
-                    }
+                onAnalysisComplete: { resultText in
+                    detectionText = resultText
+                    detectedImage = capturedImage
+                    showDetectionResult = true
                     isUploading = false
                 }
             )
@@ -192,17 +183,10 @@ struct DressingView: View {
                 let imageUrl = json["image_url"] as? String
                 let text = detectionResult.lowercased()
                 
-                // Validation comme Android avant d'afficher DetectionResultView
-                if self.validateAIResult(detectionResult, imageUrl: imageUrl) {
-                    self.detectionText = detectionResult
-                    self.detectedImageURL = imageUrl
-                    self.detectedImage = image
-                    self.showDetectionResult = true
-                    print("iOS uploadAndDetect: Validation réussie")
-                } else {
-                    self.showErrorAlert("AI analysis failed. Please try again with a clearer photo.")
-                    print("iOS uploadAndDetect: Validation échouée")
-                }
+                self.detectionText = detectionResult
+                self.detectedImageURL = imageUrl
+                self.detectedImage = image
+                self.showDetectionResult = true
             }
         }.resume()
     }
@@ -214,49 +198,6 @@ struct DressingView: View {
         uploadAndDetect(image: image)
     }
 
-    private func validateAIResult(_ resultText: String, imageUrl: String?) -> Bool {
-        let trimmedText = resultText.trimmingCharacters(in: .whitespacesAndNewlines)
-        
-        print("iOS Validation: Résultat reçu - '\(resultText)'")
-        
-        // Si complètement vide, rejeter
-        if trimmedText.isEmpty {
-            print("iOS Validation: Résultat complètement vide")
-            return false
-        }
-        
-        // Messages d'erreur spécifiques du backend à rejeter
-        let errorMessages = [
-            "erreur: image invalide",
-            "aucun vêtement détecté",
-            "aucun vetement détecté",
-            "no clothing detected",
-            "no clothes detected",
-            "error: invalid image",
-            "cannot detect",
-            "detection failed"
-        ]
-        
-        let lowerText = trimmedText.lowercased()
-        
-        // Si c'est un message d'erreur spécifique, rejeter
-        for errorMsg in errorMessages {
-            if lowerText.contains(errorMsg) {
-                print("iOS Validation: Message d'erreur détecté - '\(errorMsg)'")
-                return false
-            }
-        }
-        
-        // Vérifier qu'il y a au moins une structure de données (contient ":")
-        if lowerText.contains(":") {
-            print("iOS Validation: Résultat avec structure accepté")
-            return true
-        }
-        
-        // Si pas de structure et pas d'erreur explicite, probablement invalide
-        print("iOS Validation: Résultat sans structure rejeté")
-        return false
-    }
     
     
     private func showErrorAlert(_ message: String) {

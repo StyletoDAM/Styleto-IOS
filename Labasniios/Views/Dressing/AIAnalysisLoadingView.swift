@@ -3,7 +3,7 @@ import SwiftUI
 
 struct AIAnalysisLoadingView: View {
     let image: UIImage?
-    let onAnalysisComplete: (String, String?) -> Void
+    let onAnalysisComplete: (String) -> Void
     
     @State private var rotation: Double = 0
     @State private var analysisText = "AI is analysing your clothe"
@@ -93,7 +93,7 @@ struct AIAnalysisLoadingView: View {
     private func performAIAnalysis() {
         guard let image = image,
               let imageData = image.jpegData(compressionQuality: 0.85) else {
-            onAnalysisComplete("Erreur: Image invalide", nil)
+            onAnalysisComplete("Erreur: Image invalide")
             return
         }
         
@@ -116,22 +116,18 @@ struct AIAnalysisLoadingView: View {
         URLSession.shared.dataTask(with: request) { data, response, error in
             DispatchQueue.main.async {
                 if let error = error {
-                    onAnalysisComplete("Erreur réseau: \(error.localizedDescription)", nil)
+                    onAnalysisComplete("Erreur réseau: \(error.localizedDescription)")
                     return
                 }
                 
                 guard let data = data,
                       let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
                       let result = json["detection_result"] as? String else {
-                    onAnalysisComplete("Erreur du serveur", nil)
+                    onAnalysisComplete("Erreur du serveur")
                     return
                 }
                 
-                // Récupérer imageUrl comme Android
-                let imageUrl = json["image_url"] as? String
-                
-                // Passer les données brutes - validation dans DressingView
-                onAnalysisComplete(result, imageUrl)
+                onAnalysisComplete(result)
             }
         }.resume()
     }
