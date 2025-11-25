@@ -215,30 +215,19 @@ struct DressingView: View {
     }
 
     private func validateAIResult(_ resultText: String, imageUrl: String?) -> Bool {
-        // Validation simplifiée - juste vérifier les erreurs explicites
-        let text = resultText.lowercased()
+        // Validation très permissive - juste vérifier que ce n'est pas complètement vide
+        let trimmedText = resultText.trimmingCharacters(in: .whitespacesAndNewlines)
         
-        // Mots-clés d'erreur explicites
-        let errorKeywords = [
-            "aucun vêtement", "aucun vetement", "no clothing", "no clothes",
-            "no item", "nothing detected", "cannot detect", "erreur", "error",
-            "failed", "échec", "impossible", "invalid", "invalide"
-        ]
+        print("iOS Validation: Résultat reçu - '\(resultText)'")
         
-        // Si erreur explicite, rejeter
-        if errorKeywords.contains(where: text.contains) {
-            print("iOS Validation: Erreur explicite détectée")
+        // Si complètement vide, rejeter
+        if trimmedText.isEmpty {
+            print("iOS Validation: Résultat complètement vide")
             return false
         }
         
-        // Si le texte est trop court (moins de 5 caractères), rejeter
-        if resultText.trimmingCharacters(in: .whitespacesAndNewlines).count < 5 {
-            print("iOS Validation: Résultat trop court")
-            return false
-        }
-        
-        // Sinon, accepter (même sans structure parfaite)
-        print("iOS Validation: Résultat accepté")
+        // Accepter tout le reste pour le moment
+        print("iOS Validation: Résultat accepté (longueur: \(trimmedText.count))")
         return true
     }
     
