@@ -26,11 +26,11 @@ private struct StyleChip: View {
             .padding(.horizontal, 16)
             .padding(.vertical, 10)
             .background(
-                Capsule()
+                RoundedRectangle(cornerRadius: 50)
                     .fill(isSelected ? Color.themePrimary : Color.themeSoftPink.opacity(0.6))
             )
             .overlay(
-                Capsule()
+                RoundedRectangle(cornerRadius: 50)
                     .stroke(Color.themeTeal.opacity(0.3), lineWidth: isSelected ? 0 : 1)
             )
     }
@@ -359,7 +359,7 @@ struct SettingsView: View {
             sectionsList
             logoutSection
         }
-        .padding(.horizontal, 20)
+        .padding(.horizontal, 16)
         .padding(.vertical, 16)
     }
     
@@ -368,7 +368,6 @@ struct SettingsView: View {
             .font(.system(size: 36, weight: .bold))
             .foregroundColor(.themePrimary)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.horizontal, 20)
             .padding(.top, 12)
     }
     
@@ -414,7 +413,6 @@ struct SettingsView: View {
             )
         )
         .cornerRadius(20)
-        .padding(.horizontal, 20)
         .padding(.vertical, 8)
     }
     
@@ -904,8 +902,8 @@ private struct CustomTextFieldStyle: TextFieldStyle {
         configuration
             .padding(.horizontal, 16)
             .padding(.vertical, 14)
-            .background(RoundedRectangle(cornerRadius: 12).fill(Color.themeBackground))
-            .overlay(RoundedRectangle(cornerRadius: 12).stroke(Color.themeTeal.opacity(0.2), lineWidth: 1))
+            .background(RoundedRectangle(cornerRadius: 16).fill(Color.themeBackground))
+            .overlay(RoundedRectangle(cornerRadius: 16).stroke(Color.themeTeal.opacity(0.2), lineWidth: 1))
             .foregroundColor(.themeText)
     }
 }
@@ -987,7 +985,7 @@ private struct SettingsSectionCard: View {
                         .foregroundColor(.white)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 12)
-                        .background(RoundedRectangle(cornerRadius: 12).fill(Color.themePrimary))
+                        .background(RoundedRectangle(cornerRadius: 16).fill(Color.themePrimary))
                         .padding(.top, 8)
                     }
                     .padding(.horizontal, 20)
