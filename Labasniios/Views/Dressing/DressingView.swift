@@ -86,15 +86,18 @@ struct DressingView: View {
         .fullScreenCover(isPresented: $isUploading) {
             AIAnalysisLoadingView(
                 image: capturedImage,
-                onAnalysisComplete: { resultText in
-                    // Valider le résultat AVANT d'afficher DetectionResultView
-                    if validateAIResult(resultText) {
+                onAnalysisComplete: { resultText, imageUrl in
+                    // Validation comme Android DressingRepository
+                    if validateAIResult(resultText, imageUrl: imageUrl) {
                         detectionText = resultText
+                        detectedImageURL = imageUrl
                         detectedImage = capturedImage
                         showDetectionResult = true
+                        print("iOS: Validation réussie, affichage DetectionResultView")
                     } else {
-                        // Résultat invalide - afficher erreur et rester sur Dressing
+                        // Échec validation - afficher erreur comme Android
                         showErrorAlert("AI analysis failed. Please try again with a clearer photo.")
+                        print("iOS: Validation échouée, affichage erreur")
                     }
                     isUploading = false
                 }
@@ -189,12 +192,17 @@ struct DressingView: View {
                 let imageUrl = json["image_url"] as? String
                 let text = detectionResult.lowercased()
                 
-                // Validation centralisée maintenant dans validateAIResult
-                
-                self.detectionText = detectionResult
-                self.detectedImageURL = imageUrl
-                self.detectedImage = image
-                self.showDetectionResult = true
+                // Validation comme Android avant d'afficher DetectionResultView
+                if self.validateAIResult(detectionResult, imageUrl: imageUrl) {
+                    self.detectionText = detectionResult
+                    self.detectedImageURL = imageUrl
+                    self.detectedImage = image
+                    self.showDetectionResult = true
+                    print("iOS uploadAndDetect: Validation réussie")
+                } else {
+                    self.showErrorAlert("AI analysis failed. Please try again with a clearer photo.")
+                    print("iOS uploadAndDetect: Validation échouée")
+                }
             }
         }.resume()
     }
@@ -206,32 +214,84 @@ struct DressingView: View {
         uploadAndDetect(image: image)
     }
 
-    private func validateAIResult(_ resultText: String) -> Bool {
-        let text = resultText.lowercased()
+    private func validateAIResult(_ resultText: String, imageUrl: String?) -> Bool {
+        // Validation comme Android DressingRepository
         
-        // Mots-clés d'erreur
-        let errorKeywords = [
-            "aucun vêtement", "aucun vetement", "no clothing", "no clothes",
-            "no item", "nothing detected", "cannot detect", "erreur", "error",
-            "failed", "échec", "impossible", "invalid", "invalide"
-        ]
-        
-        // Vérifier les erreurs explicites
-        if errorKeywords.contains(where: text.contains) {
+        // 1. Vérifier imageUrl (comme Android)
+        guard let imageUrl = imageUrl, !imageUrl.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            print("iOS Validation: imageUrl manquante")
             return false
         }
         
-        // Vérifier si le résultat contient des données structurées
-        let hasStructuredData = text.contains(":") && (
-            text.contains("type") || text.contains("color") || 
-            text.contains("style") || text.contains("season") ||
-            text.contains("couleur") || text.contains("saison")
-        )
+        // 2. Vérifier detectionResult vide (comme Android)
+        if resultText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            print("iOS Validation: detectionResult vide")
+            return false
+        }
         
-        // Vérifier si le résultat n'est pas vide ou trop court
-        let hasMinimumContent = resultText.trimmingCharacters(in: .whitespacesAndNewlines).count > 10
+        // 3. Essayer de parser le résultat (comme Android DetectionResultParser)
+        do {
+            let _ = try parseDetectionResult(resultText)
+            print("iOS Validation: Parsing réussi")
+            return true
+        } catch {
+            print("iOS Validation: Erreur parsing - \(error)")
+            return false
+        }
+    }
+    
+    private func parseDetectionResult(_ rawText: String) throws -> (type: String, color: String, style: String, season: String) {
+        // Parser similaire à Android DetectionResultParser
+        let lines = rawText.components(separatedBy: .newlines)
         
-        return hasStructuredData && hasMinimumContent
+        var type = "Other"
+        var color = "Unknown"
+        var style = "casual"
+        var season = "all"
+        var foundValidData = false
+        
+        for line in lines {
+            let trimmed = line.trimmingCharacters(in: .whitespacesAndNewlines)
+            
+            // Ignorer lignes vides ou séparateurs
+            if trimmed.isEmpty || trimmed.allSatisfy({ $0 == "-" || $0 == "=" }) {
+                continue
+            }
+            
+            // Ignorer lignes comme "Résultat final"
+            if trimmed.lowercased().contains("résultat") && !trimmed.contains(":") {
+                continue
+            }
+            
+            guard let colonIndex = trimmed.firstIndex(of: ":"),
+                  colonIndex != trimmed.startIndex,
+                  colonIndex != trimmed.index(before: trimmed.endIndex) else {
+                continue
+            }
+            
+            let key = String(trimmed[..<colonIndex]).lowercased()
+            let value = String(trimmed[trimmed.index(after: colonIndex)...]).trimmingCharacters(in: .whitespacesAndNewlines)
+            
+            if value.isEmpty { continue }
+            
+            foundValidData = true
+            
+            if key.contains("type") || key.contains("vêtement") || key.contains("clothing") {
+                type = value
+            } else if key.contains("color") || key.contains("couleur") {
+                color = value
+            } else if key.contains("style") {
+                style = value
+            } else if key.contains("season") || key.contains("saison") {
+                season = value
+            }
+        }
+        
+        if !foundValidData {
+            throw NSError(domain: "DetectionParser", code: 1, userInfo: [NSLocalizedDescriptionKey: "Aucune donnée structurée trouvée"])
+        }
+        
+        return (type: type, color: color, style: style, season: season)
     }
     
     private func showErrorAlert(_ message: String) {

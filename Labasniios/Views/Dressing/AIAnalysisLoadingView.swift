@@ -3,7 +3,7 @@ import SwiftUI
 
 struct AIAnalysisLoadingView: View {
     let image: UIImage?
-    let onAnalysisComplete: (String) -> Void
+    let onAnalysisComplete: (String, String?) -> Void
     
     @State private var rotation: Double = 0
     @State private var analysisText = "AI is analysing your clothe"
@@ -93,7 +93,7 @@ struct AIAnalysisLoadingView: View {
     private func performAIAnalysis() {
         guard let image = image,
               let imageData = image.jpegData(compressionQuality: 0.85) else {
-            onAnalysisComplete("Erreur: Image invalide")
+            onAnalysisComplete("Erreur: Image invalide", nil)
             return
         }
         
@@ -116,19 +116,33 @@ struct AIAnalysisLoadingView: View {
         URLSession.shared.dataTask(with: request) { data, response, error in
             DispatchQueue.main.async {
                 if let error = error {
-                    onAnalysisComplete("Erreur réseau: \(error.localizedDescription)")
+                    onAnalysisComplete("Erreur réseau: \(error.localizedDescription)", nil)
                     return
                 }
                 
                 guard let data = data,
                       let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
                       let result = json["detection_result"] as? String else {
-                    onAnalysisComplete("Erreur du serveur")
+                    onAnalysisComplete("Erreur du serveur", nil)
                     return
                 }
                 
-                // Passer le résultat brut - la validation se fait maintenant dans DressingView
-                onAnalysisComplete(result)
+                // Récupérer imageUrl comme Android
+                let imageUrl = json["image_url"] as? String
+                
+                // Validation comme Android - vérifier les données de base
+                if result.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                    onAnalysisComplete("Résultat de détection vide", nil)
+                    return
+                }
+                
+                if let imageUrl = imageUrl, imageUrl.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                    onAnalysisComplete("URL d'image manquante dans la réponse", nil)
+                    return
+                }
+                
+                // Passer les données brutes - validation détaillée dans DressingView
+                onAnalysisComplete(result, imageUrl)
             }
         }.resume()
     }

@@ -321,19 +321,37 @@ struct DetectionResultView: View {
         }
     }
     
-    // MARK: - Parsing
+    // MARK: - Parsing (comme Android DetectionResultParser)
     private func parseResult() {
         print("Raw AI result:\n\(resultText)")
         
+        // Parser robuste comme Android
         let lines = resultText.components(separatedBy: .newlines)
+        
         for line in lines {
-            let trimmed = line.trimmingCharacters(in: .whitespaces)
-            guard !trimmed.isEmpty,
-                  let colonIndex = trimmed.firstIndex(of: ":")
-            else { continue }
-            
-            let key = trimmed[..<colonIndex].lowercased()
-            let value = trimmed[trimmed.index(after: colonIndex)...].trimmingCharacters(in: .whitespaces)
+            do {
+                let trimmed = line.trimmingCharacters(in: .whitespacesAndNewlines)
+                
+                // Ignorer lignes vides et séparateurs (comme Android)
+                if trimmed.isEmpty || trimmed.allSatisfy({ $0 == "-" || $0 == "=" }) {
+                    continue
+                }
+                
+                // Ignorer lignes comme "Résultat final" (comme Android)
+                if trimmed.lowercased().contains("résultat") && !trimmed.contains(":") {
+                    continue
+                }
+                
+                guard let colonIndex = trimmed.firstIndex(of: ":"),
+                      colonIndex != trimmed.startIndex,
+                      colonIndex != trimmed.index(before: trimmed.endIndex) else {
+                    continue
+                }
+                
+                let key = String(trimmed[..<colonIndex]).lowercased()
+                let value = String(trimmed[trimmed.index(after: colonIndex)...]).trimmingCharacters(in: .whitespacesAndNewlines)
+                
+                if value.isEmpty { continue }
             
             // Type / Category
             if key.contains("type") || key.contains("clothing") || key.contains("vêtement") {
@@ -425,6 +443,11 @@ struct DetectionResultView: View {
                 else {
                     selectedSeason = .all
                 }
+            }
+            } catch {
+                // Ignorer les lignes qui causent des erreurs et continuer (comme Android)
+                print("Erreur parsing ligne: \(line) - \(error)")
+                continue
             }
         }
     }
