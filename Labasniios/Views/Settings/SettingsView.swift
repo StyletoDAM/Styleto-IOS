@@ -99,6 +99,8 @@ struct SettingsView: View {
     @State private var showContactSheet = false
     @State private var showColorThemePicker = false
     
+    @State private var showBalanceTopUp = false
+    
     
     init(user: User? = nil, onLogout: (() -> Void)? = nil) {
         self.user = user
@@ -357,6 +359,7 @@ struct SettingsView: View {
             balanceCard
             profileSection
             sectionsList
+            PackProfileCard()
             logoutSection
         }
         .padding(.horizontal, 16)
@@ -375,15 +378,14 @@ struct SettingsView: View {
     private var balanceCard: some View {
         HStack {
             VStack(alignment: .leading, spacing: 4) {
-                Text("Mon Solde")
+                Text("Balance")
                     .font(.system(size: 14, weight: .medium))
                     .foregroundColor(.white.opacity(0.9))
                 
-                Text("\(String(format: "%.2f", (user?.balance ?? 0.0) / 100)) TND")
-                    .font(.system(size: 26, weight: .bold))
+                Text("\(String(format: "%.2f", (viewModel.updatedUser?.balance ?? user?.balance ?? 0.0) / 100.0)) TND")                    .font(.system(size: 26, weight: .bold))
                     .foregroundColor(.white)
                 
-                Text("Disponible pour retrait")
+                Text("Available for withdrawal")
                     .font(.system(size: 11, weight: .regular))
                     .foregroundColor(.white.opacity(0.8))
             }
@@ -414,6 +416,13 @@ struct SettingsView: View {
         )
         .cornerRadius(20)
         .padding(.vertical, 8)
+        .onTapGesture {
+            showBalanceTopUp = true
+        }
+        .sheet(isPresented: $showBalanceTopUp) {
+            BalanceTopUpSheet()
+                .environmentObject(viewModel) // ← Ligne magique
+        }
     }
     
     @ViewBuilder
@@ -1272,4 +1281,8 @@ private struct ContactSheet: View {
         .presentationDetents([.medium])
         .presentationDragIndicator(.visible)
     }
+}
+// Notification quand le solde est mis à jour
+extension Notification.Name {
+    static let balanceDidUpdate = Notification.Name("balanceDidUpdate")
 }

@@ -1,6 +1,10 @@
 import Foundation
 import UIKit
-
+private struct TopUpResponse: Decodable {
+    let message: String
+    let newBalance: String
+    let user: User
+}
 final class ProfileService {
     private let session: URLSession
     private let encoder: JSONEncoder
@@ -22,7 +26,8 @@ final class ProfileService {
         self.encoder = JSONEncoder()
         self.encoder.keyEncodingStrategy = .useDefaultKeys
         self.decoder = JSONDecoder()
-        self.decoder.keyDecodingStrategy = .convertFromSnakeCase
+        //self.decoder.keyDecodingStrategy = .convertFromSnakeCase
+        //self.decoder.keyDecodingStrategy = .useDefaultKeys
         self.decoder.dateDecodingStrategy = .custom { decoder in
             let container = try decoder.singleValueContainer()
             let value = try container.decode(String.self)
@@ -201,6 +206,59 @@ final class ProfileService {
         debugPrint("[ProfileService] DELETE /auth/profile/photo/remove")
         
         return try await performRequest(request)
+    }
+    // MARK: - Nouveau top-up via l'endpoint /auth/balance/topup (qui AJOUTE, pas qui remplace !)
+    func topUpBalance(amount: Double) async throws -> User {
+        guard let token = TokenManager.shared.getToken() else {
+            throw NetworkError.serverMessage("Token d'authentification manquant.")
+        }
+        
+        let url = APIConstants.baseURL.appendingPathComponent("auth/balance/topup")
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.addValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        request.addValue("application/json", forHTTPHeaderField: "Content-Type")
+        
+        let amountInCents = Int(amount * 100)
+        let body = ["amount": amountInCents]
+        request.httpBody = try JSONSerialization.data(withJSONObject: body)
+        
+        debugPrint("[ProfileService] POST /auth/balance/topup → +\(amountInCents) centimes (\(amount) TND)")
+        
+        //  NOUVELLE LOGIQUE : décoder TopUpResponse puis extraire user
+        let (data, response) = try await session.data(for: request)
+        
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw NetworkError.noData
+        }
+        
+        let responseBodyString = String(data: data, encoding: .utf8) ?? "<non UTF-8>"
+        debugPrint("[ProfileService] Status: \(httpResponse.statusCode)")
+        debugPrint("[ProfileService] Body: \(responseBodyString)")
+        
+        switch httpResponse.statusCode {
+        case 200..<300:
+            do {
+                let topUpResponse = try decoder.decode(TopUpResponse.self, from: data)
+                debugPrint("[ProfileService]  Solde mis à jour : \(topUpResponse.newBalance)")
+                return topUpResponse.user
+            } catch {
+                debugPrint("[ProfileService] decode error: \(error)")
+                throw NetworkError.decodingFailed
+            }
+        case 401:
+            throw NetworkError.serverMessage("Token invalide.")
+        case 409:
+            if let serverError = try? decoder.decode(ErrorResponse.self, from: data) {
+                throw NetworkError.serverMessage(serverError.message)
+            }
+            throw NetworkError.serverMessage("Conflit.")
+        default:
+            if let serverError = try? decoder.decode(ErrorResponse.self, from: data) {
+                throw NetworkError.serverMessage(serverError.message)
+            }
+            throw NetworkError.requestFailed(httpResponse.statusCode)
+        }
     }
     
 

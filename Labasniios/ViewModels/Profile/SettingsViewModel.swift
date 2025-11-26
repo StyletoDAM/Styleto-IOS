@@ -66,7 +66,7 @@ final class SettingsViewModel: ObservableObject {
                 UserDefaults.standard.set(newURL, forKey: "cachedProfilePicture")
             }
             
-            successMessage = "Profile photo updated."
+            successMessage = "Profile photo updated successfully."
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -85,10 +85,7 @@ final class SettingsViewModel: ObservableObject {
                 updatedUser = nil
                 profileImage = nil
                 
-                // Optionally clear the auth token
                 TokenManager.shared.clearToken()
-                
-                // Optionally remove cached profile photo
                 UserDefaults.standard.removeObject(forKey: "cachedProfilePicture")
                 
                 debugPrint("[SettingsViewModel] Profile deleted successfully")
@@ -109,6 +106,7 @@ final class SettingsViewModel: ObservableObject {
         errorMessage = nil
         successMessage = nil
     }
+    
     // MARK: - Delete Profile Photo
     func deleteProfilePhoto() async {
         resetFeedback()
@@ -118,17 +116,15 @@ final class SettingsViewModel: ObservableObject {
         do {
             let updatedUser = try await profileService.deleteProfilePhoto()
             
-            // IMPORTANT: Mettre à jour updatedUser pour que l'UI se rafraîchisse
             self.updatedUser = updatedUser
             self.profileImage = nil
             
-            // Supprime le cache
             UserDefaults.standard.removeObject(forKey: "cachedProfilePicture")
             
-            successMessage = "Photo de profil supprimée avec succès."
+            successMessage = "Profile photo removed successfully."
             debugPrint("[SettingsViewModel] Profile photo deleted successfully")
         } catch let networkError as NetworkError {
-            errorMessage = networkError.errorDescription ?? "Une erreur est survenue."
+            errorMessage = networkError.errorDescription ?? "An error occurred."
             debugPrint("[SettingsViewModel] Delete photo error: \(networkError)")
         } catch {
             errorMessage = error.localizedDescription
@@ -136,4 +132,31 @@ final class SettingsViewModel: ObservableObject {
         }
     }
     
+    // MARK: - Top-up Balance
+    func topUpBalance(amount: Double) async {
+        resetFeedback()
+        isLoading = true
+        defer { isLoading = false }
+        
+        do {
+            let updatedUser = try await profileService.topUpBalance(amount: amount)
+            
+            // Global update
+            AppPreferences.shared.currentUser = updatedUser
+            AppPreferences.shared.saveLoginState(user: updatedUser)
+            self.updatedUser = updatedUser
+            
+            // Notify other views
+            NotificationCenter.default.post(name: .balanceDidUpdate, object: nil)
+            
+            let newBalance = (updatedUser.balance ?? 0.0) / 100.0
+            
+            successMessage = "Balance topped up successfully! +\(String(format: "%.2f", amount)) TND"
+            debugPrint("New balance: \(String(format: "%.2f", newBalance)) TND (raw: \(updatedUser.balance ?? 0))")
+            
+        } catch {
+            errorMessage = "Top-up failed. Please try again."
+            debugPrint("[SettingsViewModel] Top-up error: \(error)")
+        }
+    }
 }

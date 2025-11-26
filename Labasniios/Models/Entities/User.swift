@@ -13,7 +13,7 @@ struct User: Codable, Identifiable {
     let googleId: String?
     let appleId: String?
     let profilePicture: String?
-    let balance: Double?
+    var balance: Double?
 
     enum Gender: String, Codable {
         case male
@@ -28,22 +28,26 @@ struct User: Codable, Identifiable {
 
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
-        if let value = try container.decodeIfPresent(String.self, forKey: .id) {
-            id = value
-        } else if let value = try container.decodeIfPresent(String.self, forKey: .mongoId) {
-            id = value
+        
+        // ON ESSAIE "id" EN PREMIER (le serveur l'envoie maintenant)
+        if container.contains(.id) {
+            id = try container.decode(String.self, forKey: .id)
+        } else if container.contains(.mongoId) {
+            id = try container.decode(String.self, forKey: .mongoId)
         } else {
             throw DecodingError.keyNotFound(
                 CodingKeys.id,
-                DecodingError.Context(
-                    codingPath: decoder.codingPath,
-                    debugDescription: "Missing identifier in user payload"
-                )
+                .init(codingPath: [], debugDescription: "Aucun champ 'id' ou '_id' trouvé dans la réponse")
             )
         }
+        
         fullName = try container.decode(String.self, forKey: .fullName)
         email = try container.decode(String.self, forKey: .email)
-        gender = try container.decode(Gender.self, forKey: .gender)
+        
+        // GENDER : le serveur envoie "female" comme String
+        let genderStr = try container.decode(String.self, forKey: .gender)
+        gender = Gender(rawValue: genderStr.lowercased()) ?? .female
+        
         preferences = try container.decodeIfPresent([String].self, forKey: .preferences) ?? []
         phoneNumber = try container.decodeIfPresent(String.self, forKey: .phoneNumber)
         createdAt = try container.decodeIfPresent(Date.self, forKey: .createdAt)
@@ -75,17 +79,8 @@ struct User: Codable, Identifiable {
     private enum CodingKeys: String, CodingKey {
         case id
         case mongoId = "_id"
-        case fullName
-        case email
-        case gender
-        case preferences
-        case phoneNumber
-        case createdAt
-        case updatedAt
-        case authProvider
-        case googleId
-        case appleId
-        case profilePicture
-        case balance
+        case fullName, email, gender, preferences, phoneNumber
+        case createdAt, updatedAt, authProvider, googleId, appleId
+        case profilePicture, balance
     }
 }
