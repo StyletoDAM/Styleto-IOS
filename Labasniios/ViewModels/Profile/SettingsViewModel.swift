@@ -17,6 +17,27 @@ final class SettingsViewModel: ObservableObject {
         self.profileService = profileService
     }
     
+    // MARK: - Load Profile (comme Android)
+    func loadProfile() async {
+        guard let token = TokenManager.shared.getToken() else {
+            debugPrint("[SettingsViewModel] No token available for profile loading")
+            return
+        }
+        
+        resetFeedback()
+        isLoading = true
+        defer { isLoading = false }
+        
+        do {
+            let freshUser = try await profileService.getProfile()
+            updatedUser = freshUser
+            debugPrint("[SettingsViewModel] Profile loaded - Balance: \(freshUser.balance ?? 0.0) TND")
+        } catch {
+            errorMessage = "Failed to load profile. Please try again."
+            debugPrint("[SettingsViewModel] Load profile error: \(error)")
+        }
+    }
+    
     // MARK: - Update Text Profile (fullName, phone, gender, password)
     func updateProfileText(
         fullName: String?,
@@ -141,18 +162,11 @@ final class SettingsViewModel: ObservableObject {
         do {
             let updatedUser = try await profileService.topUpBalance(amount: amount)
             
-            // Global update
-            AppPreferences.shared.currentUser = updatedUser
-            AppPreferences.shared.saveLoginState(user: updatedUser)
+            // Update ViewModel state SEULEMENT
             self.updatedUser = updatedUser
             
-            // Notify other views
-            NotificationCenter.default.post(name: .balanceDidUpdate, object: nil)
-            
-            let newBalance = (updatedUser.balance ?? 0.0) / 100.0
-            
             successMessage = "Balance topped up successfully! +\(String(format: "%.2f", amount)) TND"
-            debugPrint("New balance: \(String(format: "%.2f", newBalance)) TND (raw: \(updatedUser.balance ?? 0))")
+            debugPrint("[SettingsViewModel] Top-up successful. New balance: \(updatedUser.balance ?? 0)")
             
         } catch {
             errorMessage = "Top-up failed. Please try again."

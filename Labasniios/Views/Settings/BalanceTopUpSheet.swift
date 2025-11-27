@@ -5,7 +5,7 @@ import SwiftUI
 
 struct BalanceTopUpSheet: View {
     @Environment(\.dismiss) private var dismiss
-    @EnvironmentObject private var viewModel: SettingsViewModel
+    @ObservedObject var viewModel: SettingsViewModel
     
     @State private var selectedAmount: Double? = nil
     @State private var customAmount = ""
@@ -37,10 +37,9 @@ struct BalanceTopUpSheet: View {
                 
                 // "Other" button
                 Button {
-                    withAnimation(.spring(response: 0.4)) {
-                        isCustomSelected = true
-                        selectedAmount = nil
-                    }
+                    // Suppression temporaire de l'animation pour tester
+                    isCustomSelected = true
+                    selectedAmount = nil
                 } label: {
                     VStack(spacing: 8) {
                         Image(systemName: "pencil")
@@ -118,7 +117,10 @@ struct BalanceTopUpSheet: View {
                     Task { @MainActor in
                         await viewModel.topUpBalance(amount: finalAmount)
                         if viewModel.errorMessage == nil {
-                            dismiss()
+                            // Retarder le dismiss pour éviter les problèmes de timing
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                                dismiss()
+                            }
                         }
                     }
                 }
@@ -156,11 +158,10 @@ struct BalanceTopUpSheet: View {
     
     private func amountButton(amount: Double) -> some View {
         Button {
-            withAnimation(.spring(response: 0.4)) {
-                selectedAmount = amount
-                isCustomSelected = false
-                customAmount = ""
-            }
+            // Suppression temporaire de l'animation pour tester
+            selectedAmount = amount
+            isCustomSelected = false
+            customAmount = ""
         } label: {
             VStack(spacing: 8) {
                 Text("\(Int(amount))")
@@ -187,7 +188,6 @@ struct BalanceTopUpSheet: View {
 
 struct BalanceTopUpSheet_Previews: PreviewProvider {
     static var previews: some View {
-        BalanceTopUpSheet()
-            .environmentObject(SettingsViewModel())
+        BalanceTopUpSheet(viewModel: SettingsViewModel())
     }
 }

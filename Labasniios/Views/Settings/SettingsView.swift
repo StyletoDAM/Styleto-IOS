@@ -350,6 +350,10 @@ struct SettingsView: View {
                 onEmail: openEmail
             )
         }
+        .task(id: "initial_load") {
+            // Load profile on init ONLY ONCE (comme Android LaunchedEffect(Unit))
+            await viewModel.loadProfile()
+        }
     }
     
     @ViewBuilder
@@ -382,7 +386,7 @@ struct SettingsView: View {
                     .font(.system(size: 14, weight: .medium))
                     .foregroundColor(.white.opacity(0.9))
                 
-                Text("\(String(format: "%.2f", (viewModel.updatedUser?.balance ?? user?.balance ?? 0.0) / 100.0)) TND")                    .font(.system(size: 26, weight: .bold))
+                Text("\(String(format: "%.2f", (viewModel.updatedUser?.balance ?? user?.balance ?? 0.0))) TND")                    .font(.system(size: 26, weight: .bold))
                     .foregroundColor(.white)
                 
                 Text("Available for withdrawal")
@@ -420,8 +424,7 @@ struct SettingsView: View {
             showBalanceTopUp = true
         }
         .sheet(isPresented: $showBalanceTopUp) {
-            BalanceTopUpSheet()
-                .environmentObject(viewModel) // ← Ligne magique
+            BalanceTopUpSheet(viewModel: viewModel)
         }
     }
     
@@ -620,9 +623,11 @@ struct SettingsView: View {
     }
     
     private func performLogout() {
+        debugPrint("[SettingsView] performLogout called - using simple closure")
         TokenManager.shared.clearToken()
         AppPreferences.shared.clearLoginState()
         onLogout?()
+        debugPrint("[SettingsView] onLogout called")
     }
     
     private func saveProfile() async {

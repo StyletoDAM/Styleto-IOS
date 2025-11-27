@@ -41,6 +41,23 @@ final class ProfileService {
         }
     }
     
+    // MARK: - Get Profile
+    func getProfile() async throws -> User {
+        guard let token = TokenManager.shared.getToken() else {
+            throw NetworkError.serverMessage("Token d'authentification manquant.")
+        }
+        
+        let url = APIConstants.baseURL.appendingPathComponent("auth/profile")
+        var request = URLRequest(url: url)
+        request.httpMethod = "GET"
+        request.addValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        request.addValue(APIConstants.jsonContentType, forHTTPHeaderField: "Accept")
+        
+        debugPrint("[ProfileService] GET /auth/profile")
+        
+        return try await performRequest(request)
+    }
+    
     // MARK: - Update Text Profile (JSON)
     func updateProfileText(
         fullName: String? = nil,
@@ -219,6 +236,7 @@ final class ProfileService {
         request.addValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         request.addValue("application/json", forHTTPHeaderField: "Content-Type")
         
+        // ✅ CORRECTION : Envoie directement en TND comme Android (backend attend centimes mais retourne TND)
         let amountInCents = Int(amount * 100)
         let body = ["amount": amountInCents]
         request.httpBody = try JSONSerialization.data(withJSONObject: body)

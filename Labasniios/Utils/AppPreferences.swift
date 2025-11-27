@@ -62,14 +62,63 @@ final class AppPreferences: ObservableObject {
         
         // Restaurer l'utilisateur
         if let userData = UserDefaults.standard.data(forKey: currentUserKey),
-           let user = try? JSONDecoder().decode(User.self, from: userData) {
+           var user = try? JSONDecoder().decode(User.self, from: userData) {
+            
+            // ✅ MIGRATION : Corriger les anciennes balances en centimes
+            if let balance = user.balance, balance > 1000 {
+                // Si balance > 1000, c'est probablement en centimes, convertir en TND
+                user.balance = balance / 100.0
+                debugPrint("[AppPreferences] Migration: Balance convertie de \(balance) centimes à \(balance/100.0) TND")
+                
+                // Sauvegarder la version corrigée
+                if let correctedData = try? JSONEncoder().encode(user) {
+                    UserDefaults.standard.set(correctedData, forKey: currentUserKey)
+                }
+            }
+            
             currentUser = user
-            debugPrint("[AppPreferences] User state restored: \(user.email)")
+            debugPrint("[AppPreferences] User state restored: \(user.email) - Balance: \(user.balance ?? 0.0) TND")
+            
+            // ✅ CORRECTION : Récupérer le profil frais du serveur pour avoir la balance à jour
+            if isLoggedIn {
+                Task { @MainActor in
+                    await refreshUserProfile()
+                }
+            }
         } else {
             currentUser = nil
         }
         
         debugPrint("[AppPreferences] State restored - isLoggedIn: \(isLoggedIn)")
+    }
+    
+    /// Récupère le profil utilisateur frais du serveur
+    @MainActor
+    private func refreshUserProfile() async {
+        guard let token = TokenManager.shared.getToken() else {
+            debugPrint("[AppPreferences] No token available for profile refresh")
+            return
+        }
+        
+        do {
+            let profileService = ProfileService()
+            let freshUser = try await profileService.getProfile()
+            
+            // Mettre à jour avec les données fraîches du serveur
+            self.currentUser = freshUser
+            debugPrint("[AppPreferences] Profile refreshed - Balance: \(freshUser.balance ?? 0.0) TND")
+            
+            // Sauvegarder les nouvelles données
+            if let userData = try? JSONEncoder().encode(freshUser) {
+                UserDefaults.standard.set(userData, forKey: currentUserKey)
+            }
+            
+            // Notifier les autres vues
+            NotificationCenter.default.post(name: .userDidUpdate, object: freshUser)
+        } catch {
+            debugPrint("[AppPreferences] Failed to refresh profile: \(error)")
+            // En cas d'erreur, on garde les données locales
+        }
     }
     
     // MARK: - Theme Management

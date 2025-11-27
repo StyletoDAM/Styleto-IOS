@@ -83,7 +83,7 @@ class ClothesService {
         }
         
         // MODIFICATION : body avec originalDetection
-        var body: [String: Any] = [
+        let body: [String: Any] = [
             "imageURL": imageURL,
             "category": category,
             "color": color,
