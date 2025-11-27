@@ -1,6 +1,7 @@
 import Foundation
 import UIKit
 import _PhotosUI_SwiftUI
+import StripePaymentSheet
 
 @MainActor
 final class SettingsViewModel: ObservableObject {
@@ -11,13 +12,20 @@ final class SettingsViewModel: ObservableObject {
     @Published var profileImage: UIImage?
     @Published var selectedPhoto: PhotosPickerItem?
     
+    // MARK: - Stripe Payment Properties
+    @Published var paymentSheet: PaymentSheet?
+    @Published var isProcessingPayment = false
+    @Published var pendingTopUpAmount: Double?
+    @Published var showPaymentSheet = false
+    
     private let profileService: ProfileService
+    private let paymentService = PaymentService.shared
     
     init(profileService: ProfileService = ProfileService()) {
         self.profileService = profileService
     }
     
-    // MARK: - Load Profile (comme Android)
+    // MARK: - Load Profile
     func loadProfile() async {
         guard let token = TokenManager.shared.getToken() else {
             debugPrint("[SettingsViewModel] No token available for profile loading")
@@ -38,7 +46,7 @@ final class SettingsViewModel: ObservableObject {
         }
     }
     
-    // MARK: - Update Text Profile (fullName, phone, gender, password)
+    // MARK: - Update Text Profile
     func updateProfileText(
         fullName: String?,
         phoneNumber: String?,
@@ -70,7 +78,7 @@ final class SettingsViewModel: ObservableObject {
         }
     }
     
-    // MARK: - Update Profile Photo Only
+    // MARK: - Update Profile Photo
     func updateProfilePhoto(image: UIImage?) async {
         guard let image = image else { return }
         
@@ -122,12 +130,6 @@ final class SettingsViewModel: ObservableObject {
         }
     }
     
-    // MARK: - Reset Feedback
-    func resetFeedback() {
-        errorMessage = nil
-        successMessage = nil
-    }
-    
     // MARK: - Delete Profile Photo
     func deleteProfilePhoto() async {
         resetFeedback()
@@ -153,24 +155,113 @@ final class SettingsViewModel: ObservableObject {
         }
     }
     
-    // MARK: - Top-up Balance
-    func topUpBalance(amount: Double) async {
+    // MARK: - 🆕 Top-up Balance avec Stripe Payment
+    func initiateTopUp(amount: Double) async {
+        guard let user = updatedUser ?? AppPreferences.shared.currentUser else {
+            errorMessage = "You must be logged in"
+            return
+        }
+        
         resetFeedback()
-        isLoading = true
-        defer { isLoading = false }
+        isProcessingPayment = true
+        pendingTopUpAmount = amount
         
         do {
-            let updatedUser = try await profileService.topUpBalance(amount: amount)
+            print("💰 [SettingsViewModel] Initiating top-up for \(amount) TND")
             
-            // Update ViewModel state SEULEMENT
-            self.updatedUser = updatedUser
+            // 1. Créer le Payment Intent via Stripe
+            let clientSecret = try await paymentService.createPaymentIntent(
+                amount: amount,
+                currency: "usd" // Change en "tnd" si supporté par ton backend
+            )
             
-            successMessage = "Balance topped up successfully! +\(String(format: "%.2f", amount)) TND"
-            debugPrint("[SettingsViewModel] Top-up successful. New balance: \(updatedUser.balance ?? 0)")
+            // 2. Configurer le Payment Sheet
+            var configuration = StripeConfig.shared.createPaymentSheetConfiguration(
+                customerEmail: user.email
+            )
+            configuration.primaryButtonLabel = "Pay \(String(format: "%.2f", amount)) TND"
+            
+            self.paymentSheet = PaymentSheet(
+                paymentIntentClientSecret: clientSecret,
+                configuration: configuration
+            )
+            
+            // 3. Afficher le Payment Sheet
+            showPaymentSheet = true
+            isProcessingPayment = false
+            
+            print("✅ [SettingsViewModel] Payment Sheet ready!")
             
         } catch {
-            errorMessage = "Top-up failed. Please try again."
-            debugPrint("[SettingsViewModel] Top-up error: \(error)")
+            print("❌ [SettingsViewModel] Top-up initiation error: \(error)")
+            errorMessage = "Failed to initialize payment: \(error.localizedDescription)"
+            isProcessingPayment = false
+            pendingTopUpAmount = nil
         }
+    }
+    
+    // MARK: - 🆕 Handle Payment Result
+    func handlePaymentResult(_ result: PaymentSheetResult) {
+        isProcessingPayment = true
+        
+        switch result {
+        case .completed:
+            print("✅ [SettingsViewModel] Payment completed!")
+            Task {
+                await confirmTopUpWithBackend()
+            }
+            
+        case .failed(let error):
+            print("❌ [SettingsViewModel] Payment failed: \(error.localizedDescription)")
+            errorMessage = "Payment failed: \(error.localizedDescription)"
+            isProcessingPayment = false
+            pendingTopUpAmount = nil
+            showPaymentSheet = false
+            
+        case .canceled:
+            print("ℹ️ [SettingsViewModel] Payment canceled by user")
+            isProcessingPayment = false
+            pendingTopUpAmount = nil
+            showPaymentSheet = false
+        }
+    }
+    
+    // MARK: - 🆕 Confirm Top-up with Backend
+    private func confirmTopUpWithBackend() async {
+        guard let amount = pendingTopUpAmount else {
+            errorMessage = "Missing top-up amount"
+            isProcessingPayment = false
+            return
+        }
+        
+        do {
+            // Appeler l'API backend pour mettre à jour le balance
+            let updatedUser = try await profileService.topUpBalance(amount: amount)
+            
+            // Mettre à jour l'état local
+            self.updatedUser = updatedUser
+            
+            // Afficher le succès
+            successMessage = "Balance topped up successfully! +\(String(format: "%.2f", amount)) TND"
+            
+            // Cleanup
+            isProcessingPayment = false
+            pendingTopUpAmount = nil
+            showPaymentSheet = false
+            paymentSheet = nil
+            
+            print("✅ [SettingsViewModel] Top-up confirmed! New balance: \(updatedUser.balance ?? 0)")
+            
+        } catch {
+            print("❌ [SettingsViewModel] Backend confirmation error: \(error)")
+            errorMessage = "Payment succeeded but confirmation failed. Please contact support."
+            isProcessingPayment = false
+        }
+    }
+    
+    // MARK: - Reset Feedback
+    func resetFeedback() {
+        errorMessage = nil
+        successMessage = nil
     }
 }
