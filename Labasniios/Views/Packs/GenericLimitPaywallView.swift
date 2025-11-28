@@ -69,8 +69,7 @@ struct GenericLimitPaywallView: View {
                     ForEach([
                         ("sparkles", "Unlimited clothing scans"),
                         ("wand.and.stars", "Unlimited outfit suggestions"),
-                        ("person.2", "Personalized 3D avatar"),
-                        ("message.fill", "Priority support")
+                        ("person.2", "Personalized 3D avatar")
                     ], id: \.0) { icon, text in
                         HStack(spacing: 12) {
                             Image(systemName: icon)

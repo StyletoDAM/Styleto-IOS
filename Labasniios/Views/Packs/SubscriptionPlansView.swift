@@ -162,8 +162,7 @@ struct SubscriptionPlansView: View {
                             "Unlimited clothing detection",
                             "Unlimited outfit suggestions",
                             "3 items for sale / month",
-                            "Personalized 3D Avatar",
-                            "Priority support"
+                            "Personalized 3D Avatar"
                         ],
                         icon: "crown.fill",
                         iconColor: .white,
@@ -193,10 +192,7 @@ struct SubscriptionPlansView: View {
                         features: [
                             "Unlimited clothing detection",
                             "Unlimited outfit suggestions",
-                            "Unlimited sales on the Store",
-                            "Advanced sales analytics",
-                            "Professional seller badge",
-                            "VIP priority support"
+                            "Unlimited sales on the Store"
                         ],
                         icon: "bag.fill",
                         iconColor: .white,

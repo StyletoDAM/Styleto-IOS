@@ -42,18 +42,13 @@ struct SubscriptionDetailView: View {
                 ("camera.fill", "Unlimited Scans\nDetect as many clothes as you want"),
                 ("sparkles", "Unlimited AI\nOutfit suggestions without limits"),
                 ("person.2", "Premium 3D Avatar\nCustomize your virtual avatar"),
-                ("message.fill", "Priority Support\nFast responses to your questions"),
-                ("paintpalette", "Exclusive Features\nAccess new features first"),
                 ("bag", "Limited Sales\nUp to 3 items per month")
             ]
         } else { // Pro Seller
             return [
                 ("camera.fill", "Unlimited Scans\nDetect as many clothes as you want"),
                 ("sparkles", "Unlimited AI\nOutfit suggestions without limits"),
-                ("bag.fill", "Unlimited Sales\nOn the Labas Store"),
-                ("chart.bar.fill", "Advanced Sales Analytics\nTrack your performance"),
-                ("medal.fill", "Professional Seller Badge\nGet more visibility"),
-                ("crown.fill", "VIP Priority Support\nYou’re our priority")
+                ("bag.fill", "Unlimited Sales\nOn the Labas Store")
             ]
         }
     }
