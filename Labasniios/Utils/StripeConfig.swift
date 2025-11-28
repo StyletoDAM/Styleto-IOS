@@ -28,7 +28,7 @@ final class StripeConfig {
     /// Crée la configuration du Payment Sheet
     func createPaymentSheetConfiguration(
         customerEmail: String,
-        merchantDisplayName: String = "Labasni"
+        merchantDisplayName: String = "Styleto"
     ) -> PaymentSheet.Configuration {
         var configuration = PaymentSheet.Configuration()
         configuration.merchantDisplayName = merchantDisplayName

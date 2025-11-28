@@ -361,10 +361,10 @@ struct SettingsView: View {
     private var mainContent: some View {
         VStack(spacing: 16) {
             settingsTitle
-            balanceCard
-            orderHistoryCard  // ✅ AJOUTÉ
             profileSection
+            balanceCard
             sectionsList
+            orderHistoryCard
             PackProfileCard()
             logoutSection
         }
@@ -1189,16 +1189,16 @@ private struct AboutSheet: View {
                             .foregroundColor(.themePrimary)
 
                         Text("""
-                        Labasni is an innovative fashion app that lets you discover, share, and sell your clothes.
+                        Styleto is an innovative fashion app that lets you discover, share, and sell your clothes.
 
                         Create your virtual wardrobe in seconds, get personalized outfit suggestions every day, explore the latest trends, and connect with thousands of women who love fashion just like you.
 
-                        Whether you want to refresh your style, make some extra money by selling pieces you no longer wear, or simply find daily inspiration — Labasni is made for you.
+                        Whether you want to refresh your style, make some extra money by selling pieces you no longer wear, or simply find daily inspiration — Styleto is made for you.
 
                         Join a caring, creative, and passionate community.
                         Because every woman deserves to feel beautiful and confident every single day.
 
-                        Thank you for being part of the Labasni adventure
+                        Thank you for being part of the Styleto adventure
 
                         Version 1.0.0 • 2025
                         """)
@@ -1288,7 +1288,7 @@ private struct ContactSheet: View {
                             Text("Email")
                                 .font(.system(size: 17, weight: .semibold))
                                 .foregroundColor(.themeText)
-                            Text("labasni@gmail.com")
+                            Text("Styleto@gmail.com")
                                 .font(.system(size: 15))
                                 .foregroundColor(.themeText.opacity(0.7))
                         }

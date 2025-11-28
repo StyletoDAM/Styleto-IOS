@@ -18,7 +18,7 @@ struct LaunchSplashView: View {
                     .opacity(animateLogo ? 1 : 0.6)
                     .animation(.easeOut(duration: 0.8), value: animateLogo)
                 
-                Text("Labasni")
+                Text("Styleto")
                     .font(.system(size: 34, weight: .heavy))
                     .foregroundColor(.white)
                     .shadow(color: .black.opacity(0.1), radius: 6, x: 0, y: 3)

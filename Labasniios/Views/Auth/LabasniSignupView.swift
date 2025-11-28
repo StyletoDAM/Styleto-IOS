@@ -31,7 +31,7 @@ struct LabasniSignupView: View {
                             .font(.system(size: 28, weight: .heavy))
                             .foregroundColor(.ca3c66)
                         
-                        Text("Join Labasni and discover your style")
+                        Text("Join Styleto and discover your style")
                             .font(.system(size: 15, weight: .medium))
                             .foregroundColor(._4aa3a2)
                     }
@@ -513,7 +513,7 @@ private struct TermsSheetView: View {
             
             ScrollView {
                 VStack(alignment: .leading, spacing: 12) {
-                    Text("By creating a Labasni account, you agree to:")
+                    Text("By creating a Styleto account, you agree to:")
                         .font(.system(size: 16, weight: .semibold))
                         .foregroundColor(.ca3c66)
                     

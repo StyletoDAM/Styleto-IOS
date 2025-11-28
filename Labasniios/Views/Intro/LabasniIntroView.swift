@@ -43,7 +43,7 @@ struct LabasniIntroView: View {
                         .shadow(color: .black.opacity(0.18), radius: 20, x: 0, y: 10)
                     
                     VStack(spacing: 6) {
-                        Text("Labasni")
+                        Text("Styleto")
                             .font(.system(size: 34, weight: .bold))
                             .foregroundColor(.white.opacity(0.96))
                             .shadow(color: .black.opacity(0.08), radius: 4, x: 0, y: 2)

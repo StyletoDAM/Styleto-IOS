@@ -42,7 +42,7 @@ struct LabasniLoginView: View {
 
                 // Titre + sous-titre
                 VStack(spacing: 6) {
-                    Text("Labasni")
+                    Text("Styleto")
                         .font(.system(size: 28, weight: .bold))
                         .foregroundColor(.ca3c66)
 
