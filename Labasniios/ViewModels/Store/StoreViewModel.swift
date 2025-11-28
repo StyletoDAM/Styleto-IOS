@@ -19,6 +19,7 @@ class StoreViewModel: ObservableObject {
     @Published var sizeInput: String = ""
     @Published var selectedSize: String = "M"
     @Published var isShoes: Bool = false
+    @Published var showUpgradeToPro = false
     
     private var cancellables = Set<AnyCancellable>()
     private let service = StoreService.shared
@@ -78,16 +79,20 @@ class StoreViewModel: ObservableObject {
     }
     
     func loadMyClothes() {
+        print("📦 [StoreViewModel] loadMyClothes() called")
         ClothesService.shared.fetchMyClothes { result in
             DispatchQueue.main.async {
                 switch result {
                 case .success(let clothes):
+                    print("✅ [StoreViewModel] Loaded \(clothes.count) clothes")
                     self.myClothes = clothes.filter { clothe in
                         !self.storeItems.contains { storeItem in
                             storeItem.clothesId == clothe.id
                         }
                     }
+                    print("✅ [StoreViewModel] Filtered to \(self.myClothes.count) available clothes (not in store)")
                 case .failure(let error):
+                    print("❌ [StoreViewModel] Error loading clothes: \(error.localizedDescription)")
                     self.errorMessage = "Erreur chargement vêtements: \(error.localizedDescription)"
                 }
             }
@@ -100,8 +105,6 @@ class StoreViewModel: ObservableObject {
             return
         }
 
-        isAdding = true
-
         let finalSize: String = {
             if isShoes {
                 return sizeInput.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -111,15 +114,44 @@ class StoreViewModel: ObservableObject {
         }()
 
         guard !finalSize.isEmpty else {
-            isAdding = false
             errorMessage = "Please select or enter a size"
             return
         }
 
+        // Vérifier le quota AVANT d'ajouter l'item
+        print("🔍 [StoreViewModel] Checking quota before adding item...")
+        Task {
+            do {
+                let quotaCheck = try await SubscriptionService.shared.canSellItem()
+                print("📊 [StoreViewModel] Quota check result: allowed=\(quotaCheck.allowed), message=\(quotaCheck.message ?? "none")")
+                await MainActor.run {
+                    if !quotaCheck.allowed {
+                        // Quota dépassé, afficher le dialog d'upgrade
+                        print("⚠️ [StoreViewModel] Quota exceeded, showing upgrade dialog")
+                        showUpgradeToPro = true
+                        return
+                    }
+                    
+                    // Quota OK, continuer avec l'ajout
+                    print("✅ [StoreViewModel] Quota OK, proceeding with add")
+                    proceedWithAddToStore(clothe: clothe, price: price, size: finalSize)
+                }
+            } catch {
+                print("❌ [StoreViewModel] Error checking quota: \(error)")
+                await MainActor.run {
+                    errorMessage = "Error checking quota: \(error.localizedDescription)"
+                }
+            }
+        }
+    }
+    
+    private func proceedWithAddToStore(clothe: Clothe, price: Double, size: String) {
+        isAdding = true
+
         let body: [String: Any] = [
             "clothesId": clothe.id,
             "price": price,
-            "size": finalSize
+            "size": size
         ]
 
         StoreService.shared.createStoreItem(body: body)
@@ -127,7 +159,16 @@ class StoreViewModel: ObservableObject {
                 guard let self = self else { return }
                 self.isAdding = false
                 if case .failure(let error) = completion {
-                    self.errorMessage = "Error: \(error.localizedDescription)"
+                    let errorString = error.localizedDescription.lowercased()
+                    // Vérifier si l'erreur vient du backend (limite atteinte)
+                    if errorString.contains("limit") || 
+                       errorString.contains("quota") || 
+                       errorString.contains("exceeded") ||
+                       errorString.contains("403") {
+                        self.showUpgradeToPro = true
+                    } else {
+                        self.errorMessage = "Error: \(error.localizedDescription)"
+                    }
                 }
             } receiveValue: { [weak self] createdItem in
                 guard let self = self else { return }
@@ -137,9 +178,13 @@ class StoreViewModel: ObservableObject {
                 self.sizeInput = ""
                 self.selectedSize = "M"
                 self.isShoes = false
-                self.showAddToStore = false
-
-                self.loadMyStore()
+                
+                print("✅ [StoreViewModel] Item added successfully, closing sheet")
+                // Attendre un peu avant de fermer pour que l'UI se mette à jour
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                    self.showAddToStore = false
+                    self.loadMyStore()
+                }
             }
             .store(in: &cancellables)
     }

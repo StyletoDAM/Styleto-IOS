@@ -20,6 +20,62 @@ struct SubscriptionResponse: Codable {
     let subscribedAt: Date
     let expiresAt: Date?
     let isActive: Bool
+    
+    // Public initializer pour créer manuellement
+    init(plan: SubscriptionPlan, subscribedAt: Date, expiresAt: Date?, isActive: Bool) {
+        self.plan = plan
+        self.subscribedAt = subscribedAt
+        self.expiresAt = expiresAt
+        self.isActive = isActive
+    }
+    
+    // Custom decoder pour gérer les cas où des champs peuvent être manquants
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        
+        plan = try container.decode(SubscriptionPlan.self, forKey: .plan)
+        
+        // subscribedAt peut être manquant ou mal formaté
+        if let date = try? container.decode(Date.self, forKey: .subscribedAt) {
+            subscribedAt = date
+        } else if let dateString = try? container.decode(String.self, forKey: .subscribedAt) {
+            let formatter = ISO8601DateFormatter()
+            formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+            if let date = formatter.date(from: dateString) {
+                subscribedAt = date
+            } else {
+                // Essayer sans fractions de secondes
+                formatter.formatOptions = [.withInternetDateTime]
+                subscribedAt = formatter.date(from: dateString) ?? Date()
+            }
+        } else {
+            // Si manquant, utiliser la date actuelle
+            subscribedAt = Date()
+        }
+        
+        // expiresAt est optionnel
+        if let date = try? container.decodeIfPresent(Date.self, forKey: .expiresAt) {
+            expiresAt = date
+        } else if let dateString = try? container.decodeIfPresent(String.self, forKey: .expiresAt), !dateString.isEmpty {
+            let formatter = ISO8601DateFormatter()
+            formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+            if let date = formatter.date(from: dateString) {
+                expiresAt = date
+            } else {
+                formatter.formatOptions = [.withInternetDateTime]
+                expiresAt = formatter.date(from: dateString)
+            }
+        } else {
+            expiresAt = nil
+        }
+        
+        // isActive peut être manquant
+        isActive = (try? container.decodeIfPresent(Bool.self, forKey: .isActive)) ?? true
+    }
+    
+    enum CodingKeys: String, CodingKey {
+        case plan, subscribedAt, expiresAt, isActive
+    }
 }
 
 struct UsageStatsResponse: Codable {
@@ -146,8 +202,12 @@ struct TransactionInfo: Codable {
 
 struct QuotaCheckResult: Codable {
     let allowed: Bool
-    let remaining: String?
-    let limit: String?
+    let remaining: StringOrNumber?
+    let limit: StringOrNumber?
     let plan: SubscriptionPlan
     let message: String?
+}
+
+struct UpdateSubscriptionRequest: Codable {
+    let plan: SubscriptionPlan
 }

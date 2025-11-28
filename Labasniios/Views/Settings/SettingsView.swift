@@ -100,6 +100,7 @@ struct SettingsView: View {
     @State private var showColorThemePicker = false
     
     @State private var showBalanceTopUp = false
+    @State private var showOrdersHistory = false
     
     
     init(user: User? = nil, onLogout: (() -> Void)? = nil) {
@@ -361,6 +362,7 @@ struct SettingsView: View {
         VStack(spacing: 16) {
             settingsTitle
             balanceCard
+            orderHistoryCard  // ✅ AJOUTÉ
             profileSection
             sectionsList
             PackProfileCard()
@@ -376,6 +378,48 @@ struct SettingsView: View {
             .foregroundColor(.themePrimary)
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.top, 12)
+    }
+    
+    // MARK: - Order History Card
+    private var orderHistoryCard: some View {
+        HStack(spacing: 16) {
+            ZStack {
+                Circle()
+                    .fill(Color.themeTeal.opacity(0.15))
+                    .frame(width: 56, height: 56)
+                
+                Image(systemName: "bag.fill")
+                    .font(.system(size: 24))
+                    .foregroundColor(.themeTeal)
+            }
+            
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Order History")
+                    .font(.system(size: 17, weight: .semibold))
+                    .foregroundColor(.themeText)
+                
+                Text("View your purchase history")
+                    .font(.system(size: 13))
+                    .foregroundColor(.themeSecondaryText)
+            }
+            
+            Spacer()
+            
+            Image(systemName: "chevron.right")
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundColor(.themeSecondaryText)
+        }
+        .padding(.horizontal, 20)
+        .padding(.vertical, 16)
+        .background(Color.themeCard)
+        .cornerRadius(20)
+        .shadow(color: .black.opacity(0.05), radius: 10, x: 0, y: 5)
+        .onTapGesture {
+            showOrdersHistory = true
+        }
+        .sheet(isPresented: $showOrdersHistory) {
+            OrdersHistoryView()
+        }
     }
     
     // MARK: - Balance Card (identique à Android)

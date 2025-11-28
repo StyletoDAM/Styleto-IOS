@@ -1,10 +1,19 @@
 import SwiftUI
+import StripePaymentSheet
+import Foundation
 
 struct SubscriptionDetailView: View {
     let plan: SubscriptionPlansView.PlanType
     
     @State private var isYearly = false
     @Environment(\.dismiss) private var dismiss
+    @State private var isProcessing = false
+    @State private var errorMessage: String?
+    @State private var showSuccessAlert = false
+    @State private var paymentSheet: PaymentSheet?
+    @State private var showPaymentSheet = false
+    
+    var onSubscriptionSuccess: (() -> Void)? = nil
     
     private var monthlyPrice: String {
         plan == .premium ? "9.99 DT" : "24.99 DT"
@@ -156,17 +165,28 @@ struct SubscriptionDetailView: View {
             // Fixed bottom button + info
             VStack {
                 Button {
-                    print("Subscribe to \(planTitle) – \(isYearly ? "Yearly" : "Monthly")")
-                    
+                    Task {
+                        await initiateSubscription()
+                    }
                 } label: {
-                    Text("Subscribe to \(planTitle)")
-                        .font(.headline)
-                        .foregroundColor(.white)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 18)
-                        .background(iconBackground)
-                        .cornerRadius(16)
+                    if isProcessing {
+                        ProgressView()
+                            .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 18)
+                            .background(iconBackground.opacity(0.7))
+                            .cornerRadius(16)
+                    } else {
+                        Text("Subscribe to \(planTitle)")
+                            .font(.headline)
+                            .foregroundColor(.white)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 18)
+                            .background(iconBackground)
+                            .cornerRadius(16)
+                    }
                 }
+                .disabled(isProcessing)
                 .padding(.horizontal)
                 
                 // Good to know
@@ -202,6 +222,122 @@ struct SubscriptionDetailView: View {
                             .foregroundColor(.primary)
                     }
                 }
+            }
+            .alert("Error", isPresented: .constant(errorMessage != nil)) {
+                Button("OK") {
+                    errorMessage = nil
+                }
+            } message: {
+                if let error = errorMessage {
+                    Text(error)
+                }
+            }
+            .alert("Success", isPresented: $showSuccessAlert) {
+                Button("OK") {
+                    showSuccessAlert = false
+                    onSubscriptionSuccess?()
+                    dismiss()
+                }
+            } message: {
+                Text("Your subscription has been activated successfully!")
+            }
+            .sheet(isPresented: $showPaymentSheet) {
+                if let paymentSheet = paymentSheet {
+                    PaymentSheetView(paymentSheet: paymentSheet) { result in
+                        handlePaymentResult(result)
+                    }
+                }
+            }
+        }
+    }
+    
+    // MARK: - Subscription Flow
+    
+    private func initiateSubscription() async {
+        guard let user = AppPreferences.shared.currentUser else {
+            errorMessage = "You must be logged in"
+            return
+        }
+        
+        isProcessing = true
+        errorMessage = nil
+        
+        do {
+            // Calculer le montant
+            let amount: Double = if plan == .premium {
+                isYearly ? 99.0 : 9.99
+            } else {
+                isYearly ? 249.0 : 24.99
+            }
+            
+            // Créer le PaymentIntent
+            let clientSecret = try await PaymentService.shared.createPaymentIntent(
+                amount: amount,
+                currency: "usd"
+            )
+            
+            // Configurer le PaymentSheet
+            var configuration = StripeConfig.shared.createPaymentSheetConfiguration(
+                customerEmail: user.email
+            )
+            configuration.primaryButtonLabel = "Pay \(String(format: "%.2f", amount)) DT"
+            
+            let sheet = PaymentSheet(
+                paymentIntentClientSecret: clientSecret,
+                configuration: configuration
+            )
+            
+            await MainActor.run {
+                self.paymentSheet = sheet
+                self.showPaymentSheet = true
+                self.isProcessing = false
+            }
+            
+        } catch {
+            await MainActor.run {
+                errorMessage = "Failed to initialize payment: \(error.localizedDescription)"
+                isProcessing = false
+            }
+        }
+    }
+    
+    private func handlePaymentResult(_ result: PaymentSheetResult) {
+        showPaymentSheet = false
+        
+        switch result {
+        case .completed:
+            Task {
+                await confirmSubscription()
+            }
+            
+        case .failed(let error):
+            errorMessage = "Payment failed: \(error.localizedDescription)"
+            isProcessing = false
+            
+        case .canceled:
+            isProcessing = false
+        }
+    }
+    
+    private func confirmSubscription() async {
+        isProcessing = true
+        
+        do {
+            let planType: SubscriptionPlan = plan == .premium ? .premium : .proSeller
+            _ = try await SubscriptionService.shared.updateSubscription(plan: planType)
+            
+            // Délai avant de rafraîchir pour laisser le backend se mettre à jour
+            try? await Task.sleep(nanoseconds: 800_000_000) // 800ms
+            
+            await MainActor.run {
+                showSuccessAlert = true
+                isProcessing = false
+            }
+            
+        } catch {
+            await MainActor.run {
+                errorMessage = "Payment succeeded but subscription update failed: \(error.localizedDescription)"
+                isProcessing = false
             }
         }
     }

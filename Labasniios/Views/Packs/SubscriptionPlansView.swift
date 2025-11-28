@@ -180,7 +180,10 @@ struct SubscriptionPlansView: View {
                         }
                     )
                     .sheet(isPresented: $showingPremiumDetail) {
-                        SubscriptionDetailView(plan: .premium)
+                        SubscriptionDetailView(plan: .premium) {
+                            // Callback après achat réussi
+                            // Refresh si nécessaire
+                        }
                     }
                     
                     // MARK: - Pro Seller
@@ -210,7 +213,10 @@ struct SubscriptionPlansView: View {
                         }
                     )
                     .sheet(isPresented: $showingProDetail) {
-                        SubscriptionDetailView(plan: .pro)
+                        SubscriptionDetailView(plan: .pro) {
+                            // Callback après achat réussi
+                            // Refresh si nécessaire
+                        }
                     }
                     
                     // Tip

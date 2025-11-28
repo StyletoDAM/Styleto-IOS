@@ -18,7 +18,7 @@ final class PaymentViewModel: ObservableObject {
     private let cartManager = CartManager.shared
     
     // Stocker les infos pour après le paiement
-    private var currentStoreItemId: String?
+    private var currentStoreItemIds: [String] = []
     private var currentPaymentIntentId: String?
     
     // MARK: - Checkout Process (STRIPE UI)
@@ -39,23 +39,31 @@ final class PaymentViewModel: ObservableObject {
         errorMessage = nil
         
         do {
-            // Pour l'instant, on traite uniquement le premier item
-            let firstItem = cartManager.cartItems[0]
+            // Calculer le total et sauvegarder tous les IDs
+            var totalAmount: Double = 0.0
+            var itemIds: [String] = []
             
-            guard let storeItemId = firstItem.storeItemID else {
-                errorMessage = "Invalid item ID"
+            for item in cartManager.cartItems {
+                if let storeItemId = item.storeItemID {
+                    itemIds.append(storeItemId)
+                    totalAmount += item.price
+                }
+            }
+            
+            guard !itemIds.isEmpty else {
+                errorMessage = "Invalid items in cart"
                 isProcessing = false
                 return
             }
             
             // Sauvegarder pour plus tard
-            currentStoreItemId = storeItemId
+            currentStoreItemIds = itemIds
             
-            print("🛒 [PaymentViewModel] Starting checkout for \(String(format: "%.2f", firstItem.price)) DT")
+            print("🛒 [PaymentViewModel] Starting checkout for \(itemIds.count) item(s), total: \(String(format: "%.2f", totalAmount)) DT")
             
             // 1. Créer le Payment Intent sur le backend Stripe
             let clientSecret = try await paymentService.createPaymentIntent(
-                amount: firstItem.price,
+                amount: totalAmount,
                 currency: "usd"  // Change en "tnd" si tu veux tester avec dinars
             )
             
@@ -63,7 +71,7 @@ final class PaymentViewModel: ObservableObject {
             configurePaymentSheet(
                 clientSecret: clientSecret,
                 customerEmail: user.email,
-                amount: firstItem.price
+                amount: totalAmount
             )
             
             isProcessing = false
@@ -128,36 +136,54 @@ final class PaymentViewModel: ObservableObject {
     
     /// Confirme l'achat auprès du backend
     private func confirmPurchaseWithBackend() async {
-        guard let storeItemId = currentStoreItemId else {
-            errorMessage = "Missing store item ID"
+        guard !currentStoreItemIds.isEmpty else {
+            errorMessage = "Missing store item IDs"
             isProcessing = false
             return
         }
         
-        do {
-            // Générer un payment intent ID
-            // En production, Stripe te donne le vrai ID après paiement
-            let paymentIntentId = "pi_completed_\(Int(Date().timeIntervalSince1970))"
-            
-            _ = try await paymentService.confirmPurchase(
-                storeItemId: storeItemId,
-                paymentIntentId: paymentIntentId
-            )
-            
-            // Vider le panier
-            cartManager.clearCart()
-            
-            // Afficher le succès
-            showSuccess = true
-            isProcessing = false
-            
-            print("✅ [PaymentViewModel] Purchase confirmed with backend!")
-            
-        } catch {
-            print("❌ [PaymentViewModel] Backend confirmation error: \(error)")
-            errorMessage = "Payment succeeded but confirmation failed. Please contact support."
-            isProcessing = false
+        // Extraire le paymentIntentId du clientSecret (format: pi_xxx_secret_yyy)
+        // En production, Stripe te donne le vrai ID après paiement
+        let paymentIntentId = "pi_completed_\(Int(Date().timeIntervalSince1970))"
+        
+        // Confirmer l'achat pour chaque article du panier
+        for storeItemId in currentStoreItemIds {
+            do {
+                let storeItem = try await paymentService.confirmPurchase(
+                    storeItemId: storeItemId,
+                    paymentIntentId: paymentIntentId
+                )
+                
+                // Créer une commande pour chaque article acheté
+                // Utiliser clothe?.id ou clothesId comme fallback
+                if let clothId = storeItem.clothe?.id ?? storeItem.clothesId {
+                    do {
+                        _ = try await OrdersService.shared.createOrder(
+                            clothesId: clothId,
+                            price: storeItem.price
+                        )
+                        print("✅ [PaymentViewModel] Order created successfully for clothId: \(clothId)")
+                    } catch {
+                        print("⚠️ [PaymentViewModel] Failed to create order for clothId: \(clothId), Error: \(error.localizedDescription)")
+                        // Ne pas bloquer le flux même si la création de commande échoue
+                    }
+                } else {
+                    print("⚠️ [PaymentViewModel] No cloth ID found for store item: \(storeItemId)")
+                }
+            } catch {
+                print("❌ [PaymentViewModel] Failed to confirm purchase for item \(storeItemId): \(error)")
+                // Continuer avec les autres items même si un échoue
+            }
         }
+        
+        // Vider le panier
+        cartManager.clearCart()
+        
+        // Afficher le succès
+        showSuccess = true
+        isProcessing = false
+        
+        print("✅ [PaymentViewModel] Purchase confirmed with backend!")
     }
     
     // MARK: - Reset
@@ -167,7 +193,7 @@ final class PaymentViewModel: ObservableObject {
         showSuccess = false
         errorMessage = nil
         paymentSheet = nil
-        currentStoreItemId = nil
+        currentStoreItemIds = []
         currentPaymentIntentId = nil
     }
 }

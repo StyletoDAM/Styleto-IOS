@@ -1,7 +1,7 @@
 import Foundation
 
-// MARK: - UserInfo (objet complet)
-struct UserInfo: Codable {
+// MARK: - ClotheUserInfo (objet complet pour Clothe)
+struct ClotheUserInfo: Codable {
     let id: String
     let fullName: String?
     let email: String?
@@ -30,13 +30,13 @@ struct Clothe: Identifiable, Codable {
     let color: String?
     let style: String?
 
-    // userId peut être String OU UserInfo
+    // userId peut être String OU ClotheUserInfo
     private let userIdString: String?
-    private let userIdObject: UserInfo?
+    private let userIdObject: ClotheUserInfo?
 
     // Accès public
     var userIdAsString: String? { userIdString }
-    var userIdAsUser: UserInfo? { userIdObject }
+    var userIdAsUser: ClotheUserInfo? { userIdObject }
 
     enum CodingKeys: String, CodingKey {
         case id = "_id"
@@ -56,7 +56,7 @@ struct Clothe: Identifiable, Codable {
             userIdString = string
             userIdObject = nil
         }
-        else if let user = try? container.decode(UserInfo.self, forKey: .userId) {
+        else if let user = try? container.decode(ClotheUserInfo.self, forKey: .userId) {
             userIdString = nil
             userIdObject = user
         }

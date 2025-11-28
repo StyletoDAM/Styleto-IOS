@@ -6,6 +6,7 @@ struct DetectionResultView: View {
     let resultText: String
     @Binding var isShowing: Bool
     @Binding var isUploading: Bool
+    @State private var showPlansView = false
     
     // MARK: - Editable States
     @State private var selectedCategory: Category = .top
@@ -276,6 +277,9 @@ struct DetectionResultView: View {
                 parseResult()
             }
         }
+        .sheet(isPresented: $showPlansView) {
+            SubscriptionPlansView()
+        }
     }
     
     // MARK: - Save to Database
@@ -314,7 +318,17 @@ struct DetectionResultView: View {
         } catch {
             await MainActor.run {
                 isSaving = false
-                print("Erreur ajout: \(error)")
+                // Détecter erreur 403/quota - vérifier le message d'erreur
+                let errorString = error.localizedDescription.lowercased()
+                if errorString.contains("403") || 
+                   errorString.contains("quota") || 
+                   errorString.contains("limit") || 
+                   errorString.contains("exceeded") {
+                    // Afficher SubscriptionPlansView
+                    showPlansView = true
+                } else {
+                    print("Erreur ajout: \(error)")
+                }
             }
         }
     }

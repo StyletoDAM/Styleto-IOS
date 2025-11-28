@@ -3,6 +3,8 @@ import SwiftUI
 struct AddToStoreSheet: View {
     @ObservedObject var viewModel: StoreViewModel
     @Environment(\.dismiss) var dismiss
+    @State private var showUpgradeDialog = false
+    @State private var showProDetails = false
 
     var body: some View {
         NavigationStack {
@@ -40,34 +42,31 @@ struct AddToStoreSheet: View {
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") {
+                        print("❌ [AddToStoreSheet] Cancel button tapped")
                         dismiss()
                     }
                     .foregroundColor(.themeSecondary)
                 }
                 ToolbarItem(placement: .confirmationAction) {
+                    let isDisabled = viewModel.selectedClothe == nil ||
+                                     viewModel.priceInput.isEmpty ||
+                                     viewModel.isAdding ||
+                                     (viewModel.isShoes ? viewModel.sizeInput.isEmpty : false)
+                    
                     Button("Add") {
-                        // Appel sans closure
+                        print("✅ [AddToStoreSheet] Add button tapped")
                         viewModel.addToStore()
                     }
                     .bold()
-                    .foregroundColor(.white)
+                    .foregroundColor(isDisabled ? .gray : .white)
                     .frame(width: 80, height: 36)
-                    .disabled(
-                        viewModel.selectedClothe == nil ||
-                        viewModel.priceInput.isEmpty ||
-                        viewModel.isAdding ||
-                        (viewModel.isShoes ? viewModel.sizeInput.isEmpty : false)
-                    )
+                    .disabled(isDisabled)
                     .background(
-                        viewModel.selectedClothe != nil &&
-                        !viewModel.priceInput.isEmpty &&
-                        !viewModel.isAdding &&
-                        (viewModel.isShoes ? !viewModel.sizeInput.isEmpty : true)
-                            ? Color.themePrimary
-                            : Color.gray.opacity(0.3)
+                        isDisabled
+                            ? Color.gray.opacity(0.3)
+                            : Color.themePrimary
                     )
                     .clipShape(Capsule())
-                    .disabled(viewModel.selectedClothe == nil || viewModel.priceInput.isEmpty || viewModel.isAdding)
                 }
             }
             .overlay {
@@ -79,10 +78,46 @@ struct AddToStoreSheet: View {
                         .shadow(radius: 10)
                 }
             }
-            // Observer showAddToStore pour fermer automatiquement
-            .onChange(of: viewModel.showAddToStore) { _, newValue in
-                if !newValue {
-                    dismiss()
+            .onAppear {
+                print("✅ [AddToStoreSheet] Sheet appeared - myClothes count: \(viewModel.myClothes.count)")
+            }
+            // Observer showUpgradeToPro depuis ViewModel
+            .onChange(of: viewModel.showUpgradeToPro) { oldValue, newValue in
+                print("🔄 [AddToStoreSheet] showUpgradeToPro changed: \(oldValue) -> \(newValue)")
+                if newValue {
+                    showUpgradeDialog = true
+                    viewModel.showUpgradeToPro = false // Reset
+                }
+            }
+            // Upgrade Dialog
+            .overlay {
+                if showUpgradeDialog {
+                    ZStack {
+                        Color.black.opacity(0.4)
+                            .ignoresSafeArea()
+                            .onTapGesture {
+                                showUpgradeDialog = false
+                            }
+                        
+                        UpgradeToProDialog(
+                            onDismiss: {
+                                showUpgradeDialog = false
+                            },
+                            onUpgrade: {
+                                showUpgradeDialog = false
+                                showProDetails = true
+                            }
+                        )
+                    }
+                }
+            }
+            // Pro Pack Details Sheet
+            .sheet(isPresented: $showProDetails) {
+                SubscriptionDetailView(plan: .pro) {
+                    // Après achat réussi, fermer tout et rafraîchir
+                    showProDetails = false
+                    dismiss() // Fermer AddToStoreSheet
+                    viewModel.loadMyStore()
                 }
             }
         }

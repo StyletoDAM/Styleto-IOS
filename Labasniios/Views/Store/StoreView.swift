@@ -12,6 +12,7 @@ struct StoreView: View {
     @State private var searchText = ""
     @State private var showCart = false
     @State private var showChat = false
+    @State private var showAddSheet = false
     
     // AJOUT : état pour savoir quel onglet est actif
     @State private var selectedTab: StoreTab = .myItems
@@ -65,8 +66,9 @@ struct StoreView: View {
                                     .padding(.horizontal, 40)
                                 
                                 Button {
-                                    viewModel.showAddToStore = true
+                                    print("🔘 [StoreView] Empty state button tapped")
                                     viewModel.loadMyClothes()
+                                    showAddSheet = true
                                 } label: {
                                     Text("Add your first item")
                                         .font(.system(size: 16, weight: .semibold))
@@ -125,8 +127,20 @@ struct StoreView: View {
                 HStack {
                     Spacer()
                     Button {
-                        viewModel.showAddToStore = true
+                        print("🔘 [StoreView] Add button tapped")
+                        print("📦 [StoreView] Loading clothes...")
                         viewModel.loadMyClothes()
+                        
+                        // Utiliser Task pour s'assurer que ça se passe sur le thread principal
+                        Task { @MainActor in
+                            print("🔄 [StoreView] Setting showAddSheet to true...")
+                            showAddSheet = true
+                            print("✅ [StoreView] showAddSheet is now: \(showAddSheet)")
+                            
+                            // Vérifier après un court délai
+                            try? await Task.sleep(nanoseconds: 100_000_000) // 0.1s
+                            print("🔍 [StoreView] After delay, showAddSheet is: \(showAddSheet)")
+                        }
                     } label: {
                         Image(systemName: "plus")
                             .font(.system(size: 28, weight: .semibold))
@@ -159,8 +173,21 @@ struct StoreView: View {
                 .zIndex(1)
             }
         }
-        .sheet(isPresented: $viewModel.showAddToStore) {
+        .sheet(isPresented: $showAddSheet) {
             AddToStoreSheet(viewModel: viewModel)
+                .onAppear {
+                    print("📄 [StoreView] AddToStoreSheet appeared")
+                }
+                .onDisappear {
+                    print("📄 [StoreView] AddToStoreSheet disappeared")
+                    // Synchroniser avec ViewModel
+                    viewModel.showAddToStore = false
+                }
+        }
+        .onChange(of: showAddSheet) { oldValue, newValue in
+            print("🔄 [StoreView] showAddSheet changed: \(oldValue) -> \(newValue)")
+            // Synchroniser avec ViewModel
+            viewModel.showAddToStore = newValue
         }
     }
 

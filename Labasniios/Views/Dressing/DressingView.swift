@@ -19,6 +19,7 @@ struct DressingView: View {
     @State private var aiErrorMessage = ""
     @State private var showPhotoGuide = false
     @State private var selectedClothe: Clothe?
+    @State private var showPlansView = false
     
     private let columns: [GridItem] = [
         GridItem(.flexible(), spacing: 16),
@@ -118,7 +119,45 @@ struct DressingView: View {
                 PhotoGuidePopupView(
                     isShowing: $showPhotoGuide,
                     onContinue: {
-                        showImageSourceSheet = true
+                        // Vérifier le quota AVANT de fermer PhotoGuide
+                        print("🔍 [DressingView] Checking quota after 'Got it'...")
+                        Task {
+                            do {
+                                let quotaCheck = try await SubscriptionService.shared.canDetectClothes()
+                                print("📊 [DressingView] Quota check: allowed=\(quotaCheck.allowed)")
+                                await MainActor.run {
+                                    // Fermer PhotoGuide avec animation
+                                    withAnimation {
+                                        showPhotoGuide = false
+                                    }
+                                    
+                                    // Attendre un peu pour laisser l'animation se terminer
+                                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                                        if quotaCheck.allowed {
+                                            // Quota OK, ouvrir ImageSourceSheet
+                                            print("✅ [DressingView] Quota OK, opening ImageSourceSheet")
+                                            showImageSourceSheet = true
+                                        } else {
+                                            // Quota dépassé, afficher SubscriptionPlansView (comme Android)
+                                            print("⚠️ [DressingView] Quota exceeded, showing SubscriptionPlansView")
+                                            showPlansView = true
+                                        }
+                                    }
+                                }
+                            } catch {
+                                print("❌ [DressingView] Error checking quota: \(error)")
+                                await MainActor.run {
+                                    // Fermer PhotoGuide même en cas d'erreur
+                                    withAnimation {
+                                        showPhotoGuide = false
+                                    }
+                                    // En cas d'erreur, continuer quand même après un délai
+                                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                                        showImageSourceSheet = true
+                                    }
+                                }
+                            }
+                        }
                     }
                 )
                 .transition(.opacity.combined(with: .scale))
@@ -139,6 +178,10 @@ struct DressingView: View {
         // Clothing Detail Sheet
         .sheet(item: $selectedClothe) { clothe in
             ClothingDetailSheet(clothe: clothe, viewModel: viewModel)
+        }
+        // Subscription Plans View (quand quota dépassé)
+        .sheet(isPresented: $showPlansView) {
+            SubscriptionPlansView()
         }
     }
     

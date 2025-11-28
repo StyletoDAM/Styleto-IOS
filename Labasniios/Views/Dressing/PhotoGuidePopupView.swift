@@ -103,10 +103,8 @@ struct PhotoGuidePopupView: View {
                 
                 // Bouton Continue
                 Button {
-                    withAnimation {
-                        isShowing = false
-                        onContinue()
-                    }
+                    // Appeler onContinue (qui vérifiera le quota et fermera si nécessaire)
+                    onContinue()
                 } label: {
                     HStack(spacing: 8) {
                         Text("Got it!")
