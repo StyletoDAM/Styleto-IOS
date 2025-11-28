@@ -1,5 +1,3 @@
-//  PackProfileCard.swift
-//  Labasniios
 
 import SwiftUI
 
