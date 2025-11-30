@@ -1,14 +1,3 @@
-//
-//  PaymentService.swift.swift
-//  Labasniios
-//
-//  Created by Aziz on 23/11/2025.
-//
-//
-//  PaymentService.swift
-//  Labasniios
-//
-
 import Foundation
 import Combine
 
@@ -74,7 +63,7 @@ final class PaymentService {
     // MARK: - Confirm Purchase
     
     /// Confirme l'achat après paiement Stripe réussi
-    func confirmPurchase(storeItemId: String, paymentIntentId: String) async throws -> Store {
+    func confirmPurchase(storeItemId: String, paymentMethod: String, paymentIntentId: String? = nil) async throws -> Store {
         guard let url = URL(string: "/store/purchase/\(storeItemId)", relativeTo: baseURL) else {
             throw NetworkError.invalidURL
         }
@@ -84,37 +73,23 @@ final class PaymentService {
         request.setValue("Bearer \(tokenManager.getToken() ?? "")", forHTTPHeaderField: "Authorization")
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         
-        let body: [String: String] = [
-            "paymentIntentId": paymentIntentId
-        ]
+        var body: [String: Any] = ["paymentMethod": paymentMethod]
+        if let paymentIntentId = paymentIntentId {
+            body["paymentIntentId"] = paymentIntentId
+        }
         
         request.httpBody = try JSONSerialization.data(withJSONObject: body)
         
-        print("📤 [PaymentService] Confirming purchase for item: \(storeItemId)")
-        
         let (data, response) = try await URLSession.shared.data(for: request)
         
-        guard let httpResponse = response as? HTTPURLResponse else {
+        guard let httpResponse = response as? HTTPURLResponse, (200...299).contains(httpResponse.statusCode) else {
+            let errorStr = String(data: data, encoding: .utf8) ?? ""
+            if errorStr.contains("Solde insuffisant") || errorStr.contains("insuffisant") {
+                throw NSError(domain: "", code: -1, userInfo: [NSLocalizedDescriptionKey: "Solde insuffisant"])
+            }
             throw NetworkError.serverError
         }
         
-        print("📡 [PaymentService] Confirm status: \(httpResponse.statusCode)")
-        
-        if let responseString = String(data: data, encoding: .utf8) {
-            print("📦 [PaymentService] Response: \(responseString)")
-        }
-        
-        guard (200...299).contains(httpResponse.statusCode) else {
-            throw NetworkError.serverError
-        }
-        
-        let decoder = JSONDecoder()
-        decoder.dateDecodingStrategy = .iso8601
-        
-        let store = try decoder.decode(Store.self, from: data)
-        
-        print("✅ [PaymentService] Purchase confirmed!")
-        
-        return store
+        return try JSONDecoder().withISO8601().decode(Store.self, from: data)
     }
 }

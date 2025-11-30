@@ -64,7 +64,6 @@ final class AppPreferences: ObservableObject {
         if let userData = UserDefaults.standard.data(forKey: currentUserKey),
            var user = try? JSONDecoder().decode(User.self, from: userData) {
             
-            // ✅ MIGRATION : Corriger les anciennes balances en centimes
             if let balance = user.balance, balance > 1000 {
                 // Si balance > 1000, c'est probablement en centimes, convertir en TND
                 user.balance = balance / 100.0
@@ -94,7 +93,7 @@ final class AppPreferences: ObservableObject {
     
     /// Récupère le profil utilisateur frais du serveur
     @MainActor
-    private func refreshUserProfile() async {
+    public func refreshUserProfile() async {
         guard let token = TokenManager.shared.getToken() else {
             debugPrint("[AppPreferences] No token available for profile refresh")
             return

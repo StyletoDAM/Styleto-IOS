@@ -14,6 +14,14 @@ struct User: Codable, Identifiable {
     let appleId: String?
     let profilePicture: String?
     var balance: Double?
+    
+    var balanceInTND: Double {
+        balance ?? 0.0
+    }
+
+    var formattedBalance: String {
+        String(format: "%.2f DT", balanceInTND)
+    }
 
     enum Gender: String, Codable {
         case male

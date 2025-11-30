@@ -1,5 +1,4 @@
 import SwiftUI
-
 import Stripe
 import StripePaymentSheet
 
@@ -228,17 +227,44 @@ struct CartView: View {
     
     // MARK: - Order Summary
     private var orderSummary: some View {
-        VStack(alignment: .leading, spacing: 14) {
+        VStack(alignment: .leading, spacing: 16) {
             Text("Order Summary")
                 .font(.title3.bold())
                 .foregroundColor(.themePrimary)
             
-            Divider().background(Color.themePrimary.opacity(0.3))
+            HStack {
+                Text("Available Balance")
+                Spacer()
+                Text(String(format: "%.2f DT", paymentViewModel.userBalance))
+                    .fontWeight(.semibold)
+                    .foregroundColor(paymentViewModel.canPayWithBalance ? .themeTeal : .red)
+            }
             
-            Text(String(format: "%.2f DT", cartManager.totalPrice))
-            summaryRow(title: "Shipping", value: "Free", color: .green, bold: true)
+            // Payment method choice
+            HStack(spacing: 20) {
+                Button {
+                    paymentViewModel.useBalance = true
+                } label: {
+                    HStack {
+                        Image(systemName: paymentViewModel.useBalance ? "largecircle.fill.circle" : "circle")
+                        Text("Balance")
+                    }
+                    .foregroundColor(paymentViewModel.useBalance ? .themeTeal : .secondary)
+                }
+                
+                Button {
+                    paymentViewModel.useBalance = false
+                } label: {
+                    HStack {
+                        Image(systemName: !paymentViewModel.useBalance ? "largecircle.fill.circle" : "circle")
+                        Text("Card")
+                    }
+                    .foregroundColor(!paymentViewModel.useBalance ? .themePrimary : .secondary)
+                }
+            }
+            .font(.system(size: 17, weight: .medium))
             
-            Divider().background(Color.themePrimary.opacity(0.3))
+            Divider()
             
             HStack {
                 Text("Total")
@@ -249,58 +275,38 @@ struct CartView: View {
                     .foregroundColor(.themePrimary)
             }
             
-            // MARK: - Checkout Button
             Button {
-                Task {
-                    await paymentViewModel.startCheckout()
-                }
+                Task { await paymentViewModel.startCheckout() }
             } label: {
                 HStack {
                     if paymentViewModel.isProcessing {
-                        ProgressView()
-                            .tint(.white)
+                        ProgressView().tint(.white)
                     } else {
-                        Image(systemName: "creditcard.fill")
+                        Image(systemName: paymentViewModel.useBalance ? "wallet.pass.fill" : "creditcard.fill")
                     }
-                    Text(paymentViewModel.isProcessing ? "Processing..." : "Proceed to Checkout")
+                    Text(paymentViewModel.isProcessing ? "Processing..." : "Pay Now")
                         .font(.title3.bold())
                 }
                 .foregroundColor(.white)
                 .frame(maxWidth: .infinity)
                 .padding()
                 .background(
-                    paymentViewModel.isProcessing
-                        ? Color.gray
-                        : Color.themePrimary
+                    (paymentViewModel.useBalance && !paymentViewModel.canPayWithBalance) ? Color.gray : Color.themePrimary
                 )
                 .cornerRadius(20)
-                .shadow(
-                    color: paymentViewModel.isProcessing
-                        ? .clear
-                        : .themePrimary.opacity(0.4),
-                    radius: 10,
-                    y: 5
-                )
             }
-            .disabled(paymentViewModel.isProcessing)
-            .padding(.top, 12)
+            .disabled(paymentViewModel.isProcessing || (paymentViewModel.useBalance && !paymentViewModel.canPayWithBalance))
+            
+            if paymentViewModel.useBalance && !paymentViewModel.canPayWithBalance {
+                Text("Insufficient balance")
+                    .font(.caption)
+                    .foregroundColor(.red)
+            }
         }
         .padding()
         .background(Color.themeCard)
         .cornerRadius(20)
-        .shadow(color: .black.opacity(0.08), radius: 12)
         .padding(.horizontal)
-    }
-    
-    private func summaryRow(title: String, value: String, color: Color = Color("themeTeal"), bold: Bool = false) -> some View {
-        HStack {
-            Text(title)
-                .foregroundColor(.themeTeal)
-            Spacer()
-            Text(value)
-                .foregroundColor(color)
-                .font(.system(size: 17, weight: bold ? .semibold : .medium))
-        }
     }
 }
 
