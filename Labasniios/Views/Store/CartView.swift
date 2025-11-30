@@ -49,9 +49,13 @@ struct CartView: View {
                 }
             }
             .navigationTitle("My Cart (\(cartManager.itemCount))")
-            .onAppear {
-                Task {
+            .task {
+                // Rafraîchir le balance au démarrage (comme Android LaunchedEffect)
+                // Vérifier que le token est disponible avant de rafraîchir
+                if TokenManager.shared.getToken() != nil {
                     await paymentViewModel.refreshBalance()
+                } else {
+                    print("⚠️ [CartView] No token available, skipping balance refresh")
                 }
             }
             .navigationBarTitleDisplayMode(.inline)

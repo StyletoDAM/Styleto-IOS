@@ -23,14 +23,16 @@ final class PaymentViewModel: ObservableObject {
         NotificationCenter.default.publisher(for: .userDidUpdate)
             .sink { [weak self] _ in
                 Task { @MainActor in
-                    await self?.refreshBalance()
+                    // Vérifier que le token est disponible avant de rafraîchir
+                    if TokenManager.shared.getToken() != nil {
+                        await self?.refreshBalance()
+                    }
                 }
             }
             .store(in: &cancellables)
         
-        Task {
-            await refreshBalance()
-        }
+        // Ne pas appeler refreshBalance() dans init() car le token peut ne pas être prêt
+        // Le balance sera rafraîchi dans .task de CartView quand la vue apparaît
     }
     
     var canPayWithBalance: Bool {
@@ -39,9 +41,33 @@ final class PaymentViewModel: ObservableObject {
     
     // MARK: - Refresh Balance
     func refreshBalance() async {
+        // Vérifier d'abord que le token est disponible (comme Android)
+        guard let token = TokenManager.shared.getToken() else {
+            print("⚠️ [PaymentViewModel] No token available")
+            // Utiliser le balance en cache si disponible
+            if let currentUser = AppPreferences.shared.currentUser {
+                userBalance = currentUser.balance ?? 0.0
+                print("⚠️ [PaymentViewModel] Using cached balance (no token): \(userBalance) TND")
+            } else {
+                userBalance = 0.0
+            }
+            return
+        }
+        
+        // Vérifier que l'utilisateur est chargé
         guard let currentUser = AppPreferences.shared.currentUser else {
-            print("⚠️ [PaymentViewModel] No user found")
-            userBalance = 0.0
+            print("⚠️ [PaymentViewModel] No user found, but token exists - fetching profile...")
+            // Si le token existe mais pas l'utilisateur, essayer de récupérer le profil
+            do {
+                let profileService = ProfileService()
+                let freshUser = try await profileService.getProfile()
+                userBalance = freshUser.balance ?? 0.0
+                AppPreferences.shared.currentUser = freshUser
+                print("✅ [PaymentViewModel] Profile and balance loaded: \(userBalance) TND")
+            } catch {
+                print("⚠️ [PaymentViewModel] Failed to load profile: \(error)")
+                userBalance = 0.0
+            }
             return
         }
         
@@ -52,8 +78,9 @@ final class PaymentViewModel: ObservableObject {
             AppPreferences.shared.currentUser = freshUser
             print("✅ [PaymentViewModel] Balance refreshed: \(userBalance) TND")
         } catch {
+            // En cas d'erreur, utiliser le balance en cache
             userBalance = currentUser.balance ?? 0.0
-            print("⚠️ [PaymentViewModel] Using cached balance: \(userBalance) TND")
+            print("⚠️ [PaymentViewModel] Using cached balance due to error: \(userBalance) TND - Error: \(error)")
         }
     }
     
