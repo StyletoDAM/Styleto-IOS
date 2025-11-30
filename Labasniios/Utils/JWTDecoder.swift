@@ -1,9 +1,8 @@
-// Utils/JWTDecoder.swift
 import Foundation
 
 struct JWTDecoder {
-    static func extractUserId(from token: String) -> String? {
-        let parts = token.split(separator: ".")
+    static func decode(jwtToken: String) -> [String: Any]? {
+        let parts = jwtToken.split(separator: ".")
         guard parts.count > 1 else { return nil }
         
         var payload = String(parts[1])
@@ -21,8 +20,13 @@ struct JWTDecoder {
             return nil
         }
         
-        return json["sub"] as? String ??
-               json["userId"] as? String ??
-               json["_id"] as? String
+        return json
+    }
+    
+    static func extractUserId(from token: String) -> String? {
+        guard let payload = decode(jwtToken: token) else { return nil }
+        return payload["sub"] as? String ??
+               payload["userId"] as? String ??
+               payload["_id"] as? String
     }
 }

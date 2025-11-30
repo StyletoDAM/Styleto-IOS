@@ -49,6 +49,11 @@ struct CartView: View {
                 }
             }
             .navigationTitle("My Cart (\(cartManager.itemCount))")
+            .onAppear {
+                Task {
+                    await paymentViewModel.refreshBalance()
+                }
+            }
             .navigationBarTitleDisplayMode(.inline)
             .foregroundColor(.themePrimary)
             .toolbar {

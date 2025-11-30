@@ -1,130 +1,205 @@
 import Foundation
-import StripePaymentSheet
 import Combine
+import StripePaymentSheet
 
 @MainActor
 final class PaymentViewModel: ObservableObject {
-    @Published var paymentSheet: PaymentSheet?
     @Published var isProcessing = false
     @Published var errorMessage: String?
     @Published var showSuccess = false
-    @Published var useBalance = true
-    
+    @Published var paymentSheet: PaymentSheet?
     @Published var userBalance: Double = 0.0
+    @Published var useBalance: Bool = false
     
-    private let paymentService = PaymentService.shared
+    private var cancellables = Set<AnyCancellable>()
     private let cartManager = CartManager.shared
     
-    private var currentStoreItemIds: [String] = []
-    private var lastClientSecret: String = ""
-    private var cancellables = Set<AnyCancellable>()
-    
-    var totalPrice: Double { cartManager.totalPrice }
-    var canPayWithBalance: Bool { userBalance >= totalPrice }
-    
     init() {
-        userBalance = AppPreferences.shared.currentUser?.balance ?? 0.0
-        
-        // Écouter les mises à jour du profil utilisateur
+        // ✅ Observer les changements d'utilisateur
         NotificationCenter.default.publisher(for: .userDidUpdate)
-            .compactMap { $0.object as? User }
-            .sink { [weak self] updatedUser in
-                self?.userBalance = updatedUser.balance ?? 0.0
-                print("💰 [PaymentViewModel] Balance mise à jour: \(updatedUser.balance ?? 0.0) TND")
+            .sink { [weak self] _ in
+                Task { @MainActor in
+                    await self?.refreshBalance()
+                }
             }
             .store(in: &cancellables)
         
-        // Écouter les changements directs de AppPreferences
-        AppPreferences.shared.$currentUser
-            .compactMap { $0?.balance }
-            .sink { [weak self] balance in
-                self?.userBalance = balance
-                print("💰 [PaymentViewModel] Balance actualisée: \(balance) TND")
-            }
-            .store(in: &cancellables)
+        // ✅ Charger le balance au démarrage
+        Task {
+            await refreshBalance()
+        }
     }
     
-    func startCheckout() async {
-        guard !cartManager.cartItems.isEmpty else {
-            errorMessage = "Panier vide"
+    var canPayWithBalance: Bool {
+        return userBalance >= cartManager.totalPrice
+    }
+    
+    // MARK: - ✅ Refresh Balance (PUBLIC pour CartView)
+    func refreshBalance() async {
+        guard let currentUser = AppPreferences.shared.currentUser else {
+            print("⚠️ [PaymentViewModel] No user found")
+            userBalance = 0.0
             return
         }
         
-        currentStoreItemIds = cartManager.cartItems.compactMap { $0.storeItemID }
+        // Récupérer le profil frais du serveur
+        do {
+            let profileService = ProfileService()
+            let freshUser = try await profileService.getProfile()
+            userBalance = freshUser.balance ?? 0.0
+            
+            // Mettre à jour AppPreferences
+            AppPreferences.shared.currentUser = freshUser
+            
+            print("✅ [PaymentViewModel] Balance refreshed: \(userBalance) TND")
+        } catch {
+            // Fallback sur le cache local
+            userBalance = currentUser.balance ?? 0.0
+            print("⚠️ [PaymentViewModel] Using cached balance: \(userBalance) TND")
+        }
+    }
+    
+    // MARK: - Start Checkout
+    func startCheckout() async {
+        guard !cartManager.cartItems.isEmpty else {
+            errorMessage = "Your cart is empty"
+            return
+        }
+        
+        // ✅ Rafraîchir le balance avant de procéder
+        await refreshBalance()
+        
         isProcessing = true
         errorMessage = nil
         
-        // PAIEMENT PAR BALANCE
-        if useBalance && canPayWithBalance {
-            await confirmWithBalance()
+        if useBalance {
+            await purchaseWithBalance()
+        } else {
+            await initiateStripePayment()
+        }
+    }
+    
+    // MARK: - Purchase with Balance
+    private func purchaseWithBalance() async {
+        guard canPayWithBalance else {
+            errorMessage = "Insufficient balance"
+            isProcessing = false
             return
         }
         
-        // SINON : Stripe classique
+        print("💰 [PaymentViewModel] Purchasing with balance")
+        
         do {
-            let clientSecret = try await paymentService.createPaymentIntent(amount: totalPrice)
-            lastClientSecret = clientSecret
-            
-            var configuration = StripeConfig.shared.createPaymentSheetConfiguration(
-                customerEmail: AppPreferences.shared.currentUser?.email ?? ""
-            )
-            configuration.primaryButtonLabel = "Payer \(String(format: "%.2f", totalPrice)) DT"
-            
-            paymentSheet = PaymentSheet(paymentIntentClientSecret: clientSecret, configuration: configuration)
-            isProcessing = false
-        } catch {
-            errorMessage = "Erreur paiement : \(error.localizedDescription)"
-            isProcessing = false
-        }
-    }
-    
-    private func confirmWithBalance() async {
-        await confirmPurchases(paymentMethod: "balance", paymentIntentId: nil)
-    }
-    
-    func onPaymentCompletion(result: PaymentSheetResult) {
-        isProcessing = true
-        
-        if case .completed = result {
-            let paymentIntentId = lastClientSecret.components(separatedBy: "_secret_").first!
-            Task {
-                await confirmPurchases(paymentMethod: "stripe", paymentIntentId: paymentIntentId)
-            }
-        } else if case .failed(let error) = result {
-            errorMessage = error.localizedDescription
-            isProcessing = false
-        } else {
-            isProcessing = false
-        }
-    }
-    
-    private func confirmPurchases(paymentMethod: String, paymentIntentId: String?) async {
-        for storeItemId in currentStoreItemIds {
-            do {
-                _ = try await paymentService.confirmPurchase(
-                    storeItemId: storeItemId,
-                    paymentMethod: paymentMethod,
-                    paymentIntentId: paymentIntentId
+            // Acheter chaque article avec le balance
+            for item in cartManager.cartItems {
+                let _ = try await PaymentService.shared.confirmPurchase(
+                    storeItemId: item.storeItemID ?? "",
+                    paymentMethod: "balance"
                 )
-            } catch {
-                print("Erreur confirmation item \(storeItemId): \(error)")
-                // on continue quand même les autres
+            }
+            
+            // ✅ Rafraîchir le balance après achat
+            await refreshBalance()
+            
+            cartManager.clearCart()
+            showSuccess = true
+            print("✅ [PaymentViewModel] Purchase completed with balance")
+            
+        } catch {
+            print("❌ [PaymentViewModel] Balance purchase error: \(error)")
+            if error.localizedDescription.contains("insuffisant") {
+                errorMessage = "Insufficient balance. Please top up."
+            } else {
+                errorMessage = error.localizedDescription
             }
         }
         
-        cartManager.clearCart()
-        
-        // ✅ Rafraîchir la balance après achat
-        await AppPreferences.shared.refreshUserProfile()
-        
-        showSuccess = true
         isProcessing = false
     }
     
+    // MARK: - Initiate Stripe Payment
+    private func initiateStripePayment() async {
+        let totalAmount = cartManager.totalPrice
+        
+        do {
+            print("💳 [PaymentViewModel] Initiating Stripe payment for \(totalAmount) TND")
+            
+            let clientSecret = try await PaymentService.shared.createPaymentIntent(
+                amount: totalAmount,
+                currency: "usd"
+            )
+            
+            var config = StripeConfig.shared.createPaymentSheetConfiguration(
+                customerEmail: AppPreferences.shared.currentUser?.email ?? ""
+            )
+            config.primaryButtonLabel = "Pay \(String(format: "%.2f", totalAmount)) TND"
+            
+            self.paymentSheet = PaymentSheet(
+                paymentIntentClientSecret: clientSecret,
+                configuration: config
+            )
+            
+            print("✅ [PaymentViewModel] Payment Sheet ready")
+            
+        } catch {
+            print("❌ [PaymentViewModel] Stripe init error: \(error)")
+            errorMessage = "Payment initialization failed"
+        }
+        
+        isProcessing = false
+    }
+    
+    // MARK: - Payment Completion Handler
+    func onPaymentCompletion(_ result: PaymentSheetResult) {
+        isProcessing = true
+        
+        switch result {
+        case .completed:
+            print("✅ [PaymentViewModel] Stripe payment completed")
+            Task {
+                await confirmStripeOrders()
+            }
+            
+        case .failed(let error):
+            print("❌ [PaymentViewModel] Payment failed: \(error)")
+            errorMessage = "Payment failed: \(error.localizedDescription)"
+            isProcessing = false
+            
+        case .canceled:
+            print("ℹ️ [PaymentViewModel] Payment canceled")
+            isProcessing = false
+        }
+    }
+    
+    // MARK: - Confirm Stripe Orders
+    private func confirmStripeOrders() async {
+        do {
+            for item in cartManager.cartItems {
+                let _ = try await PaymentService.shared.confirmPurchase(
+                    storeItemId: item.storeItemID ?? "",
+                    paymentMethod: "card"
+                )
+            }
+            
+            // ✅ Rafraîchir le balance (même si payé par carte, pour sync)
+            await refreshBalance()
+            
+            cartManager.clearCart()
+            showSuccess = true
+            print("✅ [PaymentViewModel] Orders confirmed")
+            
+        } catch {
+            print("❌ [PaymentViewModel] Order confirmation error: \(error)")
+            errorMessage = "Payment succeeded but confirmation failed"
+        }
+        
+        isProcessing = false
+    }
+    
+    // MARK: - Reset After Success
     func resetAfterSuccess() {
         showSuccess = false
-        errorMessage = nil
         paymentSheet = nil
-        currentStoreItemIds = []
+        errorMessage = nil
     }
 }

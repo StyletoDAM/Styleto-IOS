@@ -331,6 +331,7 @@ struct SubscriptionDetailView: View {
             
             await MainActor.run {
                 showSuccessAlert = true
+                onSubscriptionSuccess?()  // Trigger le refresh dans la vue parente
                 isProcessing = false
             }
             
