@@ -154,7 +154,7 @@ struct SettingsView: View {
     }
 
     private func openEmail() {
-        let email = "labasni@gmail.com"
+        let email = "styleto.app.team@gmail.com"
         if let url = URL(string: "mailto:\(email)?subject=Contact%20from%20Labasni%20App") {
             if UIApplication.shared.canOpenURL(url) {
                 UIApplication.shared.open(url, options: [:], completionHandler: nil)
