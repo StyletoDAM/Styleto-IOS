@@ -41,7 +41,25 @@ struct StoreView: View {
                     // NOUVEAU : Le segment horizontal comme sur ta photo
                     tabSegment
                         .padding(.horizontal, 16)
-
+                    // ✨ NOUVEAU : Carte de suggestion de vente
+                    if viewModel.showSellSuggestion, let suggestion = viewModel.currentSuggestion {
+                        SellSuggestionCard(
+                            clothe: suggestion,
+                            onAccept: {
+                                print("✅ User wants to sell: \(suggestion.id)")
+                                viewModel.acceptSellSuggestion()
+                            },
+                            onReject: {
+                                print("❌ User rejected sell suggestion")
+                                viewModel.rejectSellSuggestion()
+                            }
+                        )
+                        .transition(
+                            AnyTransition.move(edge: .top)
+                                .combined(with: .opacity)
+                        )
+                        .animation(.spring(response: 0.5, dampingFraction: 0.8), value: viewModel.showSellSuggestion)
+                    }
                     // Contenu qui change selon l'onglet sélectionné
                     if selectedTab == .myItems {
                         if !viewModel.storeItems.isEmpty {
@@ -180,14 +198,19 @@ struct StoreView: View {
                 }
                 .onDisappear {
                     print("📄 [StoreView] AddToStoreSheet disappeared")
-                    // Synchroniser avec ViewModel
                     viewModel.showAddToStore = false
                 }
         }
         .onChange(of: showAddSheet) { oldValue, newValue in
             print("🔄 [StoreView] showAddSheet changed: \(oldValue) -> \(newValue)")
-            // Synchroniser avec ViewModel
             viewModel.showAddToStore = newValue
+        }
+        // ✨ NOUVEAU : Observer les changements de showAddToStore du ViewModel
+        .onChange(of: viewModel.showAddToStore) { oldValue, newValue in
+            print("🔄 [StoreView] viewModel.showAddToStore changed: \(oldValue) -> \(newValue)")
+            if newValue != showAddSheet {
+                showAddSheet = newValue
+            }
         }
     }
 

@@ -21,8 +21,10 @@ struct AddToStoreSheet: View {
                 }
                 .padding(.top, 8)
 
-                // MARK: - Clothes List
-                if viewModel.myClothes.isEmpty {
+                // ✨ NOUVEAU : Afficher l'image de l'article sélectionné en haut
+                if let selectedClothe = viewModel.selectedClothe {
+                    selectedClothePreview
+                } else if viewModel.myClothes.isEmpty {
                     emptyState
                 } else {
                     clothesList
@@ -34,7 +36,7 @@ struct AddToStoreSheet: View {
                     sizeInputSection
                 }
 
-                Spacer()
+                //Spacer()
             }
             .padding()
             .background(Color.themeBackground.ignoresSafeArea())
@@ -80,7 +82,13 @@ struct AddToStoreSheet: View {
             }
             .onAppear {
                 print("✅ [AddToStoreSheet] Sheet appeared - myClothes count: \(viewModel.myClothes.count)")
+                if viewModel.myClothes.isEmpty {
+                        Task {
+                            await viewModel.loadMyClothes()        // ← ou fetchWardrobe(), refreshClothes(), etc.
+                        }
+                    }
             }
+            
             // Observer showUpgradeToPro depuis ViewModel
             .onChange(of: viewModel.showUpgradeToPro) { oldValue, newValue in
                 print("🔄 [AddToStoreSheet] showUpgradeToPro changed: \(oldValue) -> \(newValue)")
@@ -122,6 +130,87 @@ struct AddToStoreSheet: View {
             }
         }
     }
+    private var selectedClothePreview: some View {
+        VStack(spacing: 16) {
+            // Image grande et centrée
+            AsyncImage(url: URL(string: viewModel.selectedClothe?.imageURL ?? "")) { phase in
+                switch phase {
+                case .success(let image):
+                    image
+                        .resizable()
+                        .scaledToFill()
+                        .frame(width: 200, height: 200)
+                        .clipShape(RoundedRectangle(cornerRadius: 24))
+                        .shadow(color: .black.opacity(0.15), radius: 12, x: 0, y: 6)
+                case .empty:
+                    RoundedRectangle(cornerRadius: 24)
+                        .fill(Color.themeSoftPink.opacity(0.2))
+                        .frame(width: 200, height: 200)
+                        .overlay(
+                            ProgressView()
+                                .tint(.themePrimary)
+                        )
+                case .failure:
+                    RoundedRectangle(cornerRadius: 24)
+                        .fill(Color.themeSoftPink.opacity(0.2))
+                        .frame(width: 200, height: 200)
+                        .overlay(
+                            Image(systemName: "photo")
+                                .font(.system(size: 48))
+                                .foregroundColor(.gray)
+                        )
+                @unknown default:
+                    EmptyView()
+                }
+            }
+            
+            // Infos de l'article
+            VStack(spacing: 8) {
+                Text(viewModel.selectedClothe?.category?.capitalized ?? "Item")
+                    .font(.system(size: 20, weight: .bold))
+                    .foregroundColor(.themePrimary)
+                
+                HStack(spacing: 16) {
+                    if let color = viewModel.selectedClothe?.color {
+                        Label(color.capitalized, systemImage: "paintpalette.fill")
+                            .font(.subheadline)
+                            .foregroundColor(.themeSecondaryText)
+                    }
+                    
+                    if let style = viewModel.selectedClothe?.style {
+                        Label(style.capitalized, systemImage: "star.fill")
+                            .font(.subheadline)
+                            .foregroundColor(.themeSecondaryText)
+                    }
+                }
+            }
+            
+            // Bouton pour changer d'article
+            Button {
+                withAnimation {
+                    viewModel.selectedClothe = nil
+                    viewModel.priceInput = ""
+                    viewModel.sizeInput = ""
+                    viewModel.selectedSize = "M"
+                }
+            } label: {
+                HStack(spacing: 8) {
+                    Image(systemName: "arrow.left.circle.fill")
+                    Text("Choose another item")
+                }
+                .font(.system(size: 15, weight: .semibold))
+                .foregroundColor(.themePrimary)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 10)
+                .background(
+                    Capsule()
+                        .stroke(Color.themePrimary.opacity(0.3), lineWidth: 1.5)
+                )
+            }
+            .padding(.top, 8)
+        }
+        .padding(.vertical)
+    }
 
     // MARK: - Empty State
     private var emptyState: some View {
@@ -151,7 +240,7 @@ struct AddToStoreSheet: View {
     // MARK: - Clothes List
     private var clothesList: some View {
         ScrollView {
-            LazyVStack(spacing: 12) {
+            LazyVStack(spacing: 16) {
                 ForEach(viewModel.myClothes) { clothe in
                     let isAlreadyInStore = viewModel.storeItems.contains { storeItem in
                         storeItem.clothesId == clothe.id
@@ -255,8 +344,7 @@ struct AddToStoreSheet: View {
                 }
             }
         }
-        .frame(maxHeight: 400)
-    }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)    }
 
     // MARK: - Price Input
     private var priceInput: some View {

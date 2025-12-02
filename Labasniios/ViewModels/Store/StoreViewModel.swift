@@ -1,5 +1,6 @@
 import Foundation
 import Combine
+import SwiftUI
 
 @MainActor
 class StoreViewModel: ObservableObject {
@@ -21,6 +22,12 @@ class StoreViewModel: ObservableObject {
     @Published var isShoes: Bool = false
     @Published var showUpgradeToPro = false
     
+    // ✨ NOUVEAU : Suggestions de vente
+    @Published var sellSuggestions: [Clothe] = []
+    @Published var currentSuggestion: Clothe?
+    @Published var showSellSuggestion = false
+    @Published var dismissedSuggestionIds: Set<String> = []
+    
     private var cancellables = Set<AnyCancellable>()
     private let service = StoreService.shared
     
@@ -40,9 +47,115 @@ class StoreViewModel: ObservableObject {
                 guard let self = self else { return }
                 self.rawStoreItems = myItems
                 self.storeItems = myItems
-                self.loadDiscoverItems()  // ← Déjà appelé automatiquement ici !
+                self.loadDiscoverItems()
+                self.loadSellSuggestions()  // ✨ NOUVEAU
             }
             .store(in: &cancellables)
+    }
+    
+    // ✨ NOUVEAU : Charger les suggestions de vente
+    func loadSellSuggestions() {
+        print("📊 [StoreViewModel] Loading sell suggestions...")
+        
+        ClothesService.shared.fetchSellSuggestions()
+            .sink { [weak self] completion in
+                if case .failure(let error) = completion {
+                    print("❌ [StoreViewModel] Error loading suggestions: \(error)")
+                }
+            } receiveValue: { [weak self] suggestions in
+                guard let self = self else { return }
+                
+                // Filtrer les suggestions déjà rejetées ou déjà dans le store
+                let storeClothesIds = Set(self.storeItems.compactMap { $0.clothesId })
+                let filtered = suggestions.filter { clothe in
+                    !self.dismissedSuggestionIds.contains(clothe.id) &&
+                    !storeClothesIds.contains(clothe.id)
+                }
+                
+                print("✅ [StoreViewModel] Found \(filtered.count) sell suggestions")
+                self.sellSuggestions = filtered
+                
+                // Afficher la première suggestion si disponible
+                if let first = filtered.first, !self.showSellSuggestion {
+                    self.showNextSuggestion()
+                }
+            }
+            .store(in: &cancellables)
+    }
+    
+    // ✨ NOUVEAU : Afficher la suggestion suivante
+    func showNextSuggestion() {
+        guard let next = sellSuggestions.first(where: { !dismissedSuggestionIds.contains($0.id) }) else {
+            print("📊 [StoreViewModel] No more suggestions to show")
+            currentSuggestion = nil
+            showSellSuggestion = false
+            return
+        }
+        
+        print("📊 [StoreViewModel] Showing suggestion for: \(next.category ?? "unknown")")
+        currentSuggestion = next
+        showSellSuggestion = true
+    }
+    
+    // ✨ NOUVEAU : Accepter la suggestion (préparer la vente)
+    func acceptSellSuggestion() {
+        guard let suggestion = currentSuggestion else { return }
+        
+        print("✅ [StoreViewModel] User accepted sell suggestion for: \(suggestion.id)")
+        
+        // Préparer le formulaire de vente
+        selectedClothe = suggestion
+        priceInput = ""
+        sizeInput = ""
+        selectedSize = "M"
+        
+        // Détection automatique chaussures
+        let category = (suggestion.category ?? "").lowercased()
+        isShoes = category.contains("shoe") ||
+                  category.contains("sneaker") ||
+                  category.contains("basket") ||
+                  category.contains("boot") ||
+                  category.contains("chaussure")
+        
+        // Reset taille selon type
+        if isShoes {
+            sizeInput = ""
+        } else {
+            selectedSize = "M"
+        }
+        
+        // Fermer la suggestion IMMÉDIATEMENT
+        withAnimation {
+            showSellSuggestion = false
+            currentSuggestion = nil
+        }
+        
+        // Marquer comme traité
+        dismissedSuggestionIds.insert(suggestion.id)
+        
+        // Ouvrir le sheet d'ajout APRÈS avoir fermé la suggestion
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { [weak self] in
+            self?.showAddToStore = true
+        }
+    }
+    
+    // ✨ NOUVEAU : Rejeter la suggestion
+    func rejectSellSuggestion() {
+        guard let suggestion = currentSuggestion else { return }
+        
+        print("❌ [StoreViewModel] User rejected sell suggestion for: \(suggestion.id)")
+        
+        // Marquer comme rejeté
+        dismissedSuggestionIds.insert(suggestion.id)
+        
+        // Fermer et afficher la suivante
+        showSellSuggestion = false
+        currentSuggestion = nil
+        
+        // Afficher la suggestion suivante immédiatement
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { [weak self] in
+            self?.showNextSuggestion()
+        }
     }
     
     // MARK: - Update Store Item
@@ -70,7 +183,7 @@ class StoreViewModel: ObservableObject {
                     self?.discoverItems.removeAll { $0.id == store.id }
                     
                     self?.showToast = true
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 2) { [weak self] in  // ✅ CORRIGÉ
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 2) { [weak self] in
                         self?.showToast = false
                     }
                 }
@@ -90,7 +203,7 @@ class StoreViewModel: ObservableObject {
                             storeItem.clothesId == clothe.id
                         }
                     }
-                    print("✅ [StoreViewModel] Filtered to \(self.myClothes.count) available clothes (not in store)")
+                    print("✅ [StoreViewModel] Filtered to \(self.myClothes.count) available clothes")
                 case .failure(let error):
                     print("❌ [StoreViewModel] Error loading clothes: \(error.localizedDescription)")
                     self.errorMessage = "Erreur chargement vêtements: \(error.localizedDescription)"
@@ -118,22 +231,19 @@ class StoreViewModel: ObservableObject {
             return
         }
 
-        // Vérifier le quota AVANT d'ajouter l'item
         print("🔍 [StoreViewModel] Checking quota before adding item...")
         Task {
             do {
                 let quotaCheck = try await SubscriptionService.shared.canSellItem()
-                print("📊 [StoreViewModel] Quota check result: allowed=\(quotaCheck.allowed), message=\(quotaCheck.message ?? "none")")
+                print("📊 [StoreViewModel] Quota check result: allowed=\(quotaCheck.allowed)")
                 await MainActor.run {
                     if !quotaCheck.allowed {
-                        // Quota dépassé, afficher le dialog d'upgrade
-                        print("⚠️ [StoreViewModel] Quota exceeded, showing upgrade dialog")
+                        print("⚠️ [StoreViewModel] Quota exceeded")
                         showUpgradeToPro = true
                         return
                     }
                     
-                    // Quota OK, continuer avec l'ajout
-                    print("✅ [StoreViewModel] Quota OK, proceeding with add")
+                    print("✅ [StoreViewModel] Quota OK, proceeding")
                     proceedWithAddToStore(clothe: clothe, price: price, size: finalSize)
                 }
             } catch {
@@ -160,9 +270,8 @@ class StoreViewModel: ObservableObject {
                 self.isAdding = false
                 if case .failure(let error) = completion {
                     let errorString = error.localizedDescription.lowercased()
-                    // Vérifier si l'erreur vient du backend (limite atteinte)
-                    if errorString.contains("limit") || 
-                       errorString.contains("quota") || 
+                    if errorString.contains("limit") ||
+                       errorString.contains("quota") ||
                        errorString.contains("exceeded") ||
                        errorString.contains("403") {
                         self.showUpgradeToPro = true
@@ -179,8 +288,7 @@ class StoreViewModel: ObservableObject {
                 self.selectedSize = "M"
                 self.isShoes = false
                 
-                print("✅ [StoreViewModel] Item added successfully, closing sheet")
-                // Attendre un peu avant de fermer pour que l'UI se mette à jour
+                print("✅ [StoreViewModel] Item added successfully")
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
                     self.showAddToStore = false
                     self.loadMyStore()
@@ -225,7 +333,7 @@ class StoreViewModel: ObservableObject {
                         self?.discoverItems[index] = updatedStore
                     }
                     self?.showToast = true
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 2) { [weak self] in  // ✅ CORRIGÉ
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 2) { [weak self] in
                         self?.showToast = false
                     }
                 }
@@ -251,7 +359,7 @@ class StoreViewModel: ObservableObject {
                     self?.discoverItems[index] = updatedStore
                 }
                 self?.showToast = true
-                DispatchQueue.main.asyncAfter(deadline: .now() + 2) { [weak self] in  // ✅ CORRIGÉ
+                DispatchQueue.main.asyncAfter(deadline: .now() + 2) { [weak self] in
                     self?.showToast = false
                 }
             }
@@ -274,7 +382,7 @@ class StoreViewModel: ObservableObject {
                         self?.storeItems[index] = updatedStore
                     }
                     self?.showToast = true
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 2) { [weak self] in  // ✅ CORRIGÉ
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 2) { [weak self] in
                         self?.showToast = false
                     }
                 }
@@ -315,8 +423,8 @@ class StoreViewModel: ObservableObject {
     private func matchesSearch(_ item: Store, query: String) -> Bool {
         let category = item.clothe?.category?.lowercased() ?? ""
         let price = "\(item.price)"
-        let status = item.status.rawValue.lowercased()  // ✅ CORRIGÉ
-        let ownerName = item.user?.fullName.lowercased() ?? ""  // ✅ CORRIGÉ
+        let status = item.status.rawValue.lowercased()
+        let ownerName = item.user?.fullName.lowercased() ?? ""
         
         return category.contains(query) ||
                price.contains(query) ||

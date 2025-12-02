@@ -167,4 +167,27 @@ class ClothesService {
             .receive(on: DispatchQueue.main)
             .eraseToAnyPublisher()
     }
+    // MARK: - Fetch Sell Suggestions
+    func fetchSellSuggestions() -> AnyPublisher<[Clothe], NetworkError> {
+        guard let url = URL(string: "/cloth/sell-suggestions", relativeTo: baseURL) else {
+            return Fail(error: .invalidURL).eraseToAnyPublisher()
+        }
+        
+        var request = URLRequest(url: url)
+        request.httpMethod = "GET"
+        request.setValue("Bearer \(tokenManager.getToken() ?? "")", forHTTPHeaderField: "Authorization")
+        request.setValue(APIConstants.jsonContentType, forHTTPHeaderField: "Content-Type")
+        
+        return URLSession.shared.dataTaskPublisher(for: request)
+            .map(\.data)
+            .decode(type: [Clothe].self, decoder: JSONDecoder().withISO8601())
+            .mapError { error -> NetworkError in
+                if let urlError = error as? URLError {
+                    return .transport(urlError)
+                }
+                return .serverError
+            }
+            .receive(on: DispatchQueue.main)
+            .eraseToAnyPublisher()
+    }
 }

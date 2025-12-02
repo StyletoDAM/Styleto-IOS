@@ -21,7 +21,7 @@ struct ClotheUserInfo: Codable {
     }
 }
 
-// MARK: - Clothe 
+// MARK: - Clothe
 struct Clothe: Identifiable, Codable {
     let id: String
     let imageURL: String
@@ -29,6 +29,8 @@ struct Clothe: Identifiable, Codable {
     let season: String?
     let color: String?
     let style: String?
+    let acceptedCount: Int?
+    let rejectedCount: Int?
 
     // userId peut être String OU ClotheUserInfo
     private let userIdString: String?
@@ -40,7 +42,7 @@ struct Clothe: Identifiable, Codable {
 
     enum CodingKeys: String, CodingKey {
         case id = "_id"
-        case imageURL, category, season, color, style, userId
+        case imageURL, category, season, color, style, userId, acceptedCount, rejectedCount
     }
 
     init(from decoder: Decoder) throws {
@@ -51,6 +53,10 @@ struct Clothe: Identifiable, Codable {
         season = try container.decodeIfPresent(String.self, forKey: .season)
         color = try container.decodeIfPresent(String.self, forKey: .color)
         style = try container.decodeIfPresent(String.self, forKey: .style)
+        
+        // Decode acceptedCount and rejectedCount
+        acceptedCount = try container.decodeIfPresent(Int.self, forKey: .acceptedCount)
+        rejectedCount = try container.decodeIfPresent(Int.self, forKey: .rejectedCount)
 
         if let string = try? container.decode(String.self, forKey: .userId) {
             userIdString = string
@@ -74,6 +80,8 @@ struct Clothe: Identifiable, Codable {
         try container.encodeIfPresent(season, forKey: .season)
         try container.encodeIfPresent(color, forKey: .color)
         try container.encodeIfPresent(style, forKey: .style)
+        try container.encodeIfPresent(acceptedCount, forKey: .acceptedCount)
+        try container.encodeIfPresent(rejectedCount, forKey: .rejectedCount)
 
         if let string = userIdString {
             try container.encode(string, forKey: .userId)
