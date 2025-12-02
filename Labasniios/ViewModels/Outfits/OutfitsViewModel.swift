@@ -55,7 +55,7 @@ class OutfitsViewModel: ObservableObject {
             .store(in: &cancellables)
     }
     
-    // ✅ ACCEPTER = Créer l'outfit + Recharger la liste complète
+    // ✅ ACCEPTER = Créer l'outfit + Mettre à jour feedback + Recharger la liste
     func acceptAISuggestion() {
         guard let suggestion = aiSuggestion else {
             print("⚠️ Aucune suggestion à accepter")
@@ -66,30 +66,40 @@ class OutfitsViewModel: ObservableObject {
         errorMessage = nil
         
         let clothesIds = suggestion.clothesIds
-        let style = suggestion.metadata.preference  // ✅ Récupérer le style
+        let style = suggestion.metadata.preference
         
         print("✅ Acceptation de la suggestion → Création de l'outfit avec IDs:", clothesIds)
         print("🎨 Style choisi:", style)
         
+        // 1️⃣ Créer l'outfit
         service.createOutfit(clothesIds: clothesIds, style: style)
+            .flatMap { [weak self] response -> AnyPublisher<Void, NetworkError> in
+                guard let self = self else {
+                    return Fail(error: .serverError).eraseToAnyPublisher()
+                }
+                
+                print("✅ Outfit créé, ID:", response.outfitId)
+                
+                // 2️⃣ Mettre à jour les compteurs acceptedCount
+                print("📈 Mise à jour acceptedCount pour", clothesIds.count, "vêtements")
+                return self.service.updateOutfitFeedback(clothesIds: clothesIds, accepted: true)
+            }
             .receive(on: DispatchQueue.main)
             .sink { [weak self] completion in
                 guard let self = self else { return }
                 
                 switch completion {
                 case .failure(let error):
-                    print("❌ Erreur création outfit:", error.errorDescription)
-                    self.errorMessage = "Échec de la création: \(error.errorDescription)"
+                    print("❌ Erreur:", error.errorDescription)
+                    self.errorMessage = "Échec: \(error.errorDescription)"
                     self.isAccepting = false
                     
                 case .finished:
-                    print("✅ Outfit créé avec succès dans la base")
-                    // ✅ Recharger TOUTE la liste depuis le serveur
+                    print("✅✅ Outfit créé ET compteurs mis à jour")
                     self.reloadAfterAccept()
                 }
-            } receiveValue: { [weak self] response in
-                print("✅✅ Réponse création reçue, ID:", response.outfitId)
-                // On ne fait rien ici, on attend le rechargement complet
+            } receiveValue: { _ in
+                print("✅ Feedback accepté enregistré")
             }
             .store(in: &cancellables)
     }
@@ -122,12 +132,32 @@ class OutfitsViewModel: ObservableObject {
     }
     
     // REJETER = Juste supprimer la suggestion, rien ne se crée
+    // REJETER = Mettre à jour rejectedCount + Supprimer la suggestion
     func rejectAISuggestion() {
-        print("❌ Suggestion AI rejetée (aucune création)")
-        
-        withAnimation(.easeInOut(duration: 0.3)) {
-            aiSuggestion = nil
+        guard let suggestion = aiSuggestion else {
+            print("⚠️ Aucune suggestion à rejeter")
+            return
         }
+        
+        let clothesIds = suggestion.clothesIds
+        
+        print("❌ Rejet de la suggestion → Mise à jour rejectedCount")
+        
+        // Mettre à jour les compteurs rejectedCount
+        service.updateOutfitFeedback(clothesIds: clothesIds, accepted: false)
+            .receive(on: DispatchQueue.main)
+            .sink { completion in
+                if case .failure(let error) = completion {
+                    print("❌ Erreur mise à jour feedback:", error)
+                }
+            } receiveValue: { [weak self] in
+                print("✅ Feedback rejet enregistré")
+                // Faire disparaître la suggestion
+                withAnimation(.easeInOut(duration: 0.3)) {
+                    self?.aiSuggestion = nil
+                }
+            }
+            .store(in: &cancellables)
     }
     
     func updateOutfitStatus(_ outfit: Outfit, status: String) {

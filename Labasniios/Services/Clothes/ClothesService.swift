@@ -1,9 +1,11 @@
 import Foundation
+import Combine
 
 class ClothesService {
     static let shared = ClothesService()
     
     private let baseURL = APIConstants.baseURL
+    private let tokenManager = TokenManager.shared  // ✅ AJOUT
     
     // MARK: - Fetch My Clothes
     func fetchMyClothes(completion: @escaping (Result<[Clothe], Error>) -> Void) {
@@ -14,7 +16,7 @@ class ClothesService {
         
         var request = URLRequest(url: url)
         request.httpMethod = "GET"
-        request.setValue("Bearer \(TokenManager.shared.getToken() ?? "")", forHTTPHeaderField: "Authorization")
+        request.setValue("Bearer \(tokenManager.getToken() ?? "")", forHTTPHeaderField: "Authorization")
         request.setValue("application/json", forHTTPHeaderField: "Accept")
         
         URLSession.shared.dataTask(with: request) { data, response, error in
@@ -24,7 +26,6 @@ class ClothesService {
             }
             
             guard let data = data else {
-                //completion(.failure(URLError(.noData)))
                 return
             }
             
@@ -39,7 +40,7 @@ class ClothesService {
     
     // MARK: - Delete Clothe
     func deleteClothe(id: String, completion: @escaping (Result<Void, Error>) -> Void) {
-        guard let token = TokenManager.shared.getToken() else {
+        guard let token = tokenManager.getToken() else {
             completion(.failure(NSError(domain: "", code: 401, userInfo: nil)))
             return
         }
@@ -69,7 +70,7 @@ class ClothesService {
         color: String,
         style: String,
         season: String,
-        originalDetection: [String: String]? = nil,  // AJOUT
+        originalDetection: [String: String]? = nil,
         completion: @escaping (Result<Void, Error>) -> Void
     ) {
         guard let url = URL(string: "\(baseURL)/cloth") else {
@@ -77,19 +78,18 @@ class ClothesService {
             return
         }
         
-        guard let token = TokenManager.shared.getToken() else {
+        guard let token = tokenManager.getToken() else {
             completion(.failure(NSError(domain: "", code: 401, userInfo: [NSLocalizedDescriptionKey: "Non connecté"])))
             return
         }
         
-        // MODIFICATION : body avec originalDetection
         let body: [String: Any] = [
             "imageURL": imageURL,
             "category": category,
             "color": color,
             "style": style,
             "season": season,
-            "originalDetection": originalDetection ?? [:]  // AJOUT
+            "originalDetection": originalDetection ?? [:]
         ]
         
         var request = URLRequest(url: url)
@@ -121,7 +121,7 @@ class ClothesService {
         color: String,
         style: String,
         season: String,
-        originalDetection: [String: String]? = nil  // AJOUT
+        originalDetection: [String: String]? = nil
     ) async throws {
         try await withCheckedThrowingContinuation { continuation in
             addClothe(
@@ -130,7 +130,7 @@ class ClothesService {
                 color: color,
                 style: style,
                 season: season,
-                originalDetection: originalDetection  // AJOUT
+                originalDetection: originalDetection
             ) { result in
                 switch result {
                 case .success:
@@ -140,5 +140,31 @@ class ClothesService {
                 }
             }
         }
+    }
+    
+    // MARK: - Update Feedback (acceptedCount / rejectedCount)
+    func updateFeedback(clotheId: String, accepted: Bool) -> AnyPublisher<Void, NetworkError> {
+        guard let url = URL(string: "/cloth/\(clotheId)/feedback", relativeTo: baseURL) else {
+            return Fail(error: .invalidURL).eraseToAnyPublisher()
+        }
+        
+        var request = URLRequest(url: url)
+        request.httpMethod = "PATCH"
+        request.setValue("Bearer \(tokenManager.getToken() ?? "")", forHTTPHeaderField: "Authorization")
+        request.setValue(APIConstants.jsonContentType, forHTTPHeaderField: "Content-Type")
+        
+        let body = ["accepted": accepted]
+        request.httpBody = try? JSONSerialization.data(withJSONObject: body)
+        
+        return URLSession.shared.dataTaskPublisher(for: request)
+            .map { _ in () }
+            .mapError { error -> NetworkError in
+                if let urlError = error as? URLError {
+                    return .transport(urlError)
+                }
+                return .serverError
+            }
+            .receive(on: DispatchQueue.main)
+            .eraseToAnyPublisher()
     }
 }

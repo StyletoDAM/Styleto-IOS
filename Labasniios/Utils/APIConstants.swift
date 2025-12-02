@@ -15,6 +15,7 @@ enum APIConstants {
     
     // CLOTHES
     static let clothMePath = "/cloth/me"
+    static let clothFeedbackPath = "/cloth" // Base path pour /cloth/:id/feedback
     
     // OUTFITS
     static let outfitsPath = "/outfits"

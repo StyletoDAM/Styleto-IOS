@@ -179,6 +179,17 @@ class OutfitsService {
             }
             .eraseToAnyPublisher()
     }
+    // MARK: - Update Outfit Feedback (tous les vêtements)
+    func updateOutfitFeedback(clothesIds: [String], accepted: Bool) -> AnyPublisher<Void, NetworkError> {
+        let publishers = clothesIds.map { clotheId in
+            ClothesService.shared.updateFeedback(clotheId: clotheId, accepted: accepted)
+        }
+        
+        return Publishers.MergeMany(publishers)
+            .collect()
+            .map { _ in () }
+            .eraseToAnyPublisher()
+    }
 }
  
 // MARK: - Simple Outfit Response (minimal)
