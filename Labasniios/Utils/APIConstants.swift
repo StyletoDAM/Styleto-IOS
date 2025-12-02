@@ -1,7 +1,9 @@
 import Foundation
 
 enum APIConstants {
+
     static let baseURL = URL(string: "http://192.168.0.191:3000")!
+
 
     // AUTH
     static let signupPath = "/auth/signup"
@@ -15,11 +17,15 @@ enum APIConstants {
     
     // CLOTHES
     static let clothMePath = "/cloth/me"
+    static let clothFeedbackPath = "/cloth" // Base path pour /cloth/:id/feedback
     
     // OUTFITS
     static let outfitsPath = "/outfits"
     static let outfitsMyPath = "/outfits/my"
     static let outfitsGeneratePath = "/outfits/generate"
+    
+    // OUTFITS RECOMMENDATION (AI)
+    static let recommendationsPath = "/recommendations/outfit"
     
     // STORE
     static let storePath = "/store"
