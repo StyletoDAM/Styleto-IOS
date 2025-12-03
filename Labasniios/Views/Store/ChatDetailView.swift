@@ -93,14 +93,16 @@ struct ChatDetailView: View {
         if message.senderId.id == viewModel.currentUserId {
             OutgoingMessage(
                 text: message.content,
-                time: message.createdAt.formatTime()
+                time: message.createdAt.formatTime(),
+                extractedInfo: message.extractedInfo
             )
         } else {
             IncomingMessage(
                 text: message.content,
                 time: message.createdAt.formatTime(),
                 avatarLetter: message.senderId.fullName.prefix(1).uppercased(),
-                profilePictureURL: message.senderId.profilePicture
+                profilePictureURL: message.senderId.profilePicture,
+                extractedInfo: message.extractedInfo
             )
         }
     }
@@ -211,6 +213,7 @@ struct IncomingMessage: View {
     let time: String
     let avatarLetter: String
     let profilePictureURL: String?
+    let extractedInfo: ExtractedInfo?
     
     var body: some View {
         HStack(alignment: .bottom, spacing: 8) {
@@ -232,7 +235,7 @@ struct IncomingMessage: View {
             }
             
             VStack(alignment: .leading, spacing: 6) {
-                Text(text)
+                Text(text) // ✨ Le texte est déjà masqué par le backend
                     .foregroundColor(.white)
                     .padding(14)
                     .background(Color.themePrimary)
@@ -251,12 +254,13 @@ struct IncomingMessage: View {
 struct OutgoingMessage: View {
     let text: String
     let time: String
+    let extractedInfo: ExtractedInfo?
     
     var body: some View {
         HStack(alignment: .bottom, spacing: 8) {
             Spacer()
             VStack(alignment: .trailing, spacing: 6) {
-                Text(text)
+                Text(text) // ✨ Le texte est déjà masqué par le backend
                     .foregroundColor(.primary)
                     .padding(14)
                     .background(Color.themeCard)
@@ -300,3 +304,4 @@ extension Date {
         return formatter.string(from: self)
     }
 }
+

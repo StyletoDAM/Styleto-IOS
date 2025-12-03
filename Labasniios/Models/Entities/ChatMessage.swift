@@ -51,12 +51,20 @@ struct ChatParticipant: Codable, Identifiable {
     }
 }
 
+struct ExtractedInfo: Codable {
+    let phoneNumbers: [String]?
+    let addresses: [String]?
+    let emails: [String]?
+    let urls: [String]?
+}
+
 struct ChatMessage: Codable, Identifiable {
     let id: String
     let conversationId: String
     let senderId: ChatParticipant
     let content: String
     let createdAt: Date
+    let extractedInfo: ExtractedInfo?
     
     enum CodingKeys: String, CodingKey {
         case id = "_id"
@@ -64,6 +72,7 @@ struct ChatMessage: Codable, Identifiable {
         case senderId
         case content
         case createdAt
+        case extractedInfo
     }
     
     // Constructeur manuel
@@ -71,12 +80,14 @@ struct ChatMessage: Codable, Identifiable {
          conversationId: String,
          senderId: ChatParticipant,
          content: String,
-         createdAt: Date = Date()) {
+         createdAt: Date = Date(),
+         extractedInfo: ExtractedInfo? = nil) {
         self.id = id
         self.conversationId = conversationId
         self.senderId = senderId
         self.content = content
         self.createdAt = createdAt
+        self.extractedInfo = extractedInfo
     }
     
     // Décodage flexible
@@ -98,6 +109,9 @@ struct ChatMessage: Codable, Identifiable {
         } else {
             self.createdAt = Date()
         }
+        
+        // ✨ NOUVEAU : Parser extractedInfo
+        self.extractedInfo = try? container.decodeIfPresent(ExtractedInfo.self, forKey: .extractedInfo)
     }
 }
 
