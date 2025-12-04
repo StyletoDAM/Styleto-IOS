@@ -8,7 +8,7 @@ struct CartView: View {
     @StateObject private var paymentViewModel = PaymentViewModel()
     
     // MARK: - Alert States
-    @State private var itemToDelete: CartItem?
+    @State private var itemToDelete: CartItemModel? // ✨ MODIFIÉ : Utiliser CartItemModel
     @State private var showingDeleteAlert = false
     
     var body: some View {
@@ -20,7 +20,6 @@ struct CartView: View {
                             emptyState
                         } else {
                             cartItemsList
-                            freeShippingBanner
                             orderSummary
                         }
                         
@@ -50,6 +49,9 @@ struct CartView: View {
             }
             .navigationTitle("My Cart (\(cartManager.itemCount))")
             .task {
+                // ✨ NOUVEAU : Rafraîchir le panier au démarrage
+                await cartManager.fetchCartItems()
+                
                 // Rafraîchir le balance au démarrage (comme Android LaunchedEffect)
                 // Vérifier que le token est disponible avant de rafraîchir
                 if TokenManager.shared.getToken() != nil {
@@ -205,33 +207,16 @@ struct CartView: View {
         ForEach(cartManager.cartItems, id: \.id) { item in
             CartItemRow(
                 imageURL: item.imageURL,
-                title: item.title ?? "Item",
-                size: item.size ?? "One Size",
+                title: item.title,
+                size: item.size,
                 price: item.price,
+                isSold: item.isSold, // ✨ NOUVEAU : Passer le statut
                 onDelete: {
                     itemToDelete = item
                     showingDeleteAlert = true
                 }
             )
         }
-    }
-    
-    // MARK: - Free Shipping Banner
-    private var freeShippingBanner: some View {
-        HStack {
-            Image(systemName: "truck.box.fill")
-                .foregroundColor(.themeTeal)
-            Text("Free shipping!")
-                .font(.system(size: 16, weight: .semibold))
-                .foregroundColor(.themeTeal)
-            Spacer()
-            Image(systemName: "party.popper.fill")
-                .foregroundColor(.orange)
-        }
-        .padding()
-        .background(Color.themeCard)
-        .cornerRadius(16)
-        .padding(.horizontal)
     }
     
     // MARK: - Order Summary
@@ -300,11 +285,11 @@ struct CartView: View {
                 .frame(maxWidth: .infinity)
                 .padding()
                 .background(
-                    (paymentViewModel.useBalance && !paymentViewModel.canPayWithBalance) ? Color.gray : Color.themePrimary
+                    (paymentViewModel.useBalance && !paymentViewModel.canPayWithBalance) || cartManager.cartItems.allSatisfy { $0.isSold } ? Color.gray : Color.themePrimary
                 )
                 .cornerRadius(20)
             }
-            .disabled(paymentViewModel.isProcessing || (paymentViewModel.useBalance && !paymentViewModel.canPayWithBalance))
+            .disabled(paymentViewModel.isProcessing || (paymentViewModel.useBalance && !paymentViewModel.canPayWithBalance) || cartManager.cartItems.allSatisfy { $0.isSold }) // ✨ Désactiver si tous les items sont vendus
             
             if paymentViewModel.useBalance && !paymentViewModel.canPayWithBalance {
                 Text("Insufficient balance")
@@ -325,31 +310,49 @@ struct CartItemRow: View {
     let title: String
     let size: String
     let price: Double
+    let isSold: Bool // ✨ NOUVEAU : Statut de l'article
     let onDelete: () -> Void
     
     var body: some View {
         HStack(spacing: 16) {
-            AsyncImage(url: URL(string: imageURL ?? "")) { image in
-                image
-                    .resizable()
-                    .scaledToFill()
-            } placeholder: {
-                Rectangle()
-                    .fill(Color.themeSoftPink.opacity(0.3))
-                    .overlay(
-                        Image(systemName: "tshirt")
-                            .font(.title2)
-                            .foregroundColor(.themeTeal.opacity(0.6))
-                    )
+            // ✨ MODIFIÉ : Image avec overlay "SOLD OUT" si vendu
+            ZStack(alignment: .topTrailing) {
+                AsyncImage(url: URL(string: imageURL ?? "")) { image in
+                    image
+                        .resizable()
+                        .scaledToFill()
+                        .grayscale(isSold ? 0.7 : 0) // ✨ Griser si vendu
+                        .opacity(isSold ? 0.6 : 1.0) // ✨ Opacité réduite si vendu
+                } placeholder: {
+                    Rectangle()
+                        .fill(Color.themeSoftPink.opacity(0.3))
+                        .overlay(
+                            Image(systemName: "tshirt")
+                                .font(.title2)
+                                .foregroundColor(.themeTeal.opacity(0.6))
+                        )
+                }
+                .frame(width: 90, height: 90)
+                .clipped()
+                .cornerRadius(16)
+                
+                // ✨ NOUVEAU : Badge "SOLD OUT"
+                if isSold {
+                    Text("SOLD OUT")
+                        .font(.system(size: 9, weight: .bold))
+                        .foregroundColor(.white)
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 3)
+                        .background(Color.red)
+                        .cornerRadius(6)
+                        .padding(4)
+                }
             }
-            .frame(width: 90, height: 90)
-            .clipped()
-            .cornerRadius(16)
             
             VStack(alignment: .leading, spacing: 8) {
                 Text(title)
                     .font(.system(size: 17, weight: .semibold))
-                    .foregroundColor(.themePrimary)
+                    .foregroundColor(isSold ? .gray : .themePrimary) // ✨ Griser si vendu
                     .lineLimit(2)
                 
                 HStack(spacing: 12) {
@@ -363,24 +366,25 @@ struct CartItemRow: View {
                 
                 Text("\(price, specifier: "%.2f") DT")
                     .font(.system(size: 18, weight: .bold))
-                    .foregroundColor(.themePrimary)
+                    .foregroundColor(isSold ? .gray : .themePrimary) // ✨ Griser si vendu
             }
             
             Spacer()
             
+            // ✨ MODIFIÉ : Bouton delete toujours actif mais grisé si vendu
             Button {
                 onDelete()
             } label: {
                 Image(systemName: "trash")
-                    .foregroundColor(.red.opacity(0.8))
+                    .foregroundColor(isSold ? .gray.opacity(0.6) : .red.opacity(0.8))
                     .font(.title2)
             }
         }
         .padding()
-        .background(Color.themeCard)
+        .background(isSold ? Color.gray.opacity(0.1) : Color.themeCard) // ✨ Fond grisé si vendu
         .cornerRadius(20)
         .padding(.horizontal)
-        .shadow(color: .black.opacity(0.05), radius:8)
+        .shadow(color: .black.opacity(0.05), radius: 8)
     }
 }
 

@@ -158,7 +158,7 @@ final class AuthService: NSObject, ObservableObject {
         // Appelle la méthode privée existante
         return try await authenticateGoogle(googleId: googleId, fullName: fullName, email: email, profilePicture: profilePicture)
     }
-    
+
     // ✨ NOUVEAU : Refresh Token
     func refreshToken() async throws -> (accessToken: String, refreshToken: String) {
         guard let refreshToken = TokenManager.shared.getRefreshToken() else {

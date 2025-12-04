@@ -86,8 +86,10 @@ final class PaymentViewModel: ObservableObject {
     
     // MARK: - Start Checkout
     func startCheckout() async {
-        guard !cartManager.cartItems.isEmpty else {
-            errorMessage = "Your cart is empty"
+        // ✨ MODIFIÉ : Vérifier qu'il y a des items disponibles
+        let availableItems = cartManager.cartItems.filter { $0.isAvailable }
+        guard !availableItems.isEmpty else {
+            errorMessage = "No available items to purchase"
             return
         }
         
@@ -116,15 +118,24 @@ final class PaymentViewModel: ObservableObject {
         print("💰 [PaymentViewModel] Purchasing with balance")
         
         do {
-            for item in cartManager.cartItems {
+            // ✨ MODIFIÉ : Ne traiter que les items disponibles
+            let availableItems = cartManager.cartItems.filter { $0.isAvailable }
+            
+            guard !availableItems.isEmpty else {
+                errorMessage = "No available items to purchase"
+                isProcessing = false
+                return
+            }
+            
+            for item in availableItems {
                 let _ = try await PaymentService.shared.confirmPurchase(
-                    storeItemId: item.storeItemID ?? "",
+                    storeItemId: item.storeItemID,
                     paymentMethod: "balance"
                 )
             }
             
             await refreshBalance()
-            cartManager.clearCart()
+            await cartManager.fetchCartItems() // ✨ Rafraîchir le panier après achat
             showSuccess = true
             print("✅ [PaymentViewModel] Purchase completed with balance")
             
@@ -142,7 +153,14 @@ final class PaymentViewModel: ObservableObject {
     
     // MARK: - Initiate Stripe Payment
     private func initiateStripePayment() async {
+        // ✨ MODIFIÉ : Calculer le total seulement pour les items disponibles
         let totalAmount = cartManager.totalPrice
+        
+        guard totalAmount > 0 else {
+            errorMessage = "No available items to purchase"
+            isProcessing = false
+            return
+        }
         
         do {
             print("💳 [PaymentViewModel] Initiating Stripe payment for \(totalAmount) TND")
@@ -230,17 +248,26 @@ final class PaymentViewModel: ObservableObject {
         }
         
         do {
-            for item in cartManager.cartItems {
+            // ✨ MODIFIÉ : Ne traiter que les items disponibles
+            let availableItems = cartManager.cartItems.filter { $0.isAvailable }
+            
+            guard !availableItems.isEmpty else {
+                errorMessage = "No available items to purchase"
+                isProcessing = false
+                return
+            }
+            
+            for item in availableItems {
                 //  Envoyer paymentMethod = "stripe" avec le Payment Intent ID
                 let _ = try await PaymentService.shared.confirmPurchase(
-                    storeItemId: item.storeItemID ?? "",
+                    storeItemId: item.storeItemID,
                     paymentMethod: "stripe",
                     paymentIntentId: paymentIntentId  
                 )
             }
             
             await refreshBalance()
-            cartManager.clearCart()
+            await cartManager.fetchCartItems() // ✨ Rafraîchir le panier après achat
             showSuccess = true
             print("✅ [PaymentViewModel] Orders confirmed")
             

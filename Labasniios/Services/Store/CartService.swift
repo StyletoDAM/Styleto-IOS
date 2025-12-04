@@ -1,21 +1,21 @@
 import Foundation
-import CoreData
 import Combine
 
+/// ✨ MODIFIÉ : CartManager utilise maintenant l'API backend au lieu de CoreData
+@MainActor
 class CartManager: ObservableObject {
     static let shared = CartManager()
     
-    private let context = PersistenceController.shared.container.viewContext
-    
-    @Published var cartItems: [CartItem] = []
+    @Published var cartItems: [CartItemModel] = []
     
     private var cancellables = Set<AnyCancellable>()
+    private let cartAPIService = CartAPIService.shared
     
-    // Cache de l'ID utilisateur pour éviter les accès @MainActor répétés
+    // Cache de l'ID utilisateur pour éviter les accès répétés
     private var cachedUserId: String?
     
     private init() {
-        // 🔹 CORRECTION : Charger l'userId de manière synchrone au démarrage
+        // Charger l'userId et le panier au démarrage
         loadUserIdAndFetchCart()
         
         // Observer les changements d'utilisateur
@@ -23,7 +23,7 @@ class CartManager: ObservableObject {
             .sink { [weak self] notification in
                 Task { @MainActor in
                     self?.cachedUserId = AppPreferences.shared.currentUser?.id
-                    self?.fetchCartItems()
+                    await self?.fetchCartItems()
                     print("🔄 [CartManager] Utilisateur mis à jour, panier rechargé")
                 }
             }
@@ -38,7 +38,7 @@ class CartManager: ObservableObject {
             .store(in: &cancellables)
     }
     
-    /// 🔹 NOUVEAU : Charge l'userId et le panier de manière synchrone
+    /// Charge l'userId et le panier de manière synchrone
     private func loadUserIdAndFetchCart() {
         Task { @MainActor in
             self.cachedUserId = AppPreferences.shared.currentUser?.id
@@ -50,39 +50,60 @@ class CartManager: ObservableObject {
             }
             
             // Charger le panier après avoir récupéré l'userId
-            self.fetchCartItems()
+            await self.fetchCartItems()
         }
     }
     
-    /// Récupère les articles du panier pour l'utilisateur connecté
-    func fetchCartItems() {
+    /// ✨ MODIFIÉ : Récupère les articles du panier depuis l'API
+    func fetchCartItems() async {
         guard let userId = cachedUserId else {
             print("⚠️ [CartManager] Aucun utilisateur connecté – panier vide")
-            DispatchQueue.main.async {
-                self.cartItems = []
-            }
+            self.cartItems = []
             return
         }
         
-        let request: NSFetchRequest<CartItem> = CartItem.fetchRequest()
-        request.predicate = NSPredicate(format: "userId == %@", userId)
-        request.sortDescriptors = [NSSortDescriptor(keyPath: \CartItem.addedAt, ascending: false)]
+        guard TokenManager.shared.getToken() != nil else {
+            print("⚠️ [CartManager] Pas de token – panier vide")
+            self.cartItems = []
+            return
+        }
         
         do {
-            let items = try context.fetch(request)
-            DispatchQueue.main.async {
-                self.cartItems = items
-                print("✅ [CartManager] \(items.count) articles chargés pour l'utilisateur \(userId)")
+            let cartResponse = try await cartAPIService.getCart()
+            
+            // Convertir les réponses API en modèles locaux
+            let items = cartResponse.items.compactMap { itemResponse -> CartItemModel? in
+                guard let storeItem = itemResponse.storeItem else { return nil }
+                let clothes = storeItem.clothesId
+                
+                // Extraire le titre depuis category ou style
+                let categoryName = extractCategory(clothes?.category)
+                let title = (clothes?.style?.isEmpty == false ? clothes?.style : categoryName)?
+                    .capitalized ?? "Item"
+                
+                return CartItemModel(
+                    id: itemResponse.storeItemId,
+                    userId: userId,
+                    storeItemID: itemResponse.storeItemId,
+                    title: title,
+                    size: storeItem.size,
+                    price: storeItem.price,
+                    imageURL: clothes?.imageURL,
+                    addedAt: itemResponse.addedAt,
+                    status: storeItem.status // ✨ NOUVEAU : Statut "available" | "sold"
+                )
             }
+            
+            self.cartItems = items
+            print("✅ [CartManager] \(items.count) articles chargés depuis l'API")
+            
         } catch {
             print("❌ [CartManager] Erreur fetch panier: \(error)")
-            DispatchQueue.main.async {
-                self.cartItems = []
-            }
+            self.cartItems = []
         }
     }
     
-    /// Ajoute un article au panier de l'utilisateur connecté
+    /// ✨ MODIFIÉ : Ajoute un article au panier via l'API
     func addToCart(storeItem: Store) {
         guard let userId = cachedUserId else {
             print("⚠️ [CartManager] Impossible d'ajouter : utilisateur non connecté")
@@ -100,66 +121,53 @@ class CartManager: ObservableObject {
             return
         }
         
-        // Vérifier si l'article existe déjà
-        let request: NSFetchRequest<CartItem> = CartItem.fetchRequest()
-        request.predicate = NSPredicate(
-            format: "storeItemID == %@ AND userId == %@",
-            storeItem.id, userId
-        )
-        
-        if let existing = try? context.fetch(request).first {
-            print("ℹ️ [CartManager] Article déjà dans le panier")
-            return
+        Task { @MainActor in
+            do {
+                let _ = try await cartAPIService.addToCart(storeItemId: storeItem.id)
+                await fetchCartItems()
+                print("✅ [CartManager] Article ajouté au panier")
+            } catch {
+                print("❌ [CartManager] Erreur ajout panier: \(error)")
+            }
         }
-        
-        // Créer un nouvel article
-        let newItem = CartItem(context: context)
-        newItem.id = UUID().uuidString
-        newItem.userId = userId
-        newItem.storeItemID = storeItem.id
-        newItem.title = storeItem.clothe?.category?.capitalized ?? "Article"
-        newItem.size = storeItem.size
-        newItem.price = storeItem.price
-        newItem.imageURL = storeItem.clothe?.imageURL
-        newItem.addedAt = Date()
-        
-        saveContext()
-        fetchCartItems()
-        
-        print("✅ [CartManager] Article ajouté au panier de \(userId)")
     }
     
-    /// Supprime un article du panier
-    func removeFromCart(_ cartItem: CartItem) {
-        context.delete(cartItem)
-        saveContext()
-        fetchCartItems()
-        
-        print("🗑️ [CartManager] Article supprimé du panier")
+    /// ✨ MODIFIÉ : Supprime un article du panier via l'API
+    func removeFromCart(_ cartItem: CartItemModel) {
+        Task { @MainActor in
+            do {
+                let _ = try await cartAPIService.removeFromCart(storeItemId: cartItem.storeItemID)
+                await fetchCartItems()
+                print("🗑️ [CartManager] Article supprimé du panier")
+            } catch {
+                print("❌ [CartManager] Erreur suppression panier: \(error)")
+            }
+        }
     }
     
-    /// Vide tout le panier de l'utilisateur connecté
+    /// ✨ MODIFIÉ : Vide tout le panier via l'API
     func clearCart() {
         guard let userId = cachedUserId else {
             print("⚠️ [CartManager] Impossible de vider le panier : utilisateur non connecté")
             return
         }
         
-        let request: NSFetchRequest<CartItem> = CartItem.fetchRequest()
-        request.predicate = NSPredicate(format: "userId == %@", userId)
-        
-        if let items = try? context.fetch(request) {
-            items.forEach { context.delete($0) }
-            saveContext()
-            fetchCartItems()
-            
-            print("🗑️ [CartManager] Panier vidé pour l'utilisateur \(userId)")
+        Task { @MainActor in
+            do {
+                try await cartAPIService.clearCart()
+                await fetchCartItems()
+                print("🗑️ [CartManager] Panier vidé pour l'utilisateur \(userId)")
+            } catch {
+                print("❌ [CartManager] Erreur vidage panier: \(error)")
+            }
         }
     }
     
-    /// Prix total du panier
+    /// ✨ MODIFIÉ : Prix total du panier (seulement les items disponibles)
     var totalPrice: Double {
-        cartItems.reduce(0) { $0 + $1.price }
+        cartItems
+            .filter { $0.status == "available" } // ✨ Seulement les items disponibles
+            .reduce(0) { $0 + $1.price }
     }
     
     /// Nombre d'articles dans le panier
@@ -169,20 +177,35 @@ class CartManager: ObservableObject {
     
     /// Gère le logout en vidant le panier local
     private func handleLogout() {
-        DispatchQueue.main.async {
-            self.cartItems = []
-        }
+        self.cartItems = []
         print("👋 [CartManager] Panier vidé après logout")
     }
     
-    /// Sauvegarde le contexte Core Data
-    private func saveContext() {
-        if context.hasChanges {
-            do {
-                try context.save()
-            } catch {
-                print("❌ [CartManager] Erreur sauvegarde: \(error)")
-            }
-        }
+    /// Helper : Extraire la catégorie depuis différentes formats
+    private func extractCategory(_ category: String?) -> String {
+        guard let category = category, !category.isEmpty else { return "Item" }
+        return category.lowercased()
+    }
+}
+
+// MARK: - CartItemModel
+/// ✨ NOUVEAU : Modèle local pour représenter un item du panier
+struct CartItemModel: Identifiable, Equatable {
+    let id: String
+    let userId: String
+    let storeItemID: String
+    let title: String
+    let size: String
+    let price: Double
+    let imageURL: String?
+    let addedAt: Date
+    let status: String // "available" | "sold"
+    
+    var isSold: Bool {
+        status == "sold"
+    }
+    
+    var isAvailable: Bool {
+        status == "available"
     }
 }
