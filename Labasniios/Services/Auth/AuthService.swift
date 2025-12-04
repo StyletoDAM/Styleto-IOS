@@ -158,7 +158,43 @@ final class AuthService: NSObject, ObservableObject {
         // Appelle la méthode privée existante
         return try await authenticateGoogle(googleId: googleId, fullName: fullName, email: email, profilePicture: profilePicture)
     }
-
-
+    
+    // ✨ NOUVEAU : Refresh Token
+    func refreshToken() async throws -> (accessToken: String, refreshToken: String) {
+        guard let refreshToken = TokenManager.shared.getRefreshToken() else {
+            throw NetworkError.serverMessage("Refresh token manquant.")
+        }
+        
+        let payload = ["refreshToken": refreshToken]
+        guard let url = URL(string: "/auth/refresh", relativeTo: APIConstants.baseURL) else {
+            throw NetworkError.invalidURL
+        }
+        
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.addValue(APIConstants.jsonContentType, forHTTPHeaderField: "Content-Type")
+        request.httpBody = try JSONSerialization.data(withJSONObject: payload)
+        
+        let (data, response) = try await session.data(for: request)
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw NetworkError.noData
+        }
+        
+        switch httpResponse.statusCode {
+        case 200..<300:
+            struct RefreshResponse: Codable {
+                let accessToken: String
+                let refreshToken: String
+            }
+            let refreshResponse = try decoder.decode(RefreshResponse.self, from: data)
+            TokenManager.shared.saveToken(refreshResponse.accessToken)
+            TokenManager.shared.saveRefreshToken(refreshResponse.refreshToken)
+            return (refreshResponse.accessToken, refreshResponse.refreshToken)
+        default:
+            // Refresh échoué, déconnecter l'utilisateur
+            TokenManager.shared.clearToken()
+            throw NetworkError.serverMessage("Token de rafraîchissement invalide.")
+        }
+    }
 }
 

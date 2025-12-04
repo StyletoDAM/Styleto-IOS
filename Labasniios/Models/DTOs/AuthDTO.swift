@@ -4,6 +4,7 @@ import Foundation
 struct SigninResponse: Codable {
     let user: User
     let accessToken: String
+    let refreshToken: String // ✨ NOUVEAU : Refresh token pour renouveler l'access token
 }
 
 struct SignupResponse: Codable {
