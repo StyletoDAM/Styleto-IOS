@@ -246,6 +246,7 @@ struct LabasniLoginView: View {
             // Configurer les callbacks OAuth
             appleSignInHelper.onSuccess = { response in
                 TokenManager.shared.saveToken(response.accessToken)
+                TokenManager.shared.saveRefreshToken(response.refreshToken) // ✨ NOUVEAU
                 viewModel.password = ""
                 hideSnackbar()
                 profileUser = response.user
@@ -259,6 +260,7 @@ struct LabasniLoginView: View {
             
             googleSignInHelper.onSuccess = { response in
                 TokenManager.shared.saveToken(response.accessToken)
+                TokenManager.shared.saveRefreshToken(response.refreshToken) // ✨ NOUVEAU
                 viewModel.password = ""
                 hideSnackbar()
                 profileUser = response.user

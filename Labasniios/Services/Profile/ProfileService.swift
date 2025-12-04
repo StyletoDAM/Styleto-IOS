@@ -136,39 +136,14 @@ final class ProfileService {
         return try await performRequest(request)
     }
     
-    // MARK: - Helper: Perform Request
+    // MARK: - Helper: Perform Request avec refresh automatique
     private func performRequest(_ request: URLRequest) async throws -> User {
-        let (data, response) = try await session.data(for: request)
-        
-        guard let httpResponse = response as? HTTPURLResponse else {
-            throw NetworkError.noData
-        }
-        
-        let responseBodyString = String(data: data, encoding: .utf8) ?? "<non UTF-8>"
-        debugPrint("[ProfileService] Status: \(httpResponse.statusCode)")
-        debugPrint("[ProfileService] Body: \(responseBodyString)")
-        
-        switch httpResponse.statusCode {
-        case 200..<300:
-            do {
-                return try decoder.decode(User.self, from: data)
-            } catch {
-                debugPrint("[ProfileService] decode error: \(error)")
-                throw NetworkError.decodingFailed
-            }
-        case 401:
-            throw NetworkError.serverMessage("Token invalide.")
-        case 409:
-            if let serverError = try? decoder.decode(ErrorResponse.self, from: data) {
-                throw NetworkError.serverMessage(serverError.message)
-            }
-            throw NetworkError.serverMessage("Conflit.")
-        default:
-            if let serverError = try? decoder.decode(ErrorResponse.self, from: data) {
-                throw NetworkError.serverMessage(serverError.message)
-            }
-            throw NetworkError.requestFailed(httpResponse.statusCode)
-        }
+        // ✨ NOUVEAU : Utiliser TokenRefreshHelper pour gérer automatiquement le refresh
+        return try await TokenRefreshHelper.shared.performRequestWithRefresh(
+            request: request,
+            decoder: decoder,
+            responseType: User.self
+        )
     }
     // MARK: - Delete Profile
     func deleteProfile() async throws -> Bool {
