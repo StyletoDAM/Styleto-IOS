@@ -243,6 +243,75 @@ struct CreateOrderRequest: Codable {
     let price: Double
 }
 
+// MARK: - Transaction Models
+struct TransactionResponse: Codable, Identifiable {
+    let id: String
+    let type: String // "incoming" ou "outgoing"
+    let amount: Double
+    let description: String
+    let date: Date
+    let paymentMethod: String?
+    let createdAt: Date?
+    
+    enum CodingKeys: String, CodingKey {
+        case id = "_id"
+        case type
+        case amount
+        case description
+        case date
+        case paymentMethod
+        case createdAt
+    }
+    
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        
+        // Décode id
+        if let idValue = try? container.decode(String.self, forKey: .id) {
+            id = idValue
+        } else {
+            id = ""
+        }
+        
+        type = try container.decode(String.self, forKey: .type)
+        amount = try container.decode(Double.self, forKey: .amount)
+        description = try container.decode(String.self, forKey: .description)
+        paymentMethod = try container.decodeIfPresent(String.self, forKey: .paymentMethod)
+        
+        // Décode date
+        if let dateValue = try? container.decode(Date.self, forKey: .date) {
+            date = dateValue
+        } else if let dateString = try? container.decode(String.self, forKey: .date) {
+            let formatter = ISO8601DateFormatter()
+            formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+            if let parsedDate = formatter.date(from: dateString) {
+                date = parsedDate
+            } else {
+                formatter.formatOptions = [.withInternetDateTime]
+                date = formatter.date(from: dateString) ?? Date()
+            }
+        } else {
+            date = Date()
+        }
+        
+        // Décode createdAt
+        if let createdAtValue = try? container.decodeIfPresent(Date.self, forKey: .createdAt) {
+            createdAt = createdAtValue
+        } else if let createdAtString = try? container.decodeIfPresent(String.self, forKey: .createdAt), !createdAtString.isEmpty {
+            let formatter = ISO8601DateFormatter()
+            formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+            if let parsedDate = formatter.date(from: createdAtString) {
+                createdAt = parsedDate
+            } else {
+                formatter.formatOptions = [.withInternetDateTime]
+                createdAt = formatter.date(from: createdAtString)
+            }
+        } else {
+            createdAt = nil
+        }
+    }
+}
+
 class OrdersService {
     static let shared = OrdersService()
     private init() {}
@@ -364,6 +433,65 @@ class OrdersService {
             return order
         } catch {
             print("❌ [OrdersService] Order decoding error: \(error)")
+            throw error
+        }
+    }
+    
+    func getMyTransactions() async throws -> [TransactionResponse] {
+        guard let url = URL(string: APIConstants.baseURL.absoluteString + "/orders/transactions") else {
+            throw NetworkError.invalidURL
+        }
+        
+        var request = URLRequest(url: url)
+        request.httpMethod = "GET"
+        if let token = TokenManager.shared.getToken() {
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
+        request.setValue("application/json", forHTTPHeaderField: "Accept")
+        
+        let (data, response) = try await URLSession.shared.data(for: request)
+        
+        if let http = response as? HTTPURLResponse {
+            print("🔍 [OrdersService] Transactions Status Code: \(http.statusCode)")
+        }
+        
+        if let http = response as? HTTPURLResponse, http.statusCode >= 400 {
+            if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+               let message = json["message"] as? String {
+                throw NetworkError.serverMessage(message)
+            }
+            throw NetworkError.requestFailed(http.statusCode)
+        }
+        
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .custom { decoder in
+            let container = try decoder.singleValueContainer()
+            let dateString = try container.decode(String.self)
+            
+            let formatter = ISO8601DateFormatter()
+            formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+            
+            if let date = formatter.date(from: dateString) {
+                return date
+            }
+            
+            formatter.formatOptions = [.withInternetDateTime]
+            if let date = formatter.date(from: dateString) {
+                return date
+            }
+            
+            throw DecodingError.dataCorruptedError(
+                in: container,
+                debugDescription: "Expected ISO8601 date string, but got \(dateString)"
+            )
+        }
+        
+        do {
+            let transactions = try decoder.decode([TransactionResponse].self, from: data)
+            print("✅ [OrdersService] Decoded \(transactions.count) transactions successfully")
+            return transactions
+        } catch {
+            print("❌ [OrdersService] Transactions decoding error: \(error)")
             throw error
         }
     }
