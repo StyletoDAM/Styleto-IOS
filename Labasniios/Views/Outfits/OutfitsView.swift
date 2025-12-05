@@ -5,6 +5,7 @@ struct OutfitsView: View {
     @ObservedObject private var themeManager = ThemeManager.shared
     @State private var showStylePopup = false
     @Environment(\.managedObjectContext) private var context
+    var onNavigateToStore: (() -> Void)? = nil // ✨ NOUVEAU: Callback pour naviguer vers le store
  
     var body: some View {
         NavigationStack {
@@ -26,6 +27,23 @@ struct OutfitsView: View {
                                 onReject: {
                                     print("👆 Bouton Reject pressé")
                                     viewModel.rejectAISuggestion()
+                                }
+                            )
+                            .transition(
+                                AnyTransition.move(edge: .top)
+                                    .combined(with: .opacity)
+                            )
+                        }
+                        
+                        // ✨ NOUVEAU: CARTE D'ERREUR DE RECOMMANDATION (si erreur)
+                        if let recommendationError = viewModel.recommendationError {
+                            RecommendationErrorCard(
+                                message: recommendationError,
+                                onDismiss: {
+                                    viewModel.recommendationError = nil
+                                },
+                                onNavigateToStore: {
+                                    onNavigateToStore?()
                                 }
                             )
                             .transition(

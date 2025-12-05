@@ -7,6 +7,7 @@ class OutfitsViewModel: ObservableObject {
     @Published var outfits: [Outfit] = []
     @Published var isLoading = false
     @Published var errorMessage: String?
+    @Published var recommendationError: String? // ✨ NOUVEAU: Erreur spécifique pour les recommandations
     @Published var aiSuggestion: AIRecommendationResponse?
     @Published var isGenerating = false
     @Published var isAccepting = false
@@ -37,6 +38,7 @@ class OutfitsViewModel: ObservableObject {
     func generateAISuggestion(style: String) {
         isGenerating = true
         errorMessage = nil
+        recommendationError = nil // ✨ NOUVEAU: Réinitialiser l'erreur de recommandation
         
         print("🎨 Demande de suggestion AI avec style: \(style)")
         
@@ -46,11 +48,13 @@ class OutfitsViewModel: ObservableObject {
                 self?.isGenerating = false
                 if case .failure(let error) = completion {
                     print("❌ Erreur génération AI:", error)
-                    self?.errorMessage = error.errorDescription
+                    // ✨ NOUVEAU: Stocker l'erreur dans recommendationError pour afficher la carte d'erreur
+                    self?.recommendationError = error.errorDescription
                 }
             } receiveValue: { [weak self] response in
                 print("✅ Suggestion AI reçue (pas encore créée)")
                 self?.aiSuggestion = response
+                self?.recommendationError = nil // ✨ NOUVEAU: Réinitialiser l'erreur en cas de succès
             }
             .store(in: &cancellables)
     }

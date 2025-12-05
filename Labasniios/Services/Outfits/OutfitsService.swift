@@ -62,15 +62,31 @@ class OutfitsService {
         request.httpBody = try? JSONSerialization.data(withJSONObject: body)
  
         return URLSession.shared.dataTaskPublisher(for: request)
-            .map(\.data)
-            .handleEvents(receiveOutput: { data in
+            .tryMap { data, response -> Data in
+                guard let httpResponse = response as? HTTPURLResponse else {
+                    throw NetworkError.serverError
+                }
+                
+                // ✅ Si c'est une erreur HTTP, extraire le message du backend
+                if !(200...299).contains(httpResponse.statusCode) {
+                    if let errorJson = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                       let message = errorJson["message"] as? String {
+                        print("❌ Backend error message:", message)
+                        throw NetworkError.serverMessage(message)
+                    }
+                    throw NetworkError.serverError
+                }
+                
                 if let json = try? JSONSerialization.jsonObject(with: data) {
                     print("🤖 AI Recommendation response:", json)
                 }
-            })
+                return data
+            }
             .decode(type: AIRecommendationResponse.self, decoder: JSONDecoder().withISO8601())
             .mapError { error -> NetworkError in
-                if let urlError = error as? URLError {
+                if let networkError = error as? NetworkError {
+                    return networkError
+                } else if let urlError = error as? URLError {
                     return .transport(urlError)
                 } else if let decodingError = error as? DecodingError {
                     print("❌ Decoding error:", decodingError)

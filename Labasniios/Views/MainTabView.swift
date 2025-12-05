@@ -23,7 +23,9 @@ struct MainTabView: View {
                 case .dressing:
                     DressingView()
                 case .tenues:
-                    OutfitsView()
+                    OutfitsView(onNavigateToStore: {
+                        selectedTab = .store // ✨ NOUVEAU: Naviguer vers le store
+                    })
                 case .avatar:
                     AvatarView()
                         .environmentObject(avatarVM)
