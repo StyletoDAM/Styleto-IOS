@@ -1,6 +1,7 @@
+// Labasniios/Views/Packs/SubscriptionDetailView.swift
+// 📌 REMPLACER le fichier existant par celui-ci
+
 import SwiftUI
-import StripePaymentSheet
-import Foundation
 
 struct SubscriptionDetailView: View {
     let plan: SubscriptionPlansView.PlanType
@@ -10,21 +11,23 @@ struct SubscriptionDetailView: View {
     @State private var isProcessing = false
     @State private var errorMessage: String?
     @State private var showSuccessAlert = false
-    @State private var paymentSheet: PaymentSheet?
-    @State private var showPaymentSheet = false
+    @State private var showCheckoutSheet = false
+    @State private var checkoutUrl: String?
     
     var onSubscriptionSuccess: (() -> Void)? = nil
     
+    // MARK: - Pricing
+    
     private var monthlyPrice: String {
-        plan == .premium ? "9.99 DT" : "24.99 DT"
+        plan == .premium ? "30 TND" : "90 TND"
     }
     
     private var yearlyPrice: String {
-        plan == .premium ? "99 DT" : "249 DT"
+        plan == .premium ? "288 TND" : "864 TND"
     }
     
     private var pricePerMonthWhenYearly: String {
-        plan == .premium ? "8.25 DT" : "20.75 DT"
+        plan == .premium ? "24 TND" : "72 TND"
     }
     
     private var planTitle: String {
@@ -117,7 +120,7 @@ struct SubscriptionDetailView: View {
                             .foregroundColor(.secondary)
                         
                         if isYearly {
-                            Text("Save ~17%")
+                            Text("Save 20%")
                                 .font(.caption)
                                 .padding(.horizontal, 12)
                                 .padding(.vertical, 6)
@@ -130,7 +133,7 @@ struct SubscriptionDetailView: View {
                     
                     // Features
                     VStack(alignment: .leading, spacing: 20) {
-                        Text("What’s included")
+                        Text("What's included")
                             .font(.title3)
                             .fontWeight(.semibold)
                             .padding(.horizontal)
@@ -200,7 +203,7 @@ struct SubscriptionDetailView: View {
                     
                     BulletPoint(text: "Cancel anytime, no commitment")
                     BulletPoint(text: "Switch plans whenever you want")
-                    BulletPoint(text: "Secure payment")
+                    BulletPoint(text: "Secure payment via Stripe")
                     BulletPoint(text: "Customer support available 7/7")
                 }
                 .padding()
@@ -241,11 +244,17 @@ struct SubscriptionDetailView: View {
             } message: {
                 Text("Your subscription has been activated successfully!")
             }
-            .sheet(isPresented: $showPaymentSheet) {
-                if let paymentSheet = paymentSheet {
-                    PaymentSheetView(paymentSheet: paymentSheet) { result in
-                        handlePaymentResult(result)
-                    }
+            .sheet(isPresented: $showCheckoutSheet) {
+                if let url = checkoutUrl {
+                    StripeCheckoutSheet(
+                        checkoutUrl: url,
+                        onSuccess: {
+                            handlePaymentSuccess()
+                        },
+                        onCancel: {
+                            handlePaymentCancel()
+                        }
+                    )
                 }
             }
         }
@@ -254,7 +263,7 @@ struct SubscriptionDetailView: View {
     // MARK: - Subscription Flow
     
     private func initiateSubscription() async {
-        guard let user = AppPreferences.shared.currentUser else {
+        guard AppPreferences.shared.currentUser != nil else {
             errorMessage = "You must be logged in"
             return
         }
@@ -263,84 +272,47 @@ struct SubscriptionDetailView: View {
         errorMessage = nil
         
         do {
-            // Calculer le montant
-            let amount: Double = if plan == .premium {
-                isYearly ? 99.0 : 9.99
-            } else {
-                isYearly ? 249.0 : 24.99
+            let planType: SubscriptionPlan = plan == .premium ? .premium : .proSeller
+            let interval: BillingInterval = isYearly ? .year : .month
+            
+            let response = try await StripeCheckoutService.shared.createCheckoutSession(
+                plan: planType,
+                interval: interval
+            )
+            
+            guard let url = response.checkoutUrl else {
+                throw NetworkError.serverMessage("No checkout URL received")
             }
             
-            // Créer le PaymentIntent
-            let clientSecret = try await PaymentService.shared.createPaymentIntent(
-                amount: amount,
-                currency: "usd"
-            )
-            
-            // Configurer le PaymentSheet
-            var configuration = StripeConfig.shared.createPaymentSheetConfiguration(
-                customerEmail: user.email
-            )
-            configuration.primaryButtonLabel = "Pay \(String(format: "%.2f", amount)) DT"
-            
-            let sheet = PaymentSheet(
-                paymentIntentClientSecret: clientSecret,
-                configuration: configuration
-            )
-            
             await MainActor.run {
-                self.paymentSheet = sheet
-                self.showPaymentSheet = true
+                self.checkoutUrl = url
+                self.showCheckoutSheet = true
                 self.isProcessing = false
             }
             
         } catch {
             await MainActor.run {
-                errorMessage = "Failed to initialize payment: \(error.localizedDescription)"
+                errorMessage = "Failed to create checkout session: \(error.localizedDescription)"
                 isProcessing = false
             }
         }
     }
     
-    private func handlePaymentResult(_ result: PaymentSheetResult) {
-        showPaymentSheet = false
-        
-        switch result {
-        case .completed:
-            Task {
-                await confirmSubscription()
-            }
-            
-        case .failed(let error):
-            errorMessage = "Payment failed: \(error.localizedDescription)"
-            isProcessing = false
-            
-        case .canceled:
-            isProcessing = false
-        }
-    }
-    
-    private func confirmSubscription() async {
-        isProcessing = true
-        
-        do {
-            let planType: SubscriptionPlan = plan == .premium ? .premium : .proSeller
-            _ = try await SubscriptionService.shared.updateSubscription(plan: planType)
-            
-            // Délai avant de rafraîchir pour laisser le backend se mettre à jour
-            try? await Task.sleep(nanoseconds: 800_000_000) // 800ms
+    private func handlePaymentSuccess() {
+        // Attendre un peu que le backend traite le webhook
+        Task {
+            try? await Task.sleep(nanoseconds: 1_500_000_000) // 1.5 secondes
             
             await MainActor.run {
                 showSuccessAlert = true
-                onSubscriptionSuccess?()  // Trigger le refresh dans la vue parente
-                isProcessing = false
-            }
-            
-        } catch {
-            await MainActor.run {
-                errorMessage = "Payment succeeded but subscription update failed: \(error.localizedDescription)"
-                isProcessing = false
+                onSubscriptionSuccess?()
             }
         }
+    }
+    
+    private func handlePaymentCancel() {
+        isProcessing = false
+        // Optionnel: afficher un message
     }
 }
 

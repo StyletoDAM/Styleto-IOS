@@ -3,7 +3,7 @@ import Foundation
 enum APIConstants {
 
 
-    static let baseURL = URL(string: "http://192.168.43.175:3000")!
+    static let baseURL = URL(string: "http://192.168.43.159:3000")!
 
 
     // AUTH
@@ -36,6 +36,13 @@ enum APIConstants {
     static let testPurchasePath = "/store/test-purchase"
     static let confirmPurchasePath = "/store/purchase"  // + /:id dans l'URL
         
+    // ✨ NOUVEAU: SUBSCRIPTIONS (Stripe Checkout Sessions)
+        static let createCheckoutSessionPath = "/subscriptions/create-checkout-session"
+        static let verifySessionPath = "/subscriptions/verify-session"
+        static let subscriptionMePath = "/subscriptions/me"
+        static let subscriptionStatsPath = "/subscriptions/me/stats"
+        static let cancelSubscriptionPath = "/subscriptions/cancel"
+    
     // HEADERS
     static let jsonContentType = "application/json"
 }
