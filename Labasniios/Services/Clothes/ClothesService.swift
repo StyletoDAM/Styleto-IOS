@@ -5,11 +5,11 @@ class ClothesService {
     static let shared = ClothesService()
     
     private let baseURL = APIConstants.baseURL
-    private let tokenManager = TokenManager.shared  // ✅ AJOUT
+    private let tokenManager = TokenManager.shared
     
     // MARK: - Fetch My Clothes
     func fetchMyClothes(completion: @escaping (Result<[Clothe], Error>) -> Void) {
-        guard let url = URL(string: "\(baseURL)/cloth/my") else {
+        guard let url = URL(string: "\(baseURL)/clothes/my") else {  // ← Changed to /clothes
             completion(.failure(URLError(.badURL)))
             return
         }
@@ -45,7 +45,7 @@ class ClothesService {
             return
         }
 
-        let url = URL(string: "\(baseURL)/cloth/\(id)")!
+        let url = URL(string: "\(baseURL)/clothes/\(id)")!  // ← Changed to /clothes
         var request = URLRequest(url: url)
         request.httpMethod = "DELETE"
         request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
@@ -73,7 +73,7 @@ class ClothesService {
         originalDetection: [String: String]? = nil,
         completion: @escaping (Result<Void, Error>) -> Void
     ) {
-        guard let url = URL(string: "\(baseURL)/cloth") else {
+        guard let url = URL(string: "\(baseURL)/clothes") else {  // ← Changed to /clothes
             completion(.failure(URLError(.badURL)))
             return
         }
@@ -144,7 +144,7 @@ class ClothesService {
     
     // MARK: - Update Feedback (acceptedCount / rejectedCount)
     func updateFeedback(clotheId: String, accepted: Bool) -> AnyPublisher<Void, NetworkError> {
-        guard let url = URL(string: "/cloth/\(clotheId)/feedback", relativeTo: baseURL) else {
+        guard let url = URL(string: "/clothes/\(clotheId)/feedback", relativeTo: baseURL) else {  // ← Changed to /clothes
             return Fail(error: .invalidURL).eraseToAnyPublisher()
         }
         
@@ -167,9 +167,10 @@ class ClothesService {
             .receive(on: DispatchQueue.main)
             .eraseToAnyPublisher()
     }
+    
     // MARK: - Fetch Sell Suggestions
     func fetchSellSuggestions() -> AnyPublisher<[Clothe], NetworkError> {
-        guard let url = URL(string: "/cloth/sell-suggestions", relativeTo: baseURL) else {
+        guard let url = URL(string: "/clothes/sell-suggestions", relativeTo: baseURL) else {  // ← Changed to /clothes
             return Fail(error: .invalidURL).eraseToAnyPublisher()
         }
         
