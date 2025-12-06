@@ -187,10 +187,39 @@ class SubscriptionService {
 
 // MARK: - Response Models
 
+// ✨ NOUVEAU: Response pour l'annulation
 struct CancelSubscriptionResponse: Codable {
     let success: Bool
     let message: String
     let expiresAt: Date?
-    let plan: String
+    let status: String? // ✨ Ajout du statut
+    
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        
+        success = try container.decode(Bool.self, forKey: .success)
+        message = try container.decode(String.self, forKey: .message)
+        status = try? container.decodeIfPresent(String.self, forKey: .status)
+        
+        // expiresAt est optionnel
+        if let date = try? container.decodeIfPresent(Date.self, forKey: .expiresAt) {
+            expiresAt = date
+        } else if let dateString = try? container.decodeIfPresent(String.self, forKey: .expiresAt), !dateString.isEmpty {
+            let formatter = ISO8601DateFormatter()
+            formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+            if let date = formatter.date(from: dateString) {
+                expiresAt = date
+            } else {
+                formatter.formatOptions = [.withInternetDateTime]
+                expiresAt = formatter.date(from: dateString)
+            }
+        } else {
+            expiresAt = nil
+        }
+    }
+    
+    enum CodingKeys: String, CodingKey {
+        case success, message, expiresAt, status
+    }
 }
 

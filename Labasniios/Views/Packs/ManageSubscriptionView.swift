@@ -1,5 +1,5 @@
 // Views/Packs/ManageSubscriptionView.swift
-// 📌 NOUVEAU FICHIER - Créer ce fichier dans Xcode
+// 📌 MISE À JOUR - Désactivation après annulation
 
 import SwiftUI
 
@@ -62,6 +62,10 @@ struct ManageSubscriptionView: View {
             .alert("Success", isPresented: $showSuccessAlert) {
                 Button("OK") {
                     showSuccessAlert = false
+                    // ✨ IMPORTANT: Rafraîchir les données après fermeture de l'alerte
+                    Task {
+                        await viewModel.loadSubscriptionData()
+                    }
                 }
             } message: {
                 Text(viewModel.successMessage ?? "Subscription canceled successfully")
@@ -114,14 +118,26 @@ struct ManageSubscriptionView: View {
                 
                 if viewModel.currentPlan != .free {
                     VStack(alignment: .trailing, spacing: 4) {
-                        Text("Active")
-                            .font(.caption)
-                            .fontWeight(.semibold)
-                            .foregroundColor(.white)
-                            .padding(.horizontal, 12)
-                            .padding(.vertical, 6)
-                            .background(Color.green)
-                            .cornerRadius(12)
+                        // ✨ NOUVEAU: Badge différent si annulé
+                        if viewModel.isCanceled {
+                            Text("Canceled")
+                                .font(.caption)
+                                .fontWeight(.semibold)
+                                .foregroundColor(.white)
+                                .padding(.horizontal, 12)
+                                .padding(.vertical, 6)
+                                .background(Color.orange)
+                                .cornerRadius(12)
+                        } else {
+                            Text("Active")
+                                .font(.caption)
+                                .fontWeight(.semibold)
+                                .foregroundColor(.white)
+                                .padding(.horizontal, 12)
+                                .padding(.vertical, 6)
+                                .background(Color.green)
+                                .cornerRadius(12)
+                        }
                     }
                 }
             }
@@ -189,26 +205,41 @@ struct ManageSubscriptionView: View {
                 .font(.headline)
                 .foregroundColor(.themeText)
             
-            Text("You can cancel your subscription at any time. You'll continue to have access until the end of your billing period.")
-                .font(.callout)
-                .foregroundColor(.secondary)
-                .fixedSize(horizontal: false, vertical: true)
-            
-            Button {
-                showCancelConfirmation = true
-            } label: {
+            // ✨ NOUVEAU: Message différent si déjà annulé
+            if viewModel.isCanceled {
                 HStack {
-                    Image(systemName: "xmark.circle.fill")
-                    Text("Cancel Subscription")
+                    Image(systemName: "checkmark.circle.fill")
+                        .foregroundColor(.green)
+                    Text("Your subscription has been canceled and will expire on \(viewModel.expirationDate)")
+                        .font(.callout)
+                        .foregroundColor(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
-                .font(.headline)
-                .foregroundColor(.white)
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 16)
-                .background(Color.red)
+                .padding()
+                .background(Color.green.opacity(0.1))
                 .cornerRadius(12)
+            } else {
+                Text("You can cancel your subscription at any time. You'll continue to have access until the end of your billing period.")
+                    .font(.callout)
+                    .foregroundColor(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                
+                Button {
+                    showCancelConfirmation = true
+                } label: {
+                    HStack {
+                        Image(systemName: "xmark.circle.fill")
+                        Text("Cancel Subscription")
+                    }
+                    .font(.headline)
+                    .foregroundColor(.white)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 16)
+                    .background(Color.red)
+                    .cornerRadius(12)
+                }
+                .disabled(viewModel.isCanceling)
             }
-            .disabled(viewModel.isCanceling)
         }
         .padding(20)
         .background(Color.themeCard)

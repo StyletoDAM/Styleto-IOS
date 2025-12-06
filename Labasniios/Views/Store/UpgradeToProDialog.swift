@@ -35,11 +35,10 @@ struct UpgradeToProDialog: View {
                 .padding(.horizontal)
             
             // Features
-            VStack(alignment: .leading, spacing: 12) {
-                FeatureRow(icon: "✨", text: "Unlimited sales on Labas Store")
-                FeatureRow(icon: "📈", text: "Advanced sales analytics")
-                FeatureRow(icon: "🏅", text: "Professional seller badge")
-                FeatureRow(icon: "📞", text: "VIP priority support")
+            VStack(alignment: .leading, spacing: 14) {
+                FeatureRow(icon: "♾️", text: "Unlimited sales on Styleto Store")
+                FeatureRow(icon: "📸", text: "Unlimited clothes detection")
+                FeatureRow(icon: "✨", text: "Unlimited outfit suggestions")
             }
             .padding(.horizontal)
             
@@ -82,7 +81,7 @@ struct FeatureRow: View {
     var body: some View {
         HStack(spacing: 12) {
             Text(icon)
-                .font(.title3)
+                .font(.title2)
             Text(text)
                 .font(.body)
                 .foregroundColor(.themeText)
@@ -90,4 +89,3 @@ struct FeatureRow: View {
         }
     }
 }
-

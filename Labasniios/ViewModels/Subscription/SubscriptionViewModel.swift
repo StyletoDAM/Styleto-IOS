@@ -1,4 +1,6 @@
 // ViewModels/Subscription/SubscriptionViewModel.swift
+// ✨ MISE À JOUR - Détection de l'état "Canceled"
+
 import Foundation
 import Combine
 
@@ -29,15 +31,19 @@ class SubscriptionViewModel: ObservableObject {
             self.subscription = subscription
             
             print("✅ [SubscriptionVM] Loaded: \(subscription.plan.rawValue)")
+            print("   📊 Status: \(subscription.status)")
+            print("   📊 Clothes Detection: \(statsResult.clothesDetection.used)")
+            print("   📊 Outfit Suggestions: \(statsResult.outfitSuggestions.used)")
+            print("   📊 Store Selling: \(statsResult.storeSelling.used)")
         } catch {
-            errorMessage = "Impossible de charger l'abonnement"
+            errorMessage = "Unable to load subscription"
             print("❌ [SubscriptionVM] Load error: \(error)")
         }
         
         isLoading = false
     }
     
-    // ✨ NOUVEAU: Annuler l'abonnement
+    // ✨ NOUVEAU: Annuler l'abonnement avec refresh automatique
     func cancelSubscription() async {
         isCanceling = true
         errorMessage = nil
@@ -49,11 +55,19 @@ class SubscriptionViewModel: ObservableObject {
             if result.success {
                 successMessage = result.message
                 
-                // Rafraîchir les données
+                print("✅ [SubscriptionVM] Subscription canceled successfully")
+                print("   ⏰ Will expire: \(result.expiresAt?.formatted() ?? "unknown")")
+                
+                // ✨ STRATÉGIE SIMPLE: Rafraîchir immédiatement après le succès
+                // Le backend a déjà mis à jour le statut à "canceled"
                 await loadSubscriptionData()
                 
-                print("✅ [SubscriptionVM] Subscription canceled successfully")
-                print("   Expires at: \(result.expiresAt?.formatted() ?? "unknown")")
+                print("🔄 [SubscriptionVM] Data refreshed - Status should now be 'canceled'")
+                print("   📊 Current status: \(subscription?.status ?? "unknown")")
+                print("   📊 isCanceled computed property: \(isCanceled)")
+                
+                // ✨ NOUVEAU: Notifier les autres vues (Settings, etc.)
+                NotificationCenter.default.post(name: .subscriptionDidUpdate, object: nil)
             } else {
                 errorMessage = result.message
             }
@@ -86,11 +100,14 @@ class SubscriptionViewModel: ObservableObject {
             if result.success {
                 successMessage = result.message
                 await loadSubscriptionData()
+                
+                // ✨ NOUVEAU: Notifier les autres vues
+                NotificationCenter.default.post(name: .subscriptionDidUpdate, object: nil)
             } else {
                 errorMessage = result.message
             }
         } catch {
-            errorMessage = "Échec du paiement. Vérifiez votre connexion."
+            errorMessage = "Payment failed. Please check your connection."
         }
         
         isLoading = false
@@ -98,8 +115,18 @@ class SubscriptionViewModel: ObservableObject {
     
     // ✨ NOUVEAU: Vérifier si l'abonnement peut être annulé
     var canCancelSubscription: Bool {
-        // On peut annuler si on a un plan payant (PREMIUM ou PRO_SELLER)
-        return currentPlan == .premium || currentPlan == .proSeller
+        // On peut annuler SEULEMENT si:
+        // 1. On a un plan payant (PREMIUM ou PRO_SELLER)
+        // 2. ET le statut n'est PAS déjà "canceled"
+        let hasPaidPlan = currentPlan == .premium || currentPlan == .proSeller
+        let notAlreadyCanceled = subscription?.status != "canceled"
+        
+        return hasPaidPlan && notAlreadyCanceled
+    }
+    
+    // ✨ NOUVEAU: Vérifier si l'abonnement est annulé
+    var isCanceled: Bool {
+        return subscription?.status == "canceled"
     }
     
     // ✨ NOUVEAU: Message pour expiration
@@ -112,6 +139,38 @@ class SubscriptionViewModel: ObservableObject {
         formatter.dateStyle = .medium
         formatter.timeStyle = .none
         
-        return "Your subscription will expire on \(formatter.string(from: expiresAt))"
+        if isCanceled {
+            return "Access expires on \(formatter.string(from: expiresAt))"
+        } else {
+            return "Renews on \(formatter.string(from: expiresAt))"
+        }
+    }
+    
+    // ✨ NOUVEAU: Date d'expiration formatée
+    var expirationDate: String {
+        guard let expiresAt = subscription?.expiresAt else {
+            return "unknown date"
+        }
+        
+        let formatter = DateFormatter()
+        formatter.dateStyle = .medium
+        formatter.timeStyle = .none
+        
+        return formatter.string(from: expiresAt)
+    }
+    
+    // ✨ NOUVEAU: Forcer un refresh manuel des stats
+    func refreshUsageStats() async {
+        do {
+            let stats = try await SubscriptionService.shared.getUsageStats()
+            self.usageStats = stats
+            
+            print("🔄 [SubscriptionVM] Stats refreshed")
+            print("   📊 Clothes Detection: \(stats.clothesDetection.used)")
+            print("   📊 Outfit Suggestions: \(stats.outfitSuggestions.used)")
+            print("   📊 Store Selling: \(stats.storeSelling.used)")
+        } catch {
+            print("❌ [SubscriptionVM] Failed to refresh stats: \(error)")
+        }
     }
 }

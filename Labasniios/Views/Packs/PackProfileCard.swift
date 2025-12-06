@@ -1,11 +1,13 @@
 // Views/Packs/PackProfileCard.swift
+// ✨ MISE À JOUR - Écoute les changements d'abonnement
+
 import SwiftUI
 
 struct PackProfileCard: View {
     
     @ObservedObject private var viewModel = SubscriptionViewModel.shared
     @State private var showPlans = false
-    @State private var showManageSubscription = false // ✨ NOUVEAU
+    @State private var showManageSubscription = false
     
     var body: some View {
         VStack(spacing: 16) {
@@ -28,7 +30,7 @@ struct PackProfileCard: View {
                     
                     Spacer()
                     
-                    // ✨ NOUVEAU: Bouton "Manage" pour les abonnements payants
+                    // ✨ Bouton "Manage" pour les abonnements payants
                     if viewModel.currentPlan != .free {
                         Button {
                             showManageSubscription = true
@@ -96,12 +98,21 @@ struct PackProfileCard: View {
             }
         }
         .padding(.horizontal, 16)
-        .task { await viewModel.loadSubscriptionData() }
+        .task {
+            await viewModel.loadSubscriptionData()
+        }
+        // ✨ NOUVEAU: Écouter les changements d'abonnement
+        .onReceive(NotificationCenter.default.publisher(for: .subscriptionDidUpdate)) { _ in
+            print("🔔 [PackProfileCard] Subscription updated notification received")
+            Task {
+                await viewModel.loadSubscriptionData()
+            }
+        }
         .sheet(isPresented: $showPlans) {
             SubscriptionPlansView()
         }
         .sheet(isPresented: $showManageSubscription) {
-            ManageSubscriptionView() // ✨ NOUVEAU
+            ManageSubscriptionView()
         }
         .alert("Success", isPresented: .constant(viewModel.successMessage != nil)) {
             Button("OK") {

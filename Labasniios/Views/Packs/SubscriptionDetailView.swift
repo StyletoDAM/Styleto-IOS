@@ -1,6 +1,4 @@
-// Labasniios/Views/Packs/SubscriptionDetailView.swift
-// 📌 REMPLACER le fichier existant par celui-ci
-
+// SubscriptionDetailView.swift
 import SwiftUI
 
 struct SubscriptionDetailView: View {
@@ -56,7 +54,7 @@ struct SubscriptionDetailView: View {
                 ("person.2", "Premium 3D Avatar\nCustomize your virtual avatar"),
                 ("bag", "Limited Sales\nUp to 3 items per month")
             ]
-        } else { // Pro Seller
+        } else {
             return [
                 ("camera.fill", "Unlimited Scans\nDetect as many clothes as you want"),
                 ("sparkles", "Unlimited AI\nOutfit suggestions without limits"),
@@ -69,7 +67,7 @@ struct SubscriptionDetailView: View {
         NavigationStack {
             ScrollView {
                 VStack(spacing: 24) {
-                    // Header with crown/bag
+                    // Header
                     VStack(spacing: 16) {
                         ZStack {
                             Circle()
@@ -165,12 +163,10 @@ struct SubscriptionDetailView: View {
                 .padding(.top)
             }
             
-            // Fixed bottom button + info
+            // Fixed bottom button
             VStack {
                 Button {
-                    Task {
-                        await initiateSubscription()
-                    }
+                    Task { await initiateSubscription() }
                 } label: {
                     if isProcessing {
                         ProgressView()
@@ -214,7 +210,6 @@ struct SubscriptionDetailView: View {
             }
             .background(Color.themeBackground)
             
-            // Navigation bar
             .navigationTitle("Pack Details")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -227,33 +222,28 @@ struct SubscriptionDetailView: View {
                 }
             }
             .alert("Error", isPresented: .constant(errorMessage != nil)) {
-                Button("OK") {
-                    errorMessage = nil
-                }
+                Button("OK") { errorMessage = nil }
             } message: {
                 if let error = errorMessage {
                     Text(error)
                 }
             }
-            .alert("Success", isPresented: $showSuccessAlert) {
+            .alert("Success!", isPresented: $showSuccessAlert) {
                 Button("OK") {
-                    showSuccessAlert = false
-                    onSubscriptionSuccess?()
-                    dismiss()
+                    NotificationCenter.default.post(name: .dismissAllSubscriptionViews, object: nil)
                 }
             } message: {
                 Text("Your subscription has been activated successfully!")
+            }
+            .onReceive(NotificationCenter.default.publisher(for: .dismissAllSubscriptionViews)) { _ in
+                dismiss()
             }
             .sheet(isPresented: $showCheckoutSheet) {
                 if let url = checkoutUrl {
                     StripeCheckoutSheet(
                         checkoutUrl: url,
-                        onSuccess: {
-                            handlePaymentSuccess()
-                        },
-                        onCancel: {
-                            handlePaymentCancel()
-                        }
+                        onSuccess: { handlePaymentSuccess() },
+                        onCancel: { handlePaymentCancel() }
                     )
                 }
             }
@@ -299,20 +289,22 @@ struct SubscriptionDetailView: View {
     }
     
     private func handlePaymentSuccess() {
-        // Attendre un peu que le backend traite le webhook
         Task {
-            try? await Task.sleep(nanoseconds: 1_500_000_000) // 1.5 secondes
+            try? await Task.sleep(nanoseconds: 1_500_000_000) // 1.5s
             
             await MainActor.run {
-                showSuccessAlert = true
                 onSubscriptionSuccess?()
+                NotificationCenter.default.post(name: .subscriptionDidUpdate, object: nil)
+
+                // ✅ Fermer IMMÉDIATEMENT toutes les vues
+                NotificationCenter.default.post(name: .dismissAllSubscriptionViews, object: nil)
+                // Optionnel: afficher un toast de succès dans la vue parente
             }
         }
     }
     
     private func handlePaymentCancel() {
         isProcessing = false
-        // Optionnel: afficher un message
     }
 }
 
@@ -327,4 +319,11 @@ struct BulletPoint: View {
             Spacer()
         }
     }
+}
+
+// MARK: - Notification Extension
+extension Notification.Name {
+    static let subscriptionDidUpdate = Notification.Name("subscriptionDidUpdate")
+
+    static let dismissAllSubscriptionViews = Notification.Name("dismissAllSubscriptionViews")
 }

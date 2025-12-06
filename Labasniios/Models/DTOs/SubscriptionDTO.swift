@@ -1,4 +1,6 @@
 // Models/DTOs/SubscriptionDTO.swift
+// ✨ MISE À JOUR - Ajout du champ "status"
+
 import Foundation
 
 enum SubscriptionPlan: String, Codable {
@@ -20,13 +22,15 @@ struct SubscriptionResponse: Codable {
     let subscribedAt: Date
     let expiresAt: Date?
     let isActive: Bool
+    let status: String  // ✨ NOUVEAU: "active", "canceled", "expired", etc.
     
     // Public initializer pour créer manuellement
-    init(plan: SubscriptionPlan, subscribedAt: Date, expiresAt: Date?, isActive: Bool) {
+    init(plan: SubscriptionPlan, subscribedAt: Date, expiresAt: Date?, isActive: Bool, status: String = "active") {
         self.plan = plan
         self.subscribedAt = subscribedAt
         self.expiresAt = expiresAt
         self.isActive = isActive
+        self.status = status
     }
     
     // Custom decoder pour gérer les cas où des champs peuvent être manquants
@@ -71,10 +75,13 @@ struct SubscriptionResponse: Codable {
         
         // isActive peut être manquant
         isActive = (try? container.decodeIfPresent(Bool.self, forKey: .isActive)) ?? true
+        
+        // ✨ NOUVEAU: status avec valeur par défaut "active"
+        status = (try? container.decode(String.self, forKey: .status)) ?? "active"
     }
     
     enum CodingKeys: String, CodingKey {
-        case plan, subscribedAt, expiresAt, isActive
+        case plan, subscribedAt, expiresAt, isActive, status
     }
 }
 
@@ -90,8 +97,6 @@ struct UsageStatsResponse: Codable {
     let expiresAt: Date?
     let isActive: Bool
 }
-
-// Models/DTOs/SubscriptionDTO.swift  (remplace juste cette partie UsageItem)
 
 struct UsageItem: Codable {
     let used: Int
@@ -211,3 +216,4 @@ struct QuotaCheckResult: Codable {
 struct UpdateSubscriptionRequest: Codable {
     let plan: SubscriptionPlan
 }
+
