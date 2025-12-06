@@ -62,7 +62,47 @@ class SubscriptionService {
         return try JSONDecoder.iso8601.decode(QuotaCheckResult.self, from: data)
     }
     
-    // Ancienne méthode (conservée pour compatibilité si nécessaire)
+    // ✨ NOUVEAU: Annuler l'abonnement à la fin de la période
+    func cancelSubscription() async throws -> CancelSubscriptionResponse {
+        guard let url = URL(string: APIConstants.baseURL.absoluteString + "/subscriptions/cancel") else {
+            throw NetworkError.invalidURL
+        }
+        
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        if let token = TokenManager.shared.getToken() {
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        
+        print("📤 [SubscriptionService] Canceling subscription")
+        
+        let (data, response) = try await URLSession.shared.data(for: request)
+        
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw NetworkError.serverError
+        }
+        
+        print("📡 [SubscriptionService] Cancel Status: \(httpResponse.statusCode)")
+        
+        if let responseString = String(data: data, encoding: .utf8) {
+            print("📦 [SubscriptionService] Cancel Response: \(responseString)")
+        }
+        
+        if httpResponse.statusCode >= 400 {
+            if let error = try? JSONDecoder().decode(ErrorResponse.self, from: data) {
+                throw NetworkError.serverMessage(error.message)
+            }
+            throw NetworkError.requestFailed(httpResponse.statusCode)
+        }
+        
+        let cancelResponse = try JSONDecoder.iso8601.decode(CancelSubscriptionResponse.self, from: data)
+        print("✅ [SubscriptionService] Subscription will be canceled at: \(cancelResponse.expiresAt ?? Date())")
+        
+        return cancelResponse
+    }
+    
+    // ANCIEN: Méthode conservée pour compatibilité
     func purchasePlan(_ plan: SubscriptionPlan, paymentData: PurchaseSimulationRequest) async throws -> PurchaseSimulationResponse {
         guard let url = URL(string: APIConstants.baseURL.absoluteString + "/subscriptions/purchase/\(plan.rawValue)") else {
             throw NetworkError.invalidURL
@@ -88,7 +128,7 @@ class SubscriptionService {
         return try JSONDecoder.iso8601.decode(PurchaseSimulationResponse.self, from: data)
     }
     
-    // Nouvelle méthode utilisant PATCH /subscriptions/me (comme Android)
+    // ANCIEN: Mise à jour manuelle (Admin/Debug)
     func updateSubscription(plan: SubscriptionPlan) async throws -> SubscriptionResponse {
         guard let url = URL(string: APIConstants.baseURL.absoluteString + "/subscriptions/me") else {
             throw NetworkError.invalidURL
@@ -101,13 +141,11 @@ class SubscriptionService {
         }
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         
-        // Body: { "plan": "PREMIUM" } ou { "plan": "PRO_SELLER" }
         let body: [String: String] = ["plan": plan.rawValue]
         request.httpBody = try JSONSerialization.data(withJSONObject: body)
         
         let (data, response) = try await URLSession.shared.data(for: request)
         
-        // Debug: Log response
         if let http = response as? HTTPURLResponse {
             print("🔍 [SubscriptionService] PATCH /subscriptions/me Status: \(http.statusCode)")
             if let jsonString = String(data: data, encoding: .utf8) {
@@ -122,8 +160,6 @@ class SubscriptionService {
             throw NetworkError.requestFailed(http.statusCode)
         }
         
-        // Le backend renvoie { message: string, subscription: SubscriptionResponse }
-        // Il faut extraire "subscription" de la réponse
         struct UpdateSubscriptionResponse: Codable {
             let message: String?
             let subscription: SubscriptionResponse
@@ -135,11 +171,8 @@ class SubscriptionService {
             return wrapper.subscription
         } catch {
             print("❌ [SubscriptionService] Decoding error: \(error)")
-            // Si le décodage échoue mais que le status code est 200, on considère que c'est OK
-            // et on retourne une réponse par défaut
             if let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) {
                 print("⚠️ [SubscriptionService] Decoding failed but status is OK, returning default response")
-                // Retourner une réponse par défaut
                 return SubscriptionResponse(
                     plan: plan,
                     subscribedAt: Date(),
@@ -151,3 +184,13 @@ class SubscriptionService {
         }
     }
 }
+
+// MARK: - Response Models
+
+struct CancelSubscriptionResponse: Codable {
+    let success: Bool
+    let message: String
+    let expiresAt: Date?
+    let plan: String
+}
+

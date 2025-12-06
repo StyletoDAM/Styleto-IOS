@@ -5,6 +5,7 @@ struct PackProfileCard: View {
     
     @ObservedObject private var viewModel = SubscriptionViewModel.shared
     @State private var showPlans = false
+    @State private var showManageSubscription = false // ✨ NOUVEAU
     
     var body: some View {
         VStack(spacing: 16) {
@@ -27,11 +28,30 @@ struct PackProfileCard: View {
                     
                     Spacer()
                     
-                    Image(systemName: "chevron.right")
-                        .font(.system(size: 14, weight: .semibold))
-                        .foregroundColor(.themeSecondaryText)
+                    // ✨ NOUVEAU: Bouton "Manage" pour les abonnements payants
+                    if viewModel.currentPlan != .free {
+                        Button {
+                            showManageSubscription = true
+                        } label: {
+                            HStack(spacing: 4) {
+                                Text("Manage")
+                                    .font(.system(size: 14, weight: .semibold))
+                                Image(systemName: "gearshape.fill")
+                                    .font(.system(size: 12))
+                            }
+                            .foregroundColor(.white)
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 8)
+                            .background(Color.themePrimary)
+                            .cornerRadius(12)
+                        }
+                    } else {
+                        Image(systemName: "chevron.right")
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundColor(.themeSecondaryText)
+                            .onTapGesture { showPlans = true }
+                    }
                 }
-                .onTapGesture { showPlans = true }
                 
                 Text("Your usage this month")
                     .font(.system(size: 15, weight: .medium))
@@ -70,16 +90,23 @@ struct PackProfileCard: View {
             .cornerRadius(20)
             .shadow(color: .black.opacity(0.05), radius: 10, x: 0, y: 5)
             
-            // MARK: - Card 2: Upgrade
+            // MARK: - Card 2: Upgrade (seulement si pas PRO_SELLER)
             if viewModel.currentPlan != .proSeller {
                 upgradeCard
             }
         }
         .padding(.horizontal, 16)
         .task { await viewModel.loadSubscriptionData() }
-        .sheet(isPresented: $showPlans) { SubscriptionPlansView() }
-        .alert("Succès", isPresented: .constant(viewModel.successMessage != nil)) {
-            Button("OK") { viewModel.successMessage = nil }
+        .sheet(isPresented: $showPlans) {
+            SubscriptionPlansView()
+        }
+        .sheet(isPresented: $showManageSubscription) {
+            ManageSubscriptionView() // ✨ NOUVEAU
+        }
+        .alert("Success", isPresented: .constant(viewModel.successMessage != nil)) {
+            Button("OK") {
+                viewModel.successMessage = nil
+            }
         } message: {
             Text(viewModel.successMessage ?? "")
         }
@@ -141,7 +168,7 @@ struct PackProfileCard: View {
     }
 }
 
-// MARK: - Progress Row (corrigé proprement)
+// MARK: - Progress Row
 private struct ProgressRow: View {
     let icon: String
     let title: String
