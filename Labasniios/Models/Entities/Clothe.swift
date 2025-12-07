@@ -25,6 +25,7 @@ struct ClotheUserInfo: Codable {
 struct Clothe: Identifiable, Codable {
     let id: String
     let imageURL: String
+    let processedImageURL: String?  // ✅ AJOUT CRUCIAL
     let category: String?
     let season: String?
     let color: String?
@@ -42,19 +43,21 @@ struct Clothe: Identifiable, Codable {
 
     enum CodingKeys: String, CodingKey {
         case id = "_id"
-        case imageURL, category, season, color, style, userId, acceptedCount, rejectedCount
+        case imageURL
+        case processedImageURL  // ✅ AJOUT
+        case category, season, color, style, userId, acceptedCount, rejectedCount
     }
 
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         id = try container.decode(String.self, forKey: .id)
         imageURL = try container.decode(String.self, forKey: .imageURL)
+        processedImageURL = try container.decodeIfPresent(String.self, forKey: .processedImageURL)  // ✅ AJOUT
         category = try container.decodeIfPresent(String.self, forKey: .category)
         season = try container.decodeIfPresent(String.self, forKey: .season)
         color = try container.decodeIfPresent(String.self, forKey: .color)
         style = try container.decodeIfPresent(String.self, forKey: .style)
         
-        // Decode acceptedCount and rejectedCount
         acceptedCount = try container.decodeIfPresent(Int.self, forKey: .acceptedCount)
         rejectedCount = try container.decodeIfPresent(Int.self, forKey: .rejectedCount)
 
@@ -76,6 +79,7 @@ struct Clothe: Identifiable, Codable {
         var container = encoder.container(keyedBy: CodingKeys.self)
         try container.encode(id, forKey: .id)
         try container.encode(imageURL, forKey: .imageURL)
+        try container.encodeIfPresent(processedImageURL, forKey: .processedImageURL)  // ✅ AJOUT
         try container.encodeIfPresent(category, forKey: .category)
         try container.encodeIfPresent(season, forKey: .season)
         try container.encodeIfPresent(color, forKey: .color)

@@ -4,6 +4,7 @@ import AVFoundation
 struct CameraOverlayView: View {
     @ObservedObject var viewModel: AvatarViewModel
     @State private var selectedClothe: Clothe?
+    @State private var showDebugInfo = false  // ✅ Toggle debug
     
     private let columns: [GridItem] = [
         GridItem(.flexible()), GridItem(.flexible()), GridItem(.flexible())
@@ -11,41 +12,129 @@ struct CameraOverlayView: View {
     
     var body: some View {
         ZStack {
-            // Caméra en arrière-plan
-            CameraPreview(session: viewModel.cameraSession)
-                .ignoresSafeArea()
+            // ✅ Afficher l'image traitée OU la caméra brute
+            if let processed = viewModel.processedImage {
+                Image(uiImage: processed)
+                    .resizable()
+                    .aspectRatio(contentMode: .fill)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .ignoresSafeArea()
+            } else {
+                CameraPreview(session: viewModel.cameraSession)
+                    .ignoresSafeArea()
+            }
             
-            // Overlay : vêtements scrollables
+            // ✅ Indicateur de traitement
+            if viewModel.isProcessing {
+                VStack {
+                    HStack {
+                        Spacer()
+                        HStack(spacing: 8) {
+                            ProgressView()
+                                .tint(.white)
+                            Text("Traitement...")
+                                .font(.caption)
+                                .foregroundColor(.white)
+                        }
+                        .padding(8)
+                        .background(Color.black.opacity(0.6))
+                        .cornerRadius(8)
+                        .padding(.trailing, 20)
+                        .padding(.top, 100)
+                    }
+                    Spacer()
+                }
+            }
+            
+            // ✅ Affichage erreur
+            if let error = viewModel.errorMessage {
+                VStack {
+                    Text(error)
+                        .font(.caption)
+                        .foregroundColor(.white)
+                        .padding(12)
+                        .background(Color.red.opacity(0.8))
+                        .cornerRadius(8)
+                        .padding(.top, 100)
+                    Spacer()
+                }
+            }
+            
+            // ✅ Debug info (optionnel)
+            if showDebugInfo {
+                VStack {
+                    HStack {
+                        Spacer()
+                        VStack(alignment: .trailing, spacing: 4) {
+                            Text("Vêtements: \(viewModel.clothes.count)")
+                            Text("Sélectionné: \(selectedClothe?.category ?? "Aucun")")
+                            Text("Traité: \(viewModel.processedImage != nil ? "Oui" : "Non")")
+                        }
+                        .font(.system(size: 10, design: .monospaced))
+                        .foregroundColor(.white)
+                        .padding(8)
+                        .background(Color.black.opacity(0.7))
+                        .cornerRadius(6)
+                        .padding(20)
+                    }
+                    Spacer()
+                }
+            }
+            
+            // Barre de vêtements en bas
             VStack {
                 Spacer()
                 
-                // Scroll horizontal des vêtements
-                ScrollView(.horizontal, showsIndicators: false) {
-                    LazyHStack(spacing: 12) {
-                        ForEach(viewModel.clothes) { clothe in
-                            ClothingThumb(clothe: clothe, isSelected: selectedClothe?.id == clothe.id)
-                                .onTapGesture {
-                                    selectedClothe = clothe
-                                    viewModel.selectedClothe = clothe
-                                    print("Vêtement sélectionné : \(clothe.category ?? "")")
+                if !viewModel.clothes.isEmpty {
+                    VStack(spacing: 12) {
+                        // Instructions
+                        Text("Reculez de 1.5m et sélectionnez un vêtement")
+                            .font(.caption)
+                            .foregroundColor(.white)
+                            .padding(.horizontal, 20)
+                            .padding(.vertical, 8)
+                            .background(Color.black.opacity(0.5))
+                            .cornerRadius(8)
+                        
+                        ScrollView(.horizontal, showsIndicators: false) {
+                            LazyHStack(spacing: 12) {
+                                ForEach(viewModel.clothes) { clothe in
+                                    ClothingThumb(
+                                        clothe: clothe,
+                                        isSelected: selectedClothe?.id == clothe.id
+                                    )
+                                    .onTapGesture {
+                                        selectedClothe = clothe
+                                        viewModel.selectedClothe = clothe
+                                        print("👕 Vêtement sélectionné: \(clothe.category ?? "unknown")")
+                                    }
                                 }
+                            }
+                            .padding(.horizontal, 16)
                         }
+                        .frame(height: 120)
                     }
-                    .padding(.horizontal, 16)
-                }
-                .frame(height: 120)
-                .background(
-                    LinearGradient(
-                        colors: [.clear, .black.opacity(0.4)],
-                        startPoint: .top,
-                        endPoint: .bottom
+                    .background(
+                        LinearGradient(
+                            colors: [.clear, .black.opacity(0.6)],
+                            startPoint: .top,
+                            endPoint: .bottom
+                        )
                     )
-                )
+                } else {
+                    Text("Aucun vêtement disponible")
+                        .foregroundColor(.white)
+                        .padding()
+                        .background(Color.red.opacity(0.7))
+                        .cornerRadius(8)
+                        .padding(.bottom, 40)
+                }
             }
             
-            // Bouton fermer
+            // Boutons en haut
             VStack {
                 HStack {
+                    // Bouton fermer
                     Button {
                         viewModel.stopCamera()
                     } label: {
@@ -56,10 +145,23 @@ struct CameraOverlayView: View {
                             .background(Color.black.opacity(0.5))
                             .clipShape(Circle())
                     }
+                    
                     Spacer()
+                    
+                    // ✅ Bouton debug (optionnel)
+                    Button {
+                        showDebugInfo.toggle()
+                    } label: {
+                        Image(systemName: showDebugInfo ? "info.circle.fill" : "info.circle")
+                            .font(.system(size: 20, weight: .bold))
+                            .foregroundColor(.white)
+                            .frame(width: 44, height: 44)
+                            .background(Color.black.opacity(0.5))
+                            .clipShape(Circle())
+                    }
                 }
                 .padding(.top, 50)
-                .padding(.leading, 20)
+                .padding(.horizontal, 20)
                 
                 Spacer()
             }
@@ -67,24 +169,36 @@ struct CameraOverlayView: View {
     }
 }
 
-// Miniature de vêtement
 struct ClothingThumb: View {
     let clothe: Clothe
     let isSelected: Bool
     
     var body: some View {
         VStack(spacing: 6) {
-            AsyncImage(url: URL(string: clothe.imageURL)) { image in
-                image
-                    .resizable()
-                    .scaledToFill()
-                    .frame(width: 80, height: 80)
-                    .clipped()
-            } placeholder: {
-                Rectangle()
-                    .fill(Color.gray.opacity(0.3))
-                    .frame(width: 80, height: 80)
-                    .overlay(ProgressView().tint(.white))
+            AsyncImage(url: URL(string: clothe.imageURL)) { phase in
+                switch phase {
+                case .success(let image):
+                    image
+                        .resizable()
+                        .scaledToFill()
+                        .frame(width: 80, height: 80)
+                        .clipped()
+                case .failure:
+                    Rectangle()
+                        .fill(Color.red.opacity(0.3))
+                        .frame(width: 80, height: 80)
+                        .overlay(
+                            Image(systemName: "exclamationmark.triangle")
+                                .foregroundColor(.white)
+                        )
+                case .empty:
+                    Rectangle()
+                        .fill(Color.gray.opacity(0.3))
+                        .frame(width: 80, height: 80)
+                        .overlay(ProgressView().tint(.white))
+                @unknown default:
+                    EmptyView()
+                }
             }
             .clipShape(RoundedRectangle(cornerRadius: 12))
             .overlay(

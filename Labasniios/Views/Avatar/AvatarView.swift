@@ -1,83 +1,41 @@
-// Views/Avatar/AvatarView.swift
 import SwiftUI
 
 struct AvatarView: View {
-    @StateObject private var vtoViewModel = VTOViewModel()
     
+    @EnvironmentObject var viewModel: AvatarViewModel
     var body: some View {
         ZStack {
-            if vtoViewModel.isLoading {
-                // Loading state
+            if viewModel.isCameraActive {
+                CameraOverlayView(viewModel: viewModel)
+            } else {
+                
                 VStack(spacing: 30) {
-                    ProgressView()
-                        .scaleEffect(1.5)
-                        .tint(.themePrimary)
-                    
-                    Text("Chargement de votre garde-robe...")
-                        .font(.subheadline)
-                        .foregroundColor(.themeSecondaryText)
-                }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .background(Color.themeBackground.ignoresSafeArea())
-            } else if let errorMessage = vtoViewModel.errorMessage {
-                // Error state
-                VStack(spacing: 20) {
-                    Image(systemName: "exclamationmark.triangle")
-                        .font(.system(size: 60))
-                        .foregroundColor(.red)
-                    
-                    Text(errorMessage)
-                        .font(.subheadline)
-                        .foregroundColor(.themeSecondaryText)
-                        .multilineTextAlignment(.center)
-                        .padding(.horizontal, 40)
-                    
-                    Button("Réessayer") {
-                        Task {
-                            await vtoViewModel.loadClothes()
-                        }
-                    }
-                    .buttonStyle(.borderedProminent)
-                }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .background(Color.themeBackground.ignoresSafeArea())
-            } else if vtoViewModel.clothesByCategory.isEmpty {
-                // Empty state
-                VStack(spacing: 30) {
-                    Image(systemName: "tshirt")
+                    Image(systemName: "camera.fill")
                         .font(.system(size: 80))
                         .foregroundColor(.themePrimary.opacity(0.6))
                     
-                    Text("Aucun vêtement prêt")
-                        .font(.title2)
+                    Text("Real Time Try-On")
+                        .font(.title)
                         .fontWeight(.bold)
                         .foregroundColor(.themeTeal)
                     
-                    Text("Ajoutez des vêtements dans votre garde-robe pour utiliser le Virtual Try-On")
+                    Text("Press the central button to start")
                         .font(.subheadline)
                         .foregroundColor(.themeSecondaryText)
                         .multilineTextAlignment(.center)
                         .padding(.horizontal, 40)
-                    
-                    Button("Aller à la garde-robe") {
-                        // Navigation vers DressingView
-                    }
-                    .buttonStyle(.borderedProminent)
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .background(Color.themeBackground.ignoresSafeArea())
-            } else {
-                // VTO Active
-                VTOCameraView(viewModel: vtoViewModel)
-                    .ignoresSafeArea()
             }
         }
-        .task {
-            await vtoViewModel.loadClothes()
+        .onAppear {
+            if !viewModel.isCameraActive {
+                viewModel.startCamera()
+            }
+        }
+        .onDisappear {
+            viewModel.stopCamera()
         }
     }
-}
-
-#Preview {
-    AvatarView()
 }
