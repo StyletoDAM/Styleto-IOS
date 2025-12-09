@@ -44,19 +44,19 @@ struct PinEntrySheet: View {
             VStack(spacing: 16) {
                 Text("Verification Required")
                     .font(.title2).bold()
-                    .foregroundColor(.ca3c66)
+                    .foregroundColor(.themePrimary)  // ✅ Dynamique
                 
                 VStack(spacing: 8) {
                     Text("A 6-digit code has been sent to")
                         .font(.subheadline)
-                        .foregroundColor(._4aa3a2)
+                        .foregroundColor(.themeText)  // ✅ Dynamique
                     
                     Text(email)
                         .font(.subheadline).bold()
-                        .foregroundColor(.ca3c66)
+                        .foregroundColor(.themePrimary)  // ✅ Dynamique
                         .padding(.horizontal, 12)
                         .padding(.vertical, 6)
-                        .background(Color.e8aabe.opacity(0.2))
+                        .background(Color.themeSoftPink.opacity(0.2))  // ✅ Dynamique
                         .cornerRadius(8)
                 }
             }
@@ -65,15 +65,16 @@ struct PinEntrySheet: View {
                 .font(.system(size: 28, weight: .bold, design: .monospaced))
                 .multilineTextAlignment(.center)
                 .keyboardType(.numberPad)
+                .foregroundColor(.themeText)  // ✅ Dynamique
                 .onChange(of: pinCode) { newValue in
                     pinCode = String(newValue.filter { $0.isNumber }.prefix(6))
                 }
                 .frame(maxWidth: 220)
                 .padding()
-                .background(RoundedRectangle(cornerRadius: 16).fill(Color.white))
+                .background(RoundedRectangle(cornerRadius: 16).fill(Color.themeCard))  // ✅ Dynamique
                 .overlay(
                     RoundedRectangle(cornerRadius: 16)
-                        .stroke(Color.ca3c66.opacity(0.7), lineWidth: 1.8)
+                        .stroke(Color.themePrimary.opacity(0.7), lineWidth: 1.8)  // ✅ Dynamique
                 )
                 .shadow(color: .black.opacity(0.06), radius: 6, x: 0, y: 4)
             
@@ -89,7 +90,9 @@ struct PinEntrySheet: View {
             } label: {
                 Group {
                     if isLoading {
-                        ProgressView().progressViewStyle(.circular)
+                        ProgressView()
+                            .progressViewStyle(.circular)
+                            .tint(.white)
                     } else {
                         Text("Verify code")
                             .font(.headline)
@@ -98,7 +101,7 @@ struct PinEntrySheet: View {
                 .frame(maxWidth: .infinity)
                 .padding()
             }
-            .buttonStyle(PillButtonStyle(background: .ca3c66, foreground: .white))
+            .buttonStyle(PillButtonStyle(background: .themePrimary, foreground: .white))  // ✅ Dynamique
             .disabled(pinCode.count != 6 || isLoading)
             
             if let onResend {
@@ -110,17 +113,17 @@ struct PinEntrySheet: View {
                         .fontWeight(.semibold)
                 }
                 .buttonStyle(.plain)
-                .foregroundColor(canResend ? .ca3c66 : .gray)
+                .foregroundColor(canResend ? .themePrimary : .gray)  // ✅ Dynamique
                 .disabled(!canResend)
             }
             
             Button("Cancel", action: onCancel)
-                .foregroundColor(._4aa3a2)
+                .foregroundColor(.themeSecondary)  // ✅ Dynamique
                 .font(.subheadline)
         }
         .padding()
+        .background(Color.themeBackground)  // ✅ Dynamique
         .presentationDetents([.medium])
         .presentationDragIndicator(.visible)
     }
 }
-

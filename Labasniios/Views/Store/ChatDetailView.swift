@@ -5,6 +5,7 @@ struct ChatDetailView: View {
     
     @Environment(\.dismiss) private var dismiss
     @StateObject private var viewModel: ChatDetailViewModel
+    @FocusState private var keyboardFocused: Bool
     
     init(conversation: ChatConversationResponse) {
         self.conversation = conversation
@@ -81,6 +82,9 @@ struct ChatDetailView: View {
                 .padding(.top, 10)
                 .padding(.bottom, 100)
             }
+            .onTapGesture {
+                keyboardFocused = false  // Ferme le clavier
+            }
             .onAppear { scrollToBottom(proxy: proxy) }
             .onChange(of: viewModel.messages.count) { _ in
                 scrollToBottom(proxy: proxy)
@@ -109,11 +113,9 @@ struct ChatDetailView: View {
 
     private var inputBar: some View {
         HStack(spacing: 14) {
-            Image(systemName: "paperclip")
-                .font(.title2)
-                .foregroundColor(.themePrimary.opacity(0.8))
             
-            TextField("Écrivez un message...", text: $viewModel.messageText, axis: .vertical)
+            TextField("Write a message...", text: $viewModel.messageText, axis: .vertical)
+                .focused($keyboardFocused)  // Ajoute cette ligne
                 .padding(14)
                 .background(Color.themeCard)
                 .cornerRadius(24)
@@ -169,20 +171,14 @@ struct ChatDetailView: View {
                                 .overlay(Text(partnerName.prefix(1)).font(.title3.bold()).foregroundColor(.white))
                         }
                         
-                        // Indicateur en ligne basé sur le statut socket
-                        Circle()
-                            .fill(viewModel.isConnected ? Color.green : Color.gray)
-                            .frame(width: 12, height: 12)
-                            .overlay(Circle().stroke(Color.themeBackground, lineWidth: 2))
+                        
                     }
                     
                     VStack(alignment: .leading, spacing: 2) {
                         Text(partnerName)
                             .font(.headline)
                             .foregroundColor(.themePrimary)
-                        Text(viewModel.isConnected ? "En ligne" : "Hors ligne")
-                            .font(.caption)
-                            .foregroundColor(viewModel.isConnected ? .green : .gray)
+                        
                     }
                 }
             }

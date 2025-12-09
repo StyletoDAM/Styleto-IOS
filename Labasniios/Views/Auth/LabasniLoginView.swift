@@ -4,6 +4,7 @@ struct LabasniLoginView: View {
     @StateObject private var viewModel = LoginViewModel()
     @StateObject private var appleSignInHelper = AppleSignInHelper()
     @StateObject private var googleSignInHelper = GoogleSignInHelper()
+    @ObservedObject private var themeManager = ThemeManager.shared  // ✅ AJOUT
     @State private var navigateToProfile = false
     @State private var snackbarMessage: String?
     @State private var isSnackbarVisible = false
@@ -23,13 +24,15 @@ struct LabasniLoginView: View {
     
     private var loginContentView: some View {
         ZStack {
-            // Fond très clair avec légère teinte aqua
-            LinearGradient(colors: [Color.white, Color.a7e0e0.opacity(0.28)],
-                           startPoint: .top, endPoint: .bottom)
+            // ✅ CORRECTION: Fond dynamique selon le thème
+            LinearGradient(
+                colors: [Color.themeBackground, Color.themeAqua.opacity(0.25)],
+                startPoint: .top,
+                endPoint: .bottom
+            )
             .ignoresSafeArea()
 
             VStack(spacing: 20) {
-                // Barre de nav minimale
                 Spacer(minLength: 0)
 
                 // Logo
@@ -44,11 +47,11 @@ struct LabasniLoginView: View {
                 VStack(spacing: 6) {
                     Text("Styleto")
                         .font(.system(size: 28, weight: .bold))
-                        .foregroundColor(.ca3c66)
+                        .foregroundColor(.themePrimary)  // ✅ Dynamique
 
                     Text("Welcome! Please log in")
                         .font(.system(size: 15, weight: .medium))
-                        .foregroundColor(._4aa3a2.opacity(0.95))
+                        .foregroundColor(.themeSecondary)  // ✅ Dynamique
                 }
                 .padding(.bottom, 8)
 
@@ -57,7 +60,7 @@ struct LabasniLoginView: View {
                     Group {
                         Text("Email")
                             .font(.system(size: 16, weight: .semibold))
-                            .foregroundColor(._4aa3a2)
+                            .foregroundColor(.themeText)  // ✅ Dynamique
 
                         IconField(systemName: "envelope",
                                   placeholder: "your@email.com",
@@ -67,7 +70,7 @@ struct LabasniLoginView: View {
                     Group {
                         Text("Password")
                             .font(.system(size: 16, weight: .semibold))
-                            .foregroundColor(._4aa3a2)
+                            .foregroundColor(.themeText)  // ✅ Dynamique
 
                         IconSecureField(systemName: "lock",
                                         placeholder: "••••••••",
@@ -81,7 +84,7 @@ struct LabasniLoginView: View {
                         } label: {
                             Text("Forgot password?")
                                 .font(.system(size: 15, weight: .semibold))
-                                .foregroundColor(._4aa3a2)
+                                .foregroundColor(.themeSecondary)  // ✅ Dynamique
                         }
                         .buttonStyle(.plain)
                     }
@@ -96,7 +99,6 @@ struct LabasniLoginView: View {
                             viewModel.password = ""
                             hideSnackbar()
                             profileUser = user
-                            // Sauvegarder l'état de connexion
                             AppPreferences.shared.saveLoginState(user: user)
                             navigateToProfile = true
                         }
@@ -106,6 +108,7 @@ struct LabasniLoginView: View {
                         if viewModel.isLoading {
                             ProgressView()
                                 .progressViewStyle(.circular)
+                                .tint(.white)
                         } else {
                             Text("Log In")
                                 .font(.system(size: 17, weight: .semibold))
@@ -114,7 +117,7 @@ struct LabasniLoginView: View {
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 16)
                 }
-                .buttonStyle(PillButtonStyle(background: .ca3c66, foreground: .white))
+                .buttonStyle(PillButtonStyle(background: .themePrimary, foreground: .white))  // ✅ Dynamique
                 .padding(.horizontal, 22)
                 .padding(.top, 6)
                 .disabled(viewModel.isLoading)
@@ -122,14 +125,14 @@ struct LabasniLoginView: View {
                 // Séparateur
                 HStack {
                     Rectangle()
-                        .fill(Color._4aa3a2.opacity(0.3))
+                        .fill(Color.themeSecondary.opacity(0.3))  // ✅ Dynamique
                         .frame(height: 1)
                     Text("OU")
                         .font(.system(size: 14, weight: .semibold))
-                        .foregroundColor(._4aa3a2.opacity(0.7))
+                        .foregroundColor(.themeSecondary.opacity(0.7))  // ✅ Dynamique
                         .padding(.horizontal, 12)
                     Rectangle()
-                        .fill(Color._4aa3a2.opacity(0.3))
+                        .fill(Color.themeSecondary.opacity(0.3))  // ✅ Dynamique
                         .frame(height: 1)
                 }
                 .padding(.horizontal, 22)
@@ -149,19 +152,19 @@ struct LabasniLoginView: View {
                         HStack(spacing: 12) {
                             Image(systemName: "globe")
                                 .font(.system(size: 18, weight: .semibold))
-                                .foregroundColor(._4aa3a2)
+                                .foregroundColor(.themeSecondary)  // ✅ Dynamique
                                 .frame(width: 24, height: 24)
                             
                             Text("Continue with Google")
                                 .font(.system(size: 16, weight: .semibold))
-                                .foregroundColor(._4aa3a2)
+                                .foregroundColor(.themeText)  // ✅ Dynamique
                         }
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 14)
-                        .background(Color.white)
+                        .background(Color.themeCard)  // ✅ Dynamique
                         .overlay(
                             RoundedRectangle(cornerRadius: 22, style: .continuous)
-                                .stroke(Color._4aa3a2.opacity(0.4), lineWidth: 1.5)
+                                .stroke(Color.themeSecondary.opacity(0.4), lineWidth: 1.5)  // ✅ Dynamique
                         )
                     }
                     .buttonStyle(.plain)
@@ -195,13 +198,14 @@ struct LabasniLoginView: View {
                 } label: {
                     Text("Don't have an account yet? Sign up")
                         .font(.system(size: 16, weight: .semibold))
-                        .foregroundColor(._4aa3a2.opacity(0.95))
+                        .foregroundColor(.themeSecondary)  // ✅ Dynamique
                 }
                 .buttonStyle(.plain)
                 .padding(.top, 12)
 
                 Spacer(minLength: 20)
             }
+            
             if isSnackbarVisible, let snackbarMessage {
                 VStack {
                     Spacer()
@@ -211,7 +215,7 @@ struct LabasniLoginView: View {
                         .padding(.horizontal, 20)
                         .padding(.vertical, 12)
                         .background(
-                            Capsule().fill(Color.ca3c66.opacity(0.92))
+                            Capsule().fill(Color.themePrimary.opacity(0.92))  // ✅ Dynamique
                         )
                         .padding(.bottom, 28)
                 }
@@ -219,11 +223,10 @@ struct LabasniLoginView: View {
                 .padding(.horizontal, 16)
             }
         }
-        .contentShape(Rectangle())                    // Important : permet de capter le tap même sur les espaces vides
-            .onTapGesture {
-                // Ferme le clavier quand on tape n’importe où sur l'écran
-                UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
-            }
+        .contentShape(Rectangle())
+        .onTapGesture {
+            UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+        }
         .navigationBarBackButtonHidden(true)
         .toolbar(.hidden, for: .navigationBar)
         .onChange(of: viewModel.errorMessage) { message in
@@ -242,15 +245,15 @@ struct LabasniLoginView: View {
             }
         }
         .onAppear {
+            themeManager.updateTheme()  // ✅ IMPORTANT
             hideSnackbar()
-            // Configurer les callbacks OAuth
+            
             appleSignInHelper.onSuccess = { response in
                 TokenManager.shared.saveToken(response.accessToken)
-                TokenManager.shared.saveRefreshToken(response.refreshToken) // ✨ NOUVEAU
+                TokenManager.shared.saveRefreshToken(response.refreshToken)
                 viewModel.password = ""
                 hideSnackbar()
                 profileUser = response.user
-                // Sauvegarder l'état de connexion
                 AppPreferences.shared.saveLoginState(user: response.user)
                 navigateToProfile = true
             }
@@ -260,11 +263,10 @@ struct LabasniLoginView: View {
             
             googleSignInHelper.onSuccess = { response in
                 TokenManager.shared.saveToken(response.accessToken)
-                TokenManager.shared.saveRefreshToken(response.refreshToken) // ✨ NOUVEAU
+                TokenManager.shared.saveRefreshToken(response.refreshToken)
                 viewModel.password = ""
                 hideSnackbar()
                 profileUser = response.user
-                // Sauvegarder l'état de connexion
                 AppPreferences.shared.saveLoginState(user: response.user)
                 navigateToProfile = true
             }
@@ -275,23 +277,15 @@ struct LabasniLoginView: View {
     }
 
     private func handleLogout() {
-        // Supprimer le token
         TokenManager.shared.clearToken()
-        
-        // Supprimer l'état de connexion sauvegardé
         AppPreferences.shared.clearLoginState()
-        
-        // Réinitialiser l'état de navigation immédiatement
         navigateToProfile = false
-        
-        // Réinitialiser les données utilisateur
         profileUser = nil
         viewModel.email = ""
         viewModel.password = ""
         viewModel.resetFeedback()
         hideSnackbar()
         
-        // Forcer la mise à jour de la vue
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
             navigateToProfile = false
         }
@@ -317,7 +311,7 @@ struct LabasniLoginView: View {
     }
 }
 
-// MARK: - Champs stylés
+// MARK: - Champs stylés (avec couleurs dynamiques)
 private struct IconField: View {
     let systemName: String
     let placeholder: String
@@ -326,7 +320,7 @@ private struct IconField: View {
     var body: some View {
         HStack(spacing: 10) {
             Image(systemName: systemName)
-                .foregroundColor(._4aa3a2.opacity(0.9))
+                .foregroundColor(.themeSecondary)  // ✅ Dynamique
                 .font(.system(size: 18, weight: .semibold))
                 .frame(width: 24)
 
@@ -334,16 +328,17 @@ private struct IconField: View {
                 .textInputAutocapitalization(.never)
                 .autocorrectionDisabled(true)
                 .keyboardType(.emailAddress)
+                .foregroundColor(.themeText)  // ✅ Dynamique
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 14)
         .background(
             RoundedRectangle(cornerRadius: 22, style: .continuous)
-                .fill(Color.white)
+                .fill(Color.themeCard)  // ✅ Dynamique
         )
         .overlay(
             RoundedRectangle(cornerRadius: 22, style: .continuous)
-                .stroke(Color.ca3c66.opacity(0.8), lineWidth: 1.5)
+                .stroke(Color.themePrimary.opacity(0.6), lineWidth: 1.5)  // ✅ Dynamique
         )
         .shadow(color: .black.opacity(0.06), radius: 8, x: 0, y: 4)
     }
@@ -365,16 +360,18 @@ private struct IconSecureField: View {
     var body: some View {
         HStack(spacing: 10) {
             Image(systemName: systemName)
-                .foregroundColor(._4aa3a2.opacity(0.9))
+                .foregroundColor(.themeSecondary)  // ✅ Dynamique
                 .font(.system(size: 18, weight: .semibold))
                 .frame(width: 24)
 
             if isSecure {
                 SecureField(placeholder, text: $text)
+                    .foregroundColor(.themeText)  // ✅ Dynamique
             } else {
                 TextField(placeholder, text: $text)
                     .textInputAutocapitalization(.never)
                     .autocorrectionDisabled(true)
+                    .foregroundColor(.themeText)  // ✅ Dynamique
             }
 
             Spacer(minLength: 0)
@@ -383,7 +380,7 @@ private struct IconSecureField: View {
                 isSecure.toggle()
             } label: {
                 Image(systemName: isSecure ? "eye.slash" : "eye")
-                    .foregroundColor(.ca3c66)
+                    .foregroundColor(.themePrimary)  // ✅ Dynamique
                     .font(.system(size: 16, weight: .semibold))
             }
             .buttonStyle(.plain)
@@ -392,13 +389,12 @@ private struct IconSecureField: View {
         .padding(.vertical, 14)
         .background(
             RoundedRectangle(cornerRadius: 22, style: .continuous)
-                .fill(Color.white)
+                .fill(Color.themeCard)  // ✅ Dynamique
         )
         .overlay(
             RoundedRectangle(cornerRadius: 22, style: .continuous)
-                .stroke(Color.ca3c66.opacity(0.8), lineWidth: 1.5)
+                .stroke(Color.themePrimary.opacity(0.6), lineWidth: 1.5)  // ✅ Dynamique
         )
         .shadow(color: .black.opacity(0.06), radius: 8, x: 0, y: 4)
     }
 }
-

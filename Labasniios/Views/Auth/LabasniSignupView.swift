@@ -8,6 +8,7 @@ struct LabasniSignupView: View {
     }
     
     @StateObject private var viewModel = SignupViewModel()
+    @ObservedObject private var themeManager = ThemeManager.shared  // ✅ AJOUT
     @State private var selectedGender: GenderOption?
     @State private var showTermsSheet = false
     @State private var attemptedSubmit = false
@@ -16,9 +17,12 @@ struct LabasniSignupView: View {
     
     var body: some View {
         ZStack {
-            // Fond doux rosé → blanc
-            LinearGradient(colors: [Color.e8aabe.opacity(0.35), .white],
-                           startPoint: .top, endPoint: .bottom)
+            // ✅ CORRECTION: Fond dynamique
+            LinearGradient(
+                colors: [Color.themeSoftPink.opacity(0.35), Color.themeBackground],
+                startPoint: .top,
+                endPoint: .bottom
+            )
             .ignoresSafeArea()
             
             ScrollView(showsIndicators: false) {
@@ -29,18 +33,18 @@ struct LabasniSignupView: View {
                     VStack(alignment: .leading, spacing: 6) {
                         Text("Create Account")
                             .font(.system(size: 28, weight: .heavy))
-                            .foregroundColor(.ca3c66)
+                            .foregroundColor(.themePrimary)  // ✅ Dynamique
                         
                         Text("Join Styleto and discover your style")
                             .font(.system(size: 15, weight: .medium))
-                            .foregroundColor(._4aa3a2)
+                            .foregroundColor(.themeSecondary)  // ✅ Dynamique
                     }
                     .padding(.bottom, 8)
                     
                     // Formulaire
                     Group {
                         Label("Full Name", systemImage: "person")
-                            .labelStyle(LeftAlignedLabelStyle(color: ._4aa3a2))
+                            .labelStyle(LeftAlignedLabelStyle(color: .themeText))  // ✅ Dynamique
                         IconField(systemName: "person",
                                   placeholder: "Enter your name",
                                   text: $viewModel.fullName)
@@ -49,7 +53,7 @@ struct LabasniSignupView: View {
                         }
                         
                         Label("Email", systemImage: "envelope")
-                            .labelStyle(LeftAlignedLabelStyle(color: ._4aa3a2))
+                            .labelStyle(LeftAlignedLabelStyle(color: .themeText))  // ✅ Dynamique
 
                         IconField(
                             systemName: "envelope",
@@ -63,7 +67,7 @@ struct LabasniSignupView: View {
                         }
                         
                         Label("Phone Number", systemImage: "phone")
-                            .labelStyle(LeftAlignedLabelStyle(color: ._4aa3a2))
+                            .labelStyle(LeftAlignedLabelStyle(color: .themeText))  // ✅ Dynamique
                         PhoneInputField(
                             selectedDialCode: $viewModel.selectedDialCode,
                             number: $viewModel.phoneNumber,
@@ -74,7 +78,7 @@ struct LabasniSignupView: View {
                         }
                         
                         Label("Password", systemImage: "lock")
-                            .labelStyle(LeftAlignedLabelStyle(color: ._4aa3a2))
+                            .labelStyle(LeftAlignedLabelStyle(color: .themeText))  // ✅ Dynamique
                         IconSecureField(systemName: "lock",
                                         placeholder: "••••••••",
                                         text: $viewModel.password)
@@ -85,7 +89,7 @@ struct LabasniSignupView: View {
                     VStack(alignment: .leading, spacing: 12) {
                         Text("Gender")
                             .font(.system(size: 16, weight: .semibold))
-                            .foregroundColor(._4aa3a2)
+                            .foregroundColor(.themeText)  // ✅ Dynamique
                         
                         HStack(spacing: 12) {
                             Spacer(minLength: 0)
@@ -130,6 +134,7 @@ struct LabasniSignupView: View {
                             if viewModel.isLoading {
                                 ProgressView()
                                     .progressViewStyle(.circular)
+                                    .tint(.white)
                             } else {
                                 Text("Create my account")
                                     .font(.system(size: 17, weight: .semibold))
@@ -138,7 +143,7 @@ struct LabasniSignupView: View {
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 16)
                     }
-                    .buttonStyle(PillButtonStyle(background: .ca3c66, foreground: .white))
+                    .buttonStyle(PillButtonStyle(background: .themePrimary, foreground: .white))  // ✅ Dynamique
                     .disabled(viewModel.isLoading)
                     .padding(.top, 6)
                     
@@ -150,7 +155,7 @@ struct LabasniSignupView: View {
                         } label: {
                             Text("Already have an account? Sign in")
                                 .font(.system(size: 16, weight: .semibold))
-                                .foregroundColor(._4aa3a2)
+                                .foregroundColor(.themeSecondary)  // ✅ Dynamique
                         }
                         .buttonStyle(.plain)
                         Spacer()
@@ -163,11 +168,10 @@ struct LabasniSignupView: View {
                 .padding(.bottom, 30)
             }
         }
-        .contentShape(Rectangle())                    // Important : permet de capter le tap même sur les espaces vides
-            .onTapGesture {
-                // Ferme le clavier quand on tape n’importe où sur l'écran
-                UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
-            }
+        .contentShape(Rectangle())
+        .onTapGesture {
+            UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+        }
         .navigationBarBackButtonHidden(true)
         .toolbar(.hidden, for: .navigationBar)
         .background(
@@ -177,7 +181,7 @@ struct LabasniSignupView: View {
             ) {
                 EmptyView()
             }
-                .hidden()
+            .hidden()
         )
         .sheet(isPresented: $showTermsSheet) {
             TermsSheetView(
@@ -222,6 +226,7 @@ struct LabasniSignupView: View {
             }
         }
         .onAppear {
+            themeManager.updateTheme()  // ✅ IMPORTANT
             viewModel.resetMessages()
             attemptedSubmit = false
         }
@@ -266,7 +271,7 @@ struct LabasniSignupView: View {
     }
 }
 
-// MARK: - Composants
+// MARK: - Composants (avec couleurs dynamiques)
 
 struct LeftAlignedLabelStyle: LabelStyle {
     var color: Color
@@ -291,7 +296,7 @@ private struct IconField: View {
     var body: some View {
         HStack(spacing: 10) {
             Image(systemName: systemName)
-                .foregroundColor(._4aa3a2.opacity(0.9))
+                .foregroundColor(.themeSecondary)  // ✅ Dynamique
                 .font(.system(size: 18, weight: .semibold))
                 .frame(width: 24)
             TextField(placeholder, text: $text)
@@ -299,12 +304,13 @@ private struct IconField: View {
                 .autocorrectionDisabled(true)
                 .keyboardType(keyboardType)
                 .textContentType(textContentType)
+                .foregroundColor(.themeText)  // ✅ Dynamique
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 14)
-        .background(RoundedRectangle(cornerRadius: 22).fill(Color.white))
+        .background(RoundedRectangle(cornerRadius: 22).fill(Color.themeCard))  // ✅ Dynamique
         .overlay(RoundedRectangle(cornerRadius: 22)
-            .stroke(Color.ca3c66.opacity(0.8), lineWidth: 1.5))
+            .stroke(Color.themePrimary.opacity(0.6), lineWidth: 1.5))  // ✅ Dynamique
         .shadow(color: .black.opacity(0.06), radius: 8, x: 0, y: 4)
     }
 }
@@ -317,7 +323,7 @@ private struct PhoneInputField: View {
     var body: some View {
         HStack(spacing: 12) {
             Image(systemName: "phone")
-                .foregroundColor(._4aa3a2.opacity(0.9))
+                .foregroundColor(.themeSecondary)  // ✅ Dynamique
                 .font(.system(size: 18, weight: .semibold))
                 .frame(width: 24)
             
@@ -336,17 +342,18 @@ private struct PhoneInputField: View {
                     Image(systemName: "chevron.down")
                         .font(.system(size: 12, weight: .bold))
                 }
-                .foregroundColor(.ca3c66)
+                .foregroundColor(.themePrimary)  // ✅ Dynamique
             }
             
             Divider()
                 .frame(height: 24)
-                .background(Color.ca3c66.opacity(0.3))
+                .background(Color.themePrimary.opacity(0.3))  // ✅ Dynamique
             
             TextField("12 345 678", text: $number)
                 .keyboardType(.numberPad)
                 .textInputAutocapitalization(.never)
                 .autocorrectionDisabled(true)
+                .foregroundColor(.themeText)  // ✅ Dynamique
                 .onChange(of: number) { newValue in
                     let digitsOnly = newValue.filter { $0.isNumber }
                     
@@ -359,10 +366,10 @@ private struct PhoneInputField: View {
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 14)
-        .background(RoundedRectangle(cornerRadius: 22).fill(Color.white))
+        .background(RoundedRectangle(cornerRadius: 22).fill(Color.themeCard))  // ✅ Dynamique
         .overlay(
             RoundedRectangle(cornerRadius: 22)
-                .stroke(Color.ca3c66.opacity(0.8), lineWidth: 1.5)
+                .stroke(Color.themePrimary.opacity(0.6), lineWidth: 1.5)  // ✅ Dynamique
         )
         .shadow(color: .black.opacity(0.06), radius: 8, x: 0, y: 4)
     }
@@ -384,16 +391,18 @@ private struct IconSecureField: View {
     var body: some View {
         HStack(spacing: 10) {
             Image(systemName: systemName)
-                .foregroundColor(._4aa3a2.opacity(0.9))
+                .foregroundColor(.themeSecondary)  // ✅ Dynamique
                 .font(.system(size: 18, weight: .semibold))
                 .frame(width: 24)
             
             if isSecure {
                 SecureField(placeholder, text: $text)
+                    .foregroundColor(.themeText)  // ✅ Dynamique
             } else {
                 TextField(placeholder, text: $text)
                     .textInputAutocapitalization(.never)
                     .autocorrectionDisabled(true)
+                    .foregroundColor(.themeText)  // ✅ Dynamique
             }
             
             Spacer(minLength: 0)
@@ -402,21 +411,20 @@ private struct IconSecureField: View {
                 isSecure.toggle()
             } label: {
                 Image(systemName: isSecure ? "eye.slash" : "eye")
-                    .foregroundColor(.ca3c66)
+                    .foregroundColor(.themePrimary)  // ✅ Dynamique
                     .font(.system(size: 16, weight: .semibold))
             }
             .buttonStyle(.plain)
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 14)
-        .background(RoundedRectangle(cornerRadius: 22).fill(Color.white))
+        .background(RoundedRectangle(cornerRadius: 22).fill(Color.themeCard))  // ✅ Dynamique
         .overlay(RoundedRectangle(cornerRadius: 22)
-            .stroke(Color.ca3c66.opacity(0.8), lineWidth: 1.5))
+            .stroke(Color.themePrimary.opacity(0.6), lineWidth: 1.5))  // ✅ Dynamique
         .shadow(color: .black.opacity(0.06), radius: 8, x: 0, y: 4)
     }
 }
 
-/// Chip sexe : contour rose, fond blanc, état sélectionné avec léger remplissage rose
 private struct GenderChip: View {
     var title: String
     var selected: Bool
@@ -424,22 +432,21 @@ private struct GenderChip: View {
     var body: some View {
         Text(title)
             .font(.system(size: 16, weight: .semibold))
-            .foregroundColor(selected ? .ca3c66 : ._4aa3a2)
+            .foregroundColor(selected ? .themePrimary : .themeSecondary)  // ✅ Dynamique
             .padding(.horizontal, 18)
             .padding(.vertical, 12)
             .background(
                 RoundedRectangle(cornerRadius: 18)
-                    .fill(selected ? Color.e8aabe.opacity(0.22) : .white)
+                    .fill(selected ? Color.themeSoftPink.opacity(0.22) : Color.themeCard)  // ✅ Dynamique
             )
             .overlay(
                 RoundedRectangle(cornerRadius: 18)
-                    .stroke(Color.ca3c66.opacity(0.8), lineWidth: 1.2)
+                    .stroke(Color.themePrimary.opacity(0.6), lineWidth: 1.2)  // ✅ Dynamique
             )
             .shadow(color: .black.opacity(selected ? 0.06 : 0.04), radius: 6, x: 0, y: 3)
     }
 }
 
-/// Checkbox style proche d’iOS mais carré pour coller à la maquette
 struct CheckboxToggleStyle: ToggleStyle {
     var tint: Color = .accentColor
     func makeBody(configuration: Configuration) -> some View {
@@ -479,7 +486,7 @@ private struct ValidationMessage: View {
     var body: some View {
         Text(text)
             .font(.system(size: 13, weight: .semibold))
-            .foregroundColor(.ca3c66)
+            .foregroundColor(.themePrimary)  // ✅ Dynamique
     }
 }
 
@@ -488,7 +495,7 @@ private struct PasswordHint: View {
     var attempted: Bool
     
     var body: some View {
-        let color: Color = isValid || !attempted ? ._4aa3a2.opacity(0.7) : .ca3c66
+        let color: Color = isValid || !attempted ? .themeSecondaryText : .themePrimary  // ✅ Dynamique
         Text("Minimum 6 characters, one uppercase letter, and one special character.")
             .font(.system(size: 13, weight: .medium))
             .foregroundColor(color)
@@ -509,20 +516,20 @@ private struct TermsSheetView: View {
             
             Text("Terms of Use")
                 .font(.system(size: 20, weight: .bold))
-                .foregroundColor(.ca3c66)
+                .foregroundColor(.themePrimary)  // ✅ Dynamique
             
             ScrollView {
                 VStack(alignment: .leading, spacing: 12) {
                     Text("By creating a Styleto account, you agree to:")
                         .font(.system(size: 16, weight: .semibold))
-                        .foregroundColor(.ca3c66)
+                        .foregroundColor(.themePrimary)  // ✅ Dynamique
                     
                     TermsBullet("The processing of your data to personalize your style recommendations.")
                     TermsBullet("The possible receipt of notifications related to your activity and our updates.")
                     TermsBullet("The secure use of your information in accordance with our privacy policy.")
                     
                 }
-                .foregroundColor(._4aa3a2)
+                .foregroundColor(.themeText)  // ✅ Dynamique
                 .font(.system(size: 14))
             }
             
@@ -533,7 +540,7 @@ private struct TermsSheetView: View {
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 14)
                 }
-                .buttonStyle(PillButtonStyle(background: .ca3c66, foreground: .white))
+                .buttonStyle(PillButtonStyle(background: .themePrimary, foreground: .white))  // ✅ Dynamique
                 
                 Button(action: onDecline) {
                     Text("Decline")
@@ -541,11 +548,12 @@ private struct TermsSheetView: View {
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 14)
                 }
-                .buttonStyle(PillButtonStyle(background: .a7e0e0.opacity(0.4), foreground: .ca3c66))
+                .buttonStyle(PillButtonStyle(background: .themeAqua.opacity(0.4), foreground: .themePrimary))  // ✅ Dynamique
             }
             .padding(.bottom, 20)
         }
         .padding(.horizontal, 20)
+        .background(Color.themeBackground)  // ✅ Dynamique
         .presentationDetents([.medium, .large])
     }
 }
@@ -560,11 +568,10 @@ private struct TermsBullet: View {
     var body: some View {
         HStack(alignment: .top, spacing: 8) {
             Circle()
-                .fill(Color.ca3c66)
+                .fill(Color.themePrimary)  // ✅ Dynamique
                 .frame(width: 6, height: 6)
                 .padding(.top, 6)
             Text(text)
         }
     }
 }
-
