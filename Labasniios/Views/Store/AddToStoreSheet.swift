@@ -5,6 +5,12 @@ struct AddToStoreSheet: View {
     @Environment(\.dismiss) var dismiss
     @State private var showUpgradeDialog = false
     @State private var showProDetails = false
+    @FocusState private var focusedField: Field?
+    
+    enum Field {
+        case price
+        case size
+    }
 
     var body: some View {
         NavigationStack {
@@ -40,6 +46,10 @@ struct AddToStoreSheet: View {
             }
             .padding()
             .background(Color.themeBackground.ignoresSafeArea())
+            .onTapGesture {
+                // Fermer le clavier en tapant n'importe où
+                focusedField = nil
+            }
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -365,6 +375,7 @@ struct AddToStoreSheet: View {
                         RoundedRectangle(cornerRadius: 16)
                             .stroke(Color.themeSecondary.opacity(0.3), lineWidth: 1)
                     )
+                    .focused($focusedField, equals: .price)
 
                 Text("DT")
                     .font(.title2.bold())
@@ -393,6 +404,7 @@ struct AddToStoreSheet: View {
                         RoundedRectangle(cornerRadius: 16)
                             .stroke(viewModel.sizeInput.isEmpty ? Color.red.opacity(0.5) : Color.themePrimary.opacity(0.5), lineWidth: 2)
                     )
+                    .focused($focusedField, equals: .size)
             } else {
                 // Picker vêtements
                 LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 4), spacing: 12) {

@@ -251,6 +251,8 @@ struct LabasniLoginView: View {
             appleSignInHelper.onSuccess = { response in
                 TokenManager.shared.saveToken(response.accessToken)
                 TokenManager.shared.saveRefreshToken(response.refreshToken)
+                // ✨ NOUVEAU : Sauvegarder le userId (comme Android)
+                TokenManager.shared.saveUserId(response.user.id)
                 viewModel.password = ""
                 hideSnackbar()
                 profileUser = response.user
@@ -264,6 +266,8 @@ struct LabasniLoginView: View {
             googleSignInHelper.onSuccess = { response in
                 TokenManager.shared.saveToken(response.accessToken)
                 TokenManager.shared.saveRefreshToken(response.refreshToken)
+                // ✨ NOUVEAU : Sauvegarder le userId (comme Android)
+                TokenManager.shared.saveUserId(response.user.id)
                 viewModel.password = ""
                 hideSnackbar()
                 profileUser = response.user

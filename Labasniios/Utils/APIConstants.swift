@@ -3,7 +3,7 @@ import Foundation
 enum APIConstants {
 
 
-    static let baseURL = URL(string: "http://192.168.1.24:3000")!
+    static let baseURL = URL(string: "http://192.168.1.22:3000")!
 
 
     // AUTH

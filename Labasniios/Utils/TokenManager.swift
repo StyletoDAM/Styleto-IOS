@@ -4,7 +4,8 @@ final class TokenManager {
     static let shared = TokenManager()
     
     private let tokenKey = "accessToken"
-    private let refreshTokenKey = "refreshToken" // ✨ NOUVEAU
+    private let refreshTokenKey = "refreshToken"
+    private let userIdKey = "userId" // ✨ NOUVEAU : Comme Android
     
     private init() {}
     
@@ -25,9 +26,26 @@ final class TokenManager {
         return UserDefaults.standard.string(forKey: refreshTokenKey)
     }
     
+    // ✨ NOUVEAU : Gestion du userId (comme Android)
+    func saveUserId(_ userId: String) {
+        UserDefaults.standard.set(userId, forKey: userIdKey)
+        print("✅ [TokenManager] UserId sauvegardé: '\(userId)'")
+    }
+    
+    func getUserId() -> String? {
+        let userId = UserDefaults.standard.string(forKey: userIdKey)
+        if let userId = userId {
+            print("✅ [TokenManager] UserId récupéré: '\(userId)'")
+        } else {
+            print("⚠️ [TokenManager] Aucun userId trouvé")
+        }
+        return userId
+    }
+    
     func clearToken() {
         UserDefaults.standard.removeObject(forKey: tokenKey)
-        UserDefaults.standard.removeObject(forKey: refreshTokenKey) // ✨ AJOUT
+        UserDefaults.standard.removeObject(forKey: refreshTokenKey)
+        UserDefaults.standard.removeObject(forKey: userIdKey) // ✨ AJOUT
     }
 }
 

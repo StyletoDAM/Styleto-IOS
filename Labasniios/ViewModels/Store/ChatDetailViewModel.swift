@@ -17,11 +17,33 @@ class ChatDetailViewModel: ObservableObject {
     
     init(conversation: ChatConversationResponse) {
         self.conversation = conversation
-        self.currentUserId = JWTDecoder.extractUserId(from: TokenManager.shared.getToken() ?? "")
+        
+        // ✨ CORRIGÉ : Utiliser le userId stocké (comme Android) au lieu de l'extraire du JWT
+        // Cela garantit que le userId utilisé est exactement le même format que celui stocké lors du login
+        let storedUserId = TokenManager.shared.getUserId()
+        let jwtUserId = JWTDecoder.extractUserId(from: TokenManager.shared.getToken() ?? "")
+        
+        // Priorité : userId stocké > userId du JWT (comme Android utilise getUserId())
+        self.currentUserId = storedUserId ?? jwtUserId
         
         print("📱 ChatDetailViewModel init")
         print("📦 Conversation ID:", conversation.id)
         print("📦 Messages dans la conversation:", conversation.messages.count)
+        print("👤 Stored User ID:", storedUserId ?? "nil")
+        print("👤 JWT User ID:", jwtUserId ?? "nil")
+        print("👤 Current User ID (used):", currentUserId ?? "nil")
+        if let currentUserId = currentUserId {
+            print("👤 Current User ID (normalized): '\(currentUserId.trimmingCharacters(in: .whitespacesAndNewlines).lowercased())'")
+        }
+        
+        // Debug: Afficher les participants avec normalisation
+        print("👥 Participants:")
+        for (index, participant) in conversation.participants.enumerated() {
+            let normalizedId = participant.id.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+            let isCurrentUser = currentUserId != nil && 
+                               normalizedId == currentUserId!.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+            print("   [\(index)] ID: '\(participant.id)' (normalized: '\(normalizedId)') Name: '\(participant.fullName)' \(isCurrentUser ? "← CURRENT USER" : "")")
+        }
         
         // ⭐ Charger les messages initiaux
         loadInitialMessages()
@@ -79,9 +101,20 @@ class ChatDetailViewModel: ObservableObject {
             .sink { [weak self] newMessage in
                 guard let self = self else { return }
                 
-                print("📨 Nouveau message reçu:", newMessage.content)
-                print("📨 Pour conversation:", newMessage.conversationId)
-                print("📨 Ma conversation:", self.conversation.id)
+                print("📨 Nouveau message reçu:")
+                print("   - Content: \(newMessage.content)")
+                print("   - Sender ID (raw): '\(newMessage.senderId.id)'")
+                print("   - Sender ID (normalized): '\(newMessage.senderId.id.trimmingCharacters(in: .whitespacesAndNewlines).lowercased())'")
+                print("   - Sender Name: \(newMessage.senderId.fullName)")
+                print("   - Conversation ID: \(newMessage.conversationId)")
+                print("   - Ma conversation: \(self.conversation.id)")
+                print("   - Current User ID (raw): '\(self.currentUserId ?? "nil")'")
+                if let currentUserId = self.currentUserId {
+                    print("   - Current User ID (normalized): '\(currentUserId.trimmingCharacters(in: .whitespacesAndNewlines).lowercased())'")
+                    let normalizedSenderId = newMessage.senderId.id.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+                    let normalizedUserId = currentUserId.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+                    print("   - Match: \(normalizedSenderId == normalizedUserId ? "✅ OUI" : "❌ NON")")
+                }
                 
                 // Vérifier que le message appartient à cette conversation
                 guard newMessage.conversationId == self.conversation.id else {

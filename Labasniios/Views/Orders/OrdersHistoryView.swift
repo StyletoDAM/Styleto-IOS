@@ -14,6 +14,40 @@ struct OrdersHistoryView: View {
         case transaction
     }
     
+    // MARK: - Filtered Data
+    /// Filtre les orders valides (avec clothesId valide)
+    private var filteredOrders: [OrderResponse] {
+        return orders.filter { order in
+            // S'assurer que c'est bien un order (a un clothesId avec des données)
+            return !order.clothesId.id.isEmpty
+        }
+    }
+    
+    /// Filtre les transactions valides (avec type incoming/outgoing)
+    /// IMPORTANT: Cette fonction garantit qu'aucun order ne sera affiché dans les transactions
+    private var filteredTransactions: [TransactionResponse] {
+        return transactions.filter { transaction in
+            // Validation stricte : s'assurer que c'est bien une transaction
+            let hasValidId = !transaction.id.isEmpty
+            let hasValidType = transaction.type == "incoming" || transaction.type == "outgoing"
+            let hasValidAmount = transaction.amount >= 0
+            let hasValidDescription = !transaction.description.isEmpty
+            
+            // Protection supplémentaire : rejeter tout ce qui pourrait être un order
+            // Les orders ont "clothesId" et "userId", les transactions ont "type" et "description"
+            // Si le type n'est pas "incoming" ou "outgoing", c'est suspect
+            let isNotAnOrder = hasValidType && hasValidDescription
+            
+            let isValid = hasValidId && hasValidType && hasValidAmount && hasValidDescription && isNotAnOrder
+            
+            if !isValid {
+                print("🚫 [OrdersHistoryView] Rejected invalid transaction: id=\(transaction.id), type=\(transaction.type)")
+            }
+            
+            return isValid
+        }
+    }
+    
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
@@ -48,20 +82,20 @@ struct OrdersHistoryView: View {
                     ScrollView {
                         LazyVStack(spacing: 16) {
                             if selectedTab == .purchase {
-                                if orders.isEmpty {
+                                if filteredOrders.isEmpty {
                                     EmptyPurchaseView()
                                         .padding(.top, 60)
                                 } else {
-                                    ForEach(orders, id: \.id) { order in
+                                    ForEach(filteredOrders, id: \.id) { order in
                                         OrderCardView(order: order)
                                     }
                                 }
                             } else {
-                                if transactions.isEmpty {
+                                if filteredTransactions.isEmpty {
                                     EmptyTransactionView()
                                         .padding(.top, 60)
                                 } else {
-                                    ForEach(transactions, id: \.id) { transaction in
+                                    ForEach(filteredTransactions, id: \.id) { transaction in
                                         TransactionCardView(transaction: transaction)
                                     }
                                 }
@@ -149,10 +183,72 @@ struct OrdersHistoryView: View {
             async let ordersTask = OrdersService.shared.getMyOrders()
             async let transactionsTask = OrdersService.shared.getMyTransactions()
             
-            orders = try await ordersTask
-            transactions = try await transactionsTask
+            let ordersResult = try await ordersTask
+            let transactionsResult = try await transactionsTask
+            
+            // Log pour debug
+            print("🔍 [OrdersHistoryView] Loaded \(ordersResult.count) orders from API")
+            print("🔍 [OrdersHistoryView] Loaded \(transactionsResult.count) transactions from API")
+            
+            // IMPORTANT: S'assurer qu'on ne mélange jamais orders et transactions
+            // Les orders viennent de /orders, les transactions de /orders/transactions
+            
+            // Filtrer les orders pour s'assurer qu'ils sont valides
+            // Un order valide doit avoir un clothesId avec un id non vide
+            // ET ne doit PAS avoir de propriété "type" (qui est spécifique aux transactions)
+            orders = ordersResult.filter { order in
+                let hasValidClothesId = !order.clothesId.id.isEmpty
+                let isValid = hasValidClothesId
+                if !isValid {
+                    print("⚠️ [OrdersHistoryView] Invalid order filtered out: \(order.id) - missing clothesId")
+                }
+                return isValid
+            }
+            
+            // Filtrer les transactions pour s'assurer qu'elles sont valides
+            // Une transaction valide doit avoir :
+            // - Un id non vide
+            // - Un type "incoming" ou "outgoing" (OBLIGATOIRE - c'est ce qui la différencie d'un order)
+            // - Un amount >= 0
+            // - Une description non vide
+            // ET ne doit PAS avoir de propriété "clothesId" (qui est spécifique aux orders)
+            transactions = transactionsResult.filter { transaction in
+                let hasValidId = !transaction.id.isEmpty
+                let hasValidType = transaction.type == "incoming" || transaction.type == "outgoing"
+                let hasValidAmount = transaction.amount >= 0
+                let hasValidDescription = !transaction.description.isEmpty
+                
+                // Protection critique : si le type n'est pas "incoming" ou "outgoing",
+                // c'est probablement un order mal décodé, on le rejette
+                let isDefinitelyATransaction = hasValidType
+                
+                let isValid = hasValidId && hasValidType && hasValidAmount && hasValidDescription && isDefinitelyATransaction
+                
+                if !isValid {
+                    print("⚠️ [OrdersHistoryView] Invalid transaction filtered out:")
+                    print("   - id: \(transaction.id.isEmpty ? "empty" : transaction.id)")
+                    print("   - type: '\(transaction.type)' (must be 'incoming' or 'outgoing')")
+                    print("   - amount: \(transaction.amount)")
+                    print("   - description: \(transaction.description.isEmpty ? "empty" : transaction.description)")
+                }
+                
+                return isValid
+            }
+            
+            print("✅ [OrdersHistoryView] Filtered to \(orders.count) valid orders")
+            print("✅ [OrdersHistoryView] Filtered to \(transactions.count) valid transactions")
+            
+            // Vérification finale : s'assurer qu'il n'y a pas de mélange
+            if !transactions.isEmpty {
+                let invalidTransactions = transactions.filter { $0.type != "incoming" && $0.type != "outgoing" }
+                if !invalidTransactions.isEmpty {
+                    print("🚨 [OrdersHistoryView] CRITICAL: Found \(invalidTransactions.count) transactions with invalid type!")
+                }
+            }
+            
         } catch {
             errorMessage = error.localizedDescription
+            print("❌ [OrdersHistoryView] Error loading data: \(error)")
         }
         
         isLoading = false

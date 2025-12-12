@@ -24,9 +24,23 @@ struct JWTDecoder {
     }
     
     static func extractUserId(from token: String) -> String? {
-        guard let payload = decode(jwtToken: token) else { return nil }
-        return payload["sub"] as? String ??
-               payload["userId"] as? String ??
-               payload["_id"] as? String
+        guard let payload = decode(jwtToken: token) else { 
+            print("⚠️ [JWTDecoder] Impossible de décoder le token")
+            return nil 
+        }
+        
+        // Le backend utilise 'sub' comme ID utilisateur (voir auth.service.ts ligne 400)
+        // Priorité: sub > userId > _id
+        let userId = payload["sub"] as? String ??
+                     payload["userId"] as? String ??
+                     payload["_id"] as? String
+        
+        if let userId = userId {
+            print("✅ [JWTDecoder] User ID extrait: '\(userId)' (from: \(payload.keys.joined(separator: ", ")))")
+        } else {
+            print("⚠️ [JWTDecoder] Aucun ID utilisateur trouvé dans le JWT. Clés disponibles: \(payload.keys.joined(separator: ", "))")
+        }
+        
+        return userId
     }
 }

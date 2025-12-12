@@ -266,6 +266,29 @@ struct TransactionResponse: Codable, Identifiable {
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         
+        // PROTECTION CRITIQUE : Vérifier d'abord le type avant de décoder
+        // Si le type n'existe pas ou n'est pas "incoming"/"outgoing", c'est probablement un order
+        guard let typeString = try? container.decode(String.self, forKey: .type) else {
+            throw DecodingError.keyNotFound(
+                CodingKeys.type,
+                DecodingError.Context(
+                    codingPath: container.codingPath,
+                    debugDescription: "Missing 'type' field - this might be an Order, not a Transaction"
+                )
+            )
+        }
+        
+        // Le type doit être "incoming" ou "outgoing"
+        guard typeString == "incoming" || typeString == "outgoing" else {
+            throw DecodingError.dataCorrupted(
+                DecodingError.Context(
+                    codingPath: container.codingPath,
+                    debugDescription: "Invalid transaction type: '\(typeString)'. Must be 'incoming' or 'outgoing'. This might be an Order."
+                )
+            )
+        }
+        type = typeString
+        
         // Décode id
         if let idValue = try? container.decode(String.self, forKey: .id) {
             id = idValue
@@ -273,7 +296,6 @@ struct TransactionResponse: Codable, Identifiable {
             id = ""
         }
         
-        type = try container.decode(String.self, forKey: .type)
         amount = try container.decode(Double.self, forKey: .amount)
         description = try container.decode(String.self, forKey: .description)
         paymentMethod = try container.decodeIfPresent(String.self, forKey: .paymentMethod)
@@ -451,8 +473,12 @@ class OrdersService {
         
         let (data, response) = try await URLSession.shared.data(for: request)
         
+        // Debug: Log response
         if let http = response as? HTTPURLResponse {
             print("🔍 [OrdersService] Transactions Status Code: \(http.statusCode)")
+            if let jsonString = String(data: data, encoding: .utf8) {
+                print("🔍 [OrdersService] Transactions Response: \(jsonString.prefix(1000))")
+            }
         }
         
         if let http = response as? HTTPURLResponse, http.statusCode >= 400 {
@@ -461,6 +487,49 @@ class OrdersService {
                 throw NetworkError.serverMessage(message)
             }
             throw NetworkError.requestFailed(http.statusCode)
+        }
+        
+        // Vérification préalable CRITIQUE : filtrer les orders AVANT le décodage
+        // Les orders ont "clothesId" et "userId", les transactions ont "type" et "amount"
+        var filteredData: Data = data
+        if let jsonArray = try? JSONSerialization.jsonObject(with: data) as? [[String: Any]] {
+            var validTransactions: [[String: Any]] = []
+            var ordersFound = 0
+            
+            for (index, item) in jsonArray.enumerated() {
+                // Si un élément a "clothesId", c'est un ORDER, on le REJETTE
+                if item["clothesId"] != nil {
+                    ordersFound += 1
+                    print("🚫 [OrdersService] REJECTED: Found order in transactions response at index \(index)")
+                    print("   Order has clothesId: \(item["clothesId"] ?? "nil")")
+                    continue // Rejeter cet élément
+                }
+                
+                // Vérifier que c'est bien une transaction (a "type" et "amount")
+                if let type = item["type"] as? String,
+                   let _ = item["amount"] as? Double,
+                   (type == "incoming" || type == "outgoing") {
+                    // C'est une vraie transaction, on la garde
+                    validTransactions.append(item)
+                } else {
+                    print("⚠️ [OrdersService] REJECTED: Invalid transaction structure at index \(index)")
+                    print("   Missing type or amount, or invalid type")
+                }
+            }
+            
+            if ordersFound > 0 {
+                print("🚨 [OrdersService] CRITICAL: Found and rejected \(ordersFound) orders in transactions endpoint!")
+            }
+            
+            // Recréer les données avec uniquement les transactions valides
+            if validTransactions.count != jsonArray.count {
+                print("✅ [OrdersService] Filtered JSON: \(jsonArray.count) items -> \(validTransactions.count) valid transactions")
+                if let newData = try? JSONSerialization.data(withJSONObject: validTransactions) {
+                    filteredData = newData
+                } else {
+                    print("⚠️ [OrdersService] Failed to recreate filtered data, using original")
+                }
+            }
         }
         
         let decoder = JSONDecoder()
@@ -487,12 +556,68 @@ class OrdersService {
         }
         
         do {
-            let transactions = try decoder.decode([TransactionResponse].self, from: data)
-            print("✅ [OrdersService] Decoded \(transactions.count) transactions successfully")
-            return transactions
+            // Décoder manuellement pour filtrer les orders qui pourraient être mélangés
+            if let jsonArray = try? JSONSerialization.jsonObject(with: filteredData) as? [[String: Any]] {
+                var validTransactions: [TransactionResponse] = []
+                var rejectedCount = 0
+                
+                for (index, jsonObject) in jsonArray.enumerated() {
+                    // Vérifier que ce n'est pas un order
+                    if jsonObject["clothesId"] != nil {
+                        rejectedCount += 1
+                        print("🚫 [OrdersService] Rejected order at index \(index) (has clothesId)")
+                        continue
+                    }
+                    
+                    // Essayer de décoder comme transaction
+                    if let jsonData = try? JSONSerialization.data(withJSONObject: jsonObject) {
+                        do {
+                            let transaction = try decoder.decode(TransactionResponse.self, from: jsonData)
+                            // Validation finale
+                            if transaction.type == "incoming" || transaction.type == "outgoing" {
+                                validTransactions.append(transaction)
+                            } else {
+                                rejectedCount += 1
+                                print("🚫 [OrdersService] Rejected invalid transaction at index \(index): type='\(transaction.type)'")
+                            }
+                        } catch {
+                            rejectedCount += 1
+                            print("🚫 [OrdersService] Failed to decode transaction at index \(index): \(error)")
+                        }
+                    }
+                }
+                
+                if rejectedCount > 0 {
+                    print("⚠️ [OrdersService] Rejected \(rejectedCount) invalid items during decoding")
+                }
+                
+                print("✅ [OrdersService] Successfully decoded \(validTransactions.count) valid transactions")
+                return validTransactions
+            } else {
+                // Fallback: décodage normal si ce n'est pas un tableau
+                let transactions = try decoder.decode([TransactionResponse].self, from: filteredData)
+                print("✅ [OrdersService] Decoded \(transactions.count) transactions successfully")
+                return transactions.filter { $0.type == "incoming" || $0.type == "outgoing" }
+            }
         } catch {
             print("❌ [OrdersService] Transactions decoding error: \(error)")
-            throw error
+            if let decodingError = error as? DecodingError {
+                switch decodingError {
+                case .typeMismatch(let type, let context):
+                    print("Type mismatch: \(type) at \(context.codingPath.map { $0.stringValue })")
+                case .keyNotFound(let key, let context):
+                    print("Key not found: \(key.stringValue) at \(context.codingPath.map { $0.stringValue })")
+                case .valueNotFound(let type, let context):
+                    print("Value not found: \(type) at \(context.codingPath.map { $0.stringValue })")
+                case .dataCorrupted(let context):
+                    print("Data corrupted at \(context.codingPath.map { $0.stringValue }): \(context.debugDescription)")
+                @unknown default:
+                    print("Unknown decoding error")
+                }
+            }
+            // Retourner un tableau vide au lieu de faire échouer
+            print("⚠️ [OrdersService] Returning empty array due to decoding error")
+            return []
         }
     }
 }

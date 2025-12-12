@@ -139,12 +139,12 @@ final class ChatSocketManager: ObservableObject {
             let decoder = JSONDecoder()
             
             // Configuration du décodeur pour les dates
-            let formatter = ISO8601DateFormatter()
-            formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-            
+            // Créer le formatter localement dans la closure pour éviter les problèmes de Sendable
             decoder.dateDecodingStrategy = .custom { decoder in
                 let container = try decoder.singleValueContainer()
                 if let dateString = try? container.decode(String.self) {
+                    let formatter = ISO8601DateFormatter()
+                    formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
                     if let date = formatter.date(from: dateString) {
                         return date
                     }
@@ -157,11 +157,61 @@ final class ChatSocketManager: ObservableObject {
             }
             
             let message = try decoder.decode(ChatMessage.self, from: messageData)
-            print("✅ MESSAGE DÉCODÉ:", message.content, "de", message.senderId.fullName)
+            
+            // Afficher le JSON brut AVANT décodage pour voir la structure exacte
+            if let jsonString = String(data: messageData, encoding: .utf8) {
+                print("📝 JSON BRUT REÇU (avant décodage):")
+                print(jsonString)
+            }
+            
+            // Afficher aussi le dictionnaire JSON pour voir la structure
+            if let jsonDict = try? JSONSerialization.jsonObject(with: messageData) as? [String: Any],
+               let senderIdDict = jsonDict["senderId"] as? [String: Any] {
+                print("📝 senderId dans JSON brut:")
+                print("   Structure: \(senderIdDict)")
+                print("   Clés disponibles: \(senderIdDict.keys.joined(separator: ", "))")
+                if let rawId = senderIdDict["_id"] {
+                    print("   _id (raw): \(rawId) (type: \(type(of: rawId)))")
+                }
+                if let rawId = senderIdDict["id"] {
+                    print("   id (raw): \(rawId) (type: \(type(of: rawId)))")
+                }
+            }
+            
+            print("✅ MESSAGE DÉCODÉ:")
+            print("   - Content: \(message.content)")
+            print("   - Sender ID (raw): '\(message.senderId.id)'")
+            print("   - Sender ID (normalized): '\(message.senderId.id.trimmingCharacters(in: .whitespacesAndNewlines).lowercased())'")
+            print("   - Sender Name: \(message.senderId.fullName)")
+            print("   - Conversation ID: \(message.conversationId)")
+            
+            // Comparer avec le userId stocké IMMÉDIATEMENT
+            let storedUserId = TokenManager.shared.getUserId()
+            let jwtUserId = JWTDecoder.extractUserId(from: TokenManager.shared.getToken() ?? "")
+            if let storedUserId = storedUserId {
+                let normalizedStored = storedUserId.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+                let normalizedSender = message.senderId.id.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+                print("   ⚠️ COMPARAISON IMMÉDIATE DANS SocketManager:")
+                print("      - Stored User ID: '\(storedUserId)' (normalized: '\(normalizedStored)')")
+                print("      - JWT User ID: '\(jwtUserId ?? "nil")'")
+                print("      - Sender ID (normalized): '\(normalizedSender)'")
+                print("      - Match avec stored: \(normalizedStored == normalizedSender ? "✅ OUI → OUTGOING" : "❌ NON → INCOMING")")
+                if normalizedStored != normalizedSender {
+                    print("      ⚠️ DIFFÉRENCE: '\(normalizedStored)' != '\(normalizedSender)'")
+                    print("      Longueurs: stored=\(normalizedStored.count), sender=\(normalizedSender.count)")
+                }
+            } else if let jwtUserId = jwtUserId {
+                let normalizedJwt = jwtUserId.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+                let normalizedSender = message.senderId.id.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+                print("   ⚠️ COMPARAISON IMMÉDIATE (JWT seulement):")
+                print("      - JWT User ID: '\(jwtUserId)' (normalized: '\(normalizedJwt)')")
+                print("      - Sender ID (normalized): '\(normalizedSender)'")
+                print("      - Match avec JWT: \(normalizedJwt == normalizedSender ? "✅ OUI → OUTGOING" : "❌ NON → INCOMING")")
+            }
             
             // Émettre le message via le publisher
             Task { @MainActor in
-                self.messageSubject.send(message)
+self.messageSubject.send(message)
             }
             
         } catch {

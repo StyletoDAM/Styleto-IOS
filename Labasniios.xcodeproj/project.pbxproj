@@ -456,7 +456,7 @@
 				CODE_SIGN_ENTITLEMENTS = Labasniios/Labasniios.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = KB2NZ987BG;
+				DEVELOPMENT_TEAM = 5G22PCHS65;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Labasniios/Info.plist;
@@ -472,7 +472,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = tn.esprit.styleto;
+				PRODUCT_BUNDLE_IDENTIFIER = tn.esprit.styletoo;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
@@ -488,7 +488,7 @@
 				CODE_SIGN_ENTITLEMENTS = Labasniios/Labasniios.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = KB2NZ987BG;
+				DEVELOPMENT_TEAM = 5G22PCHS65;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Labasniios/Info.plist;
@@ -504,7 +504,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = tn.esprit.styleto;
+				PRODUCT_BUNDLE_IDENTIFIER = tn.esprit.styletoo;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;

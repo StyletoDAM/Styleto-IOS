@@ -75,6 +75,11 @@ struct ChatDetailView: View {
                 LazyVStack(spacing: 20) {
                     ForEach(viewModel.messages) { message in
                         messageRow(message)
+                            .onAppear {
+                                // Logs de debug quand le message apparaît
+                                logMessageAlignment(message: message)
+                            }
+                            .id("\(message.id)-\(message.senderId.id)")
                     }
                     Color.clear.frame(height: 1).id("bottom")
                 }
@@ -86,7 +91,7 @@ struct ChatDetailView: View {
                 keyboardFocused = false  // Ferme le clavier
             }
             .onAppear { scrollToBottom(proxy: proxy) }
-            .onChange(of: viewModel.messages.count) { _ in
+            .onChange(of: viewModel.messages.count) {
                 scrollToBottom(proxy: proxy)
             }
         }
@@ -94,7 +99,40 @@ struct ChatDetailView: View {
 
     @ViewBuilder
     private func messageRow(_ message: ChatMessage) -> some View {
-        if message.senderId.id == viewModel.currentUserId {
+        // ANALYSE COMPLÈTE : Déterminer l'ID de l'utilisateur actuel (EXACTEMENT comme Android)
+        // Android utilise directement userId passé en paramètre depuis TokenManager.getUserId()
+        // Ce userId vient de response.user.userId qui est id ?: mongoId (donc peut être id OU _id)
+        
+        // 1. PRIORITÉ : userId stocké (comme Android utilise getUserId())
+        let storedUserId = TokenManager.shared.getUserId()
+        
+        // 2. Depuis le JWT (fallback si userId non stocké) - extraire sub
+        let jwtUserId = JWTDecoder.extractUserId(from: TokenManager.shared.getToken() ?? "")
+        
+        // 3. Depuis le ViewModel (fallback supplémentaire)
+        let viewModelUserId = viewModel.currentUserId
+        
+        // 4. Depuis les participants de la conversation (dernier fallback)
+        let participantUserId = findCurrentUserIdFromParticipants()
+        
+        // 5. Utiliser le premier disponible (priorité : stocké > JWT > ViewModel > participants)
+        // ⚠️ CRITIQUE : Utiliser JWT en priorité car le backend utilise client.user?.sub (du JWT)
+        let currentUserId = jwtUserId ?? storedUserId ?? viewModelUserId ?? participantUserId
+        
+        // Normaliser les IDs pour la comparaison (EXACTEMENT comme Android: trim + lowercase)
+        let rawSenderId = message.senderId.id
+        let normalizedSenderId = normalizeId(rawSenderId)
+        let normalizedUserId = normalizeId(currentUserId)
+        
+        // Comparaison stricte (EXACTEMENT comme Android)
+        // Android: normalizedSenderId == normalizedUserId && normalizedSenderId.isNotBlank() && normalizedUserId.isNotBlank()
+        let isOwnMessage = !normalizedSenderId.isEmpty && 
+                           !normalizedUserId.isEmpty &&
+                           normalizedSenderId == normalizedUserId
+        
+        // Logs de debug (appelés depuis onAppear, pas dans le ViewBuilder)
+        
+        if isOwnMessage {
             OutgoingMessage(
                 text: message.content,
                 time: message.createdAt.formatTime(),
@@ -109,6 +147,142 @@ struct ChatDetailView: View {
                 extractedInfo: message.extractedInfo
             )
         }
+    }
+    
+    // Fonction utilitaire pour normaliser et comparer les IDs (EXACTEMENT comme Android)
+    // Android: id.trim().lowercase()
+    // Gère les différents formats possibles (MongoDB ObjectId, UUID, etc.)
+    private func normalizeId(_ id: String?) -> String {
+        guard let id = id, !id.isEmpty else { return "" }
+        // EXACTEMENT comme Android: trim + lowercase
+        let trimmed = id.trimmingCharacters(in: .whitespacesAndNewlines)
+        let lowercased = trimmed.lowercased()
+        // Log pour debug
+        if trimmed != id || lowercased != trimmed {
+            print("   [normalizeId] '\(id)' -> '\(lowercased)' (trimmed: \(trimmed != id), lowercased: \(lowercased != trimmed))")
+        }
+        return lowercased
+    }
+    
+    // Fonction de log pour le debug (appelée depuis onAppear)
+    private func logMessageAlignment(message: ChatMessage) {
+        // Extraire tous les userId possibles pour debug
+        let storedUserId = TokenManager.shared.getUserId()
+        let currentToken = TokenManager.shared.getToken() ?? ""
+        let jwtUserIdFromToken = JWTDecoder.extractUserId(from: currentToken)
+        let viewModelUserId = viewModel.currentUserId
+        let participantUserId = findCurrentUserIdFromParticipants()
+        
+        // Utiliser la même logique que messageRow (priorité : JWT > stocké > ViewModel > participants)
+        // ⚠️ CRITIQUE : Utiliser JWT en priorité car le backend utilise client.user?.sub (du JWT)
+        let currentUserId = jwtUserIdFromToken ?? storedUserId ?? viewModelUserId ?? participantUserId
+        
+        // Normaliser les IDs pour la comparaison (EXACTEMENT comme Android)
+        let rawSenderId = message.senderId.id
+        let normalizedSenderId = normalizeId(rawSenderId)
+        let normalizedUserId = normalizeId(currentUserId)
+        
+        // Comparaison stricte (EXACTEMENT comme Android)
+        let isOwnMessage = !normalizedSenderId.isEmpty && 
+                           !normalizedUserId.isEmpty &&
+                           normalizedSenderId == normalizedUserId
+        
+        print("═══════════════════════════════════════════════════════════")
+        print("🔍 [ChatDetailView.messageRow] ANALYSE MESSAGE COMPLÈTE:")
+        print("   📨 Content: '\(message.content.prefix(30))...'")
+        print("   ───────────────────────────────────────────────────────")
+        print("   👤 SENDER INFO:")
+        print("      - Sender ID (raw): '\(rawSenderId)' (length: \(rawSenderId.count))")
+        print("      - Sender ID (normalized): '\(normalizedSenderId)' (length: \(normalizedSenderId.count))")
+        print("      - Sender Name: '\(message.senderId.fullName)'")
+        print("   ───────────────────────────────────────────────────────")
+        print("   🔑 CURRENT USER INFO:")
+        print("      - Stored User ID (from TokenManager): '\(storedUserId ?? "nil")' ⭐ PRIORITÉ")
+        print("      - JWT User ID (from Token now): '\(jwtUserIdFromToken ?? "nil")'")
+        print("      - ViewModel User ID: '\(viewModelUserId ?? "nil")'")
+        print("      - Participant User ID: '\(participantUserId ?? "nil")'")
+        print("      - Current User ID (used): '\(currentUserId ?? "nil")' (length: \(currentUserId?.count ?? 0))")
+        print("      - Current User ID (normalized): '\(normalizedUserId)' (length: \(normalizedUserId.count))")
+        print("   ───────────────────────────────────────────────────────")
+        print("   ✅ COMPARAISON CRITIQUE:")
+        print("      - senderId (normalized): '\(normalizedSenderId)'")
+        print("      - userId (normalized):   '\(normalizedUserId)'")
+        print("      - IDs match: \(normalizedSenderId == normalizedUserId ? "✅ OUI" : "❌ NON")")
+        print("      - Is own message: \(isOwnMessage ? "✅ OUI → OUTGOING (droite)" : "❌ NON → INCOMING (gauche)")")
+        if normalizedSenderId != normalizedUserId && !normalizedSenderId.isEmpty && !normalizedUserId.isEmpty {
+            print("   ⚠️ DIFFÉRENCE DÉTECTÉE:")
+            print("      Sender normalized: '\(normalizedSenderId)'")
+            print("      User normalized:   '\(normalizedUserId)'")
+            let minLength = min(normalizedSenderId.count, normalizedUserId.count)
+            let maxLength = max(normalizedSenderId.count, normalizedUserId.count)
+            print("      Lengths: sender=\(normalizedSenderId.count), user=\(normalizedUserId.count)")
+            if minLength > 0 {
+                let diffCount = zip(normalizedSenderId.prefix(minLength), normalizedUserId.prefix(minLength)).filter { $0 != $1 }.count
+                print("      Diff chars (first \(minLength)): \(diffCount)")
+                // Afficher les caractères différents
+                if diffCount > 0 {
+                    let senderPrefix = String(normalizedSenderId.prefix(minLength))
+                    let userPrefix = String(normalizedUserId.prefix(minLength))
+                    print("      Sender prefix: '\(senderPrefix)'")
+                    print("      User prefix:   '\(userPrefix)'")
+                }
+            }
+            if maxLength > minLength {
+                print("      ⚠️ Longueurs différentes !")
+            }
+        }
+        print("   ───────────────────────────────────────────────────────")
+        print("   📋 PARTICIPANTS:")
+        for (index, p) in conversation.participants.enumerated() {
+            let normalizedPId = normalizeId(p.id)
+            let isSenderMatch = normalizedPId == normalizedSenderId
+            let isUserMatch = normalizedPId == normalizedUserId
+            print("      [\(index)] ID: '\(p.id)' (normalized: '\(normalizedPId)') Name: '\(p.fullName)'")
+            if isSenderMatch {
+                print("         ✅ ← SENDER OF THIS MESSAGE")
+            }
+            if isUserMatch {
+                print("         ✅ ← CURRENT USER")
+            }
+        }
+        print("═══════════════════════════════════════════════════════════")
+    }
+    
+    // Trouver l'ID de l'utilisateur actuel depuis les participants
+    // En comparant avec l'ID stocké (comme Android)
+    private func findCurrentUserIdFromParticipants() -> String? {
+        // ✨ CORRIGÉ : Utiliser le userId stocké (comme Android) au lieu de l'extraire du JWT
+        let storedUserId = TokenManager.shared.getUserId()
+        let jwtUserId = JWTDecoder.extractUserId(from: TokenManager.shared.getToken() ?? "")
+        let userIdToUse = storedUserId ?? jwtUserId
+        
+        guard let userIdToUse = userIdToUse else { 
+            print("⚠️ [ChatDetailView] Pas de userId (ni stocké ni JWT) pour trouver dans participants")
+            return nil 
+        }
+        
+        let normalizedUserId = normalizeId(userIdToUse)
+        print("🔍 [ChatDetailView] Recherche de l'utilisateur actuel dans participants:")
+        print("   - Stored User ID: '\(storedUserId ?? "nil")'")
+        print("   - JWT User ID: '\(jwtUserId ?? "nil")'")
+        print("   - User ID to use: '\(userIdToUse)'")
+        print("   - User ID (normalized): '\(normalizedUserId)'")
+        
+        // Chercher dans les participants celui qui correspond à notre ID
+        for (index, participant) in conversation.participants.enumerated() {
+            let normalizedParticipantId = normalizeId(participant.id)
+            let isMatch = normalizedParticipantId == normalizedUserId
+            print("   - Participant [\(index)]: '\(participant.id)' (normalized: '\(normalizedParticipantId)') \(isMatch ? "✅ MATCH!" : "❌")")
+            
+            if isMatch {
+                print("✅ [ChatDetailView] Utilisateur actuel trouvé dans participants: '\(participant.id)'")
+                return participant.id
+            }
+        }
+        
+        print("⚠️ [ChatDetailView] Aucun participant ne correspond, utilisation du userId directement")
+        // Si aucun participant ne correspond, retourner le userId utilisé
+        return userIdToUse
     }
 
     private var inputBar: some View {
