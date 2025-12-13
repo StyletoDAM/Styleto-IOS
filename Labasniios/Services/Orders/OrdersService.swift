@@ -334,6 +334,90 @@ struct TransactionResponse: Codable, Identifiable {
     }
 }
 
+// MARK: - Unified History Model
+struct HistoryItemResponse: Codable, Identifiable {
+    let id: String
+    let type: String // "Purchased" ou "Sold"
+    let clothesId: OrderClothInfo
+    let price: Double
+    let date: Date
+    let createdAt: Date?
+    let size: String?
+    
+    enum CodingKeys: String, CodingKey {
+        case id = "_id"
+        case type
+        case clothesId
+        case price
+        case date
+        case createdAt
+        case size
+    }
+    
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        
+        // Décode id
+        if let idValue = try? container.decode(String.self, forKey: .id) {
+            id = idValue
+        } else {
+            id = ""
+        }
+        
+        // Décode type (doit être "Purchased" ou "Sold")
+        type = try container.decode(String.self, forKey: .type)
+        
+        // Décode clothesId
+        clothesId = try container.decode(OrderClothInfo.self, forKey: .clothesId)
+        
+        // Décode price
+        price = try container.decode(Double.self, forKey: .price)
+        
+        // Décode size (optionnel)
+        size = try container.decodeIfPresent(String.self, forKey: .size)
+        
+        // Décode date
+        if let dateValue = try? container.decode(Date.self, forKey: .date) {
+            date = dateValue
+        } else if let dateString = try? container.decode(String.self, forKey: .date) {
+            let formatter = ISO8601DateFormatter()
+            formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+            if let parsedDate = formatter.date(from: dateString) {
+                date = parsedDate
+            } else {
+                formatter.formatOptions = [.withInternetDateTime]
+                date = formatter.date(from: dateString) ?? Date()
+            }
+        } else {
+            date = Date()
+        }
+        
+        // Décode createdAt
+        if let createdAtValue = try? container.decodeIfPresent(Date.self, forKey: .createdAt) {
+            createdAt = createdAtValue
+        } else if let createdAtString = try? container.decodeIfPresent(String.self, forKey: .createdAt), !createdAtString.isEmpty {
+            let formatter = ISO8601DateFormatter()
+            formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+            if let parsedDate = formatter.date(from: createdAtString) {
+                createdAt = parsedDate
+            } else {
+                formatter.formatOptions = [.withInternetDateTime]
+                createdAt = formatter.date(from: createdAtString)
+            }
+        } else {
+            createdAt = nil
+        }
+    }
+    
+    var isPurchased: Bool {
+        type == "Purchased"
+    }
+    
+    var isSold: Bool {
+        type == "Sold"
+    }
+}
+
 class OrdersService {
     static let shared = OrdersService()
     private init() {}
@@ -489,31 +573,35 @@ class OrdersService {
             throw NetworkError.requestFailed(http.statusCode)
         }
         
-        // Vérification préalable CRITIQUE : filtrer les orders AVANT le décodage
+        // ✨ VÉRIFICATION PRÉALABLE CRITIQUE : filtrer les orders AVANT le décodage
         // Les orders ont "clothesId" et "userId", les transactions ont "type" et "amount"
+        // ✨ IMPORTANT : Les transactions ne doivent JAMAIS avoir "clothesId" ou "userId"
         var filteredData: Data = data
         if let jsonArray = try? JSONSerialization.jsonObject(with: data) as? [[String: Any]] {
             var validTransactions: [[String: Any]] = []
             var ordersFound = 0
             
             for (index, item) in jsonArray.enumerated() {
-                // Si un élément a "clothesId", c'est un ORDER, on le REJETTE
-                if item["clothesId"] != nil {
+                // ✨ CRITIQUE : Si un élément a "clothesId" ou "userId", c'est un ORDER, on le REJETTE
+                if item["clothesId"] != nil || item["userId"] != nil {
                     ordersFound += 1
                     print("🚫 [OrdersService] REJECTED: Found order in transactions response at index \(index)")
-                    print("   Order has clothesId: \(item["clothesId"] ?? "nil")")
+                    print("   Order has clothesId: \(item["clothesId"] != nil ? "YES" : "NO")")
+                    print("   Order has userId: \(item["userId"] != nil ? "YES" : "NO")")
                     continue // Rejeter cet élément
                 }
                 
-                // Vérifier que c'est bien une transaction (a "type" et "amount")
+                // ✨ Vérifier que c'est bien une transaction (a "type" et "amount", PAS de "clothesId" ou "userId")
                 if let type = item["type"] as? String,
                    let _ = item["amount"] as? Double,
-                   (type == "incoming" || type == "outgoing") {
+                   (type == "incoming" || type == "outgoing"),
+                   item["clothesId"] == nil, // ✨ Double vérification
+                   item["userId"] == nil {   // ✨ Double vérification
                     // C'est une vraie transaction, on la garde
                     validTransactions.append(item)
                 } else {
                     print("⚠️ [OrdersService] REJECTED: Invalid transaction structure at index \(index)")
-                    print("   Missing type or amount, or invalid type")
+                    print("   Missing type or amount, or invalid type, or has order fields")
                 }
             }
             
@@ -562,10 +650,19 @@ class OrdersService {
                 var rejectedCount = 0
                 
                 for (index, jsonObject) in jsonArray.enumerated() {
-                    // Vérifier que ce n'est pas un order
-                    if jsonObject["clothesId"] != nil {
+                    // ✨ CRITIQUE : Vérifier que ce n'est pas un order (a "clothesId" ou "userId")
+                    if jsonObject["clothesId"] != nil || jsonObject["userId"] != nil {
                         rejectedCount += 1
-                        print("🚫 [OrdersService] Rejected order at index \(index) (has clothesId)")
+                        print("🚫 [OrdersService] Rejected order at index \(index) (has clothesId or userId)")
+                        continue
+                    }
+                    
+                    // ✨ Vérifier que c'est bien une transaction (a "type" et "amount")
+                    guard let type = jsonObject["type"] as? String,
+                          type == "incoming" || type == "outgoing",
+                          jsonObject["amount"] != nil else {
+                        rejectedCount += 1
+                        print("🚫 [OrdersService] Rejected invalid transaction at index \(index): missing type or amount")
                         continue
                     }
                     
@@ -573,7 +670,7 @@ class OrdersService {
                     if let jsonData = try? JSONSerialization.data(withJSONObject: jsonObject) {
                         do {
                             let transaction = try decoder.decode(TransactionResponse.self, from: jsonData)
-                            // Validation finale
+                            // ✨ Validation finale : s'assurer que c'est bien une transaction
                             if transaction.type == "incoming" || transaction.type == "outgoing" {
                                 validTransactions.append(transaction)
                             } else {
@@ -595,9 +692,37 @@ class OrdersService {
                 return validTransactions
             } else {
                 // Fallback: décodage normal si ce n'est pas un tableau
-                let transactions = try decoder.decode([TransactionResponse].self, from: filteredData)
-                print("✅ [OrdersService] Decoded \(transactions.count) transactions successfully")
-                return transactions.filter { $0.type == "incoming" || $0.type == "outgoing" }
+                // ✨ CRITIQUE : Filtrer AVANT le décodage pour rejeter les orders
+                if let jsonArray = try? JSONSerialization.jsonObject(with: filteredData) as? [[String: Any]] {
+                    var validTransactions: [TransactionResponse] = []
+                    for jsonObject in jsonArray {
+                        // ✨ REJETER tout élément qui a clothesId ou userId (c'est un order)
+                        if jsonObject["clothesId"] != nil || jsonObject["userId"] != nil {
+                            print("🚫 [OrdersService] Rejected order in fallback decoding (has clothesId or userId)")
+                            continue
+                        }
+                        // Vérifier que c'est une transaction valide
+                        guard let type = jsonObject["type"] as? String,
+                              (type == "incoming" || type == "outgoing"),
+                              jsonObject["amount"] != nil else {
+                            print("🚫 [OrdersService] Rejected invalid transaction in fallback")
+                            continue
+                        }
+                        // Décoder comme transaction
+                        if let jsonData = try? JSONSerialization.data(withJSONObject: jsonObject) {
+                            if let transaction = try? decoder.decode(TransactionResponse.self, from: jsonData) {
+                                validTransactions.append(transaction)
+                            }
+                        }
+                    }
+                    print("✅ [OrdersService] Decoded \(validTransactions.count) transactions successfully (fallback)")
+                    return validTransactions
+                } else {
+                    // Dernier recours : décodage direct (mais avec filtrage)
+                    let transactions = try decoder.decode([TransactionResponse].self, from: filteredData)
+                    print("✅ [OrdersService] Decoded \(transactions.count) transactions successfully (direct)")
+                    return transactions.filter { $0.type == "incoming" || $0.type == "outgoing" }
+                }
             }
         } catch {
             print("❌ [OrdersService] Transactions decoding error: \(error)")
@@ -618,6 +743,84 @@ class OrdersService {
             // Retourner un tableau vide au lieu de faire échouer
             print("⚠️ [OrdersService] Returning empty array due to decoding error")
             return []
+        }
+    }
+    
+    // MARK: - Get Unified History
+    func getUnifiedHistory() async throws -> [HistoryItemResponse] {
+        guard let url = URL(string: APIConstants.baseURL.absoluteString + "/orders/history") else {
+            throw NetworkError.invalidURL
+        }
+        
+        var request = URLRequest(url: url)
+        request.httpMethod = "GET"
+        if let token = TokenManager.shared.getToken() {
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
+        request.setValue("application/json", forHTTPHeaderField: "Accept")
+        
+        let (data, response) = try await URLSession.shared.data(for: request)
+        
+        // Debug: Log response
+        if let http = response as? HTTPURLResponse {
+            print("🔍 [OrdersService] History Status Code: \(http.statusCode)")
+            if let jsonString = String(data: data, encoding: .utf8) {
+                print("🔍 [OrdersService] History Response: \(jsonString.prefix(1000))")
+            }
+        }
+        
+        if let http = response as? HTTPURLResponse, http.statusCode >= 400 {
+            if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+               let message = json["message"] as? String {
+                throw NetworkError.serverMessage(message)
+            }
+            throw NetworkError.requestFailed(http.statusCode)
+        }
+        
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .custom { decoder in
+            let container = try decoder.singleValueContainer()
+            let dateString = try container.decode(String.self)
+            
+            let formatter = ISO8601DateFormatter()
+            formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+            
+            if let date = formatter.date(from: dateString) {
+                return date
+            }
+            
+            formatter.formatOptions = [.withInternetDateTime]
+            if let date = formatter.date(from: dateString) {
+                return date
+            }
+            
+            throw DecodingError.dataCorruptedError(
+                in: container,
+                debugDescription: "Expected ISO8601 date string, but got \(dateString)"
+            )
+        }
+        
+        do {
+            let history = try decoder.decode([HistoryItemResponse].self, from: data)
+            print("✅ [OrdersService] Decoded \(history.count) history items successfully")
+            return history
+        } catch {
+            print("❌ [OrdersService] History decoding error: \(error)")
+            if let decodingError = error as? DecodingError {
+                switch decodingError {
+                case .typeMismatch(let type, let context):
+                    print("Type mismatch: \(type) at \(context.codingPath.map { $0.stringValue })")
+                case .keyNotFound(let key, let context):
+                    print("Key not found: \(key.stringValue) at \(context.codingPath.map { $0.stringValue })")
+                case .valueNotFound(let type, let context):
+                    print("Value not found: \(type) at \(context.codingPath.map { $0.stringValue })")
+                case .dataCorrupted(let context):
+                    print("Data corrupted at \(context.codingPath.map { $0.stringValue }): \(context.debugDescription)")
+                @unknown default:
+                    print("Unknown decoding error")
+                }
+            }
+            throw error
         }
     }
 }
