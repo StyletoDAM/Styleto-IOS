@@ -334,11 +334,6 @@ struct DressingView: View {
                             viewModel: viewModel,
                             selectedClothe: $selectedClothe
                         )
-                        // 🔥 AJOUT : Log pour debug
-                        .onAppear {
-                            print("📥 [DressingView] Chargement vêtement: \(clothe.category ?? "Unknown")")
-                            print("   URL: \(clothe.imageURL.prefix(100))...")
-                        }
                     }
                 }
             }
@@ -419,51 +414,15 @@ private struct ClothingCard: View {
     
     var body: some View {
         VStack(spacing: 0) {
-            // 🔥 Image avec meilleur feedback de chargement
-            AsyncImage(url: URL(string: clothe.imageURL)) { phase in
-                switch phase {
-                case .empty:
-                    // En cours de chargement
-                    Rectangle()
-                        .fill(categoryDotColor.opacity(0.15))
-                        .overlay(
-                            VStack(spacing: 8) {
-                                ProgressView()
-                                    .tint(.white)
-                                Text("Loading...")
-                                    .font(.caption2)
-                                    .foregroundColor(.white.opacity(0.8))
-                            }
-                        )
-                case .success(let image):
-                    // Image chargée avec succès
-                    image
-                        .resizable()
-                        .scaledToFill()
-                        .onAppear {
-                            print("✅ [ClothingCard] Image chargée: \(clothe.category ?? "Unknown")")
-                        }
-                case .failure(let error):
-                    // Erreur de chargement
-                    Rectangle()
-                        .fill(Color.red.opacity(0.2))
-                        .overlay(
-                            VStack(spacing: 4) {
-                                Image(systemName: "exclamationmark.triangle")
-                                    .font(.title2)
-                                    .foregroundColor(.red)
-                                Text("Failed")
-                                    .font(.caption2)
-                                    .foregroundColor(.red)
-                            }
-                        )
-                        .onAppear {
-                            print("❌ [ClothingCard] Erreur chargement: \(error.localizedDescription)")
-                            print("   URL: \(clothe.imageURL)")
-                        }
-                @unknown default:
-                    EmptyView()
-                }
+            // Image
+            AsyncImage(url: URL(string: clothe.imageURL)) { image in
+                image
+                    .resizable()
+                    .scaledToFill()
+            } placeholder: {
+                Rectangle()
+                    .fill(categoryDotColor.opacity(0.3))
+                    .overlay(ProgressView().tint(.white))
             }
             .frame(height: 140)
             .clipped()

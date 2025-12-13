@@ -108,11 +108,6 @@ struct CameraOverlayView: View {
                                         viewModel.selectedClothe = clothe
                                         print("👕 Vêtement sélectionné: \(clothe.category ?? "unknown")")
                                     }
-                                    .onAppear {
-                                        // 🔥 Précharger l'image
-                                        print("📥 [CameraOverlayView] Préchargement vêtement: \(clothe.category ?? "Unknown")")
-                                        print("   URL: \(clothe.processedImageURL?.prefix(100) ?? clothe.imageURL.prefix(100))...")
-                                    }
                                 }
                             }
                             .padding(.horizontal, 16)
@@ -169,16 +164,6 @@ struct CameraOverlayView: View {
                 .padding(.horizontal, 20)
                 
                 Spacer()
-            }
-        }
-        // 🔥 AJOUT : Logs dans le VTO
-        .onChange(of: viewModel.selectedClothe?.id) { newId in
-            if let clothe = viewModel.selectedClothe {
-                print("🎨 [AvatarView] Vêtement sélectionné pour VTO: \(clothe.category ?? "Unknown")")
-                print("   imageURL: \(clothe.imageURL.prefix(100))...")
-                if let processedURL = clothe.processedImageURL {
-                    print("   processedImageURL: \(processedURL.prefix(100))...")
-                }
             }
         }
     }
