@@ -719,9 +719,9 @@ class OrdersService {
                     return validTransactions
                 } else {
                     // Dernier recours : décodage direct (mais avec filtrage)
-                    let transactions = try decoder.decode([TransactionResponse].self, from: filteredData)
+                let transactions = try decoder.decode([TransactionResponse].self, from: filteredData)
                     print("✅ [OrdersService] Decoded \(transactions.count) transactions successfully (direct)")
-                    return transactions.filter { $0.type == "incoming" || $0.type == "outgoing" }
+                return transactions.filter { $0.type == "incoming" || $0.type == "outgoing" }
                 }
             }
         } catch {

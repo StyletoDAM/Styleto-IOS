@@ -18,15 +18,33 @@ class DressingViewModel: ObservableObject {
     // MARK: - Fetch
     func fetchClothes() {
         isLoading = true
+        print("🔄 [DressingViewModel] Fetching clothes...")
+        
         ClothesService.shared.fetchMyClothes { [weak self] result in
             DispatchQueue.main.async {
                 self?.isLoading = false
                 switch result {
-                case .success(let clothes):
-                    self?.clothes = clothes
+                case .success(let fetchedClothes):
+                    print("✅ [DressingViewModel] Fetched \(fetchedClothes.count) clothes")
+                    
+                    // 🔥 AJOUT : Logger les URLs reçues
+                    if let firstClothe = fetchedClothes.first {
+                        print("📊 [DressingViewModel] Exemple d'URL:")
+                        print("   \(firstClothe.imageURL.prefix(150))...")
+                        
+                        // Vérifier si optimisée
+                        if firstClothe.imageURL.contains("f_auto") {
+                            print("✅ URL Cloudinary OPTIMISÉE détectée")
+                        } else {
+                            print("⚠️ URL Cloudinary NON OPTIMISÉE")
+                        }
+                    }
+                    
+                    self?.clothes = fetchedClothes
                     self?.filterClothes()
                 case .failure(let error):
-                    print("Erreur: \(error)")
+                    print("❌ [DressingViewModel] Error: \(error.localizedDescription)")
+                    self?.clothes = []
                 }
             }
         }
