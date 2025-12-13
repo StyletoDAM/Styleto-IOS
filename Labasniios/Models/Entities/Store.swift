@@ -1,4 +1,5 @@
 import Foundation
+import SwiftUI
 
 struct Store: Codable, Identifiable, Equatable { 
     let id: String
@@ -13,6 +14,7 @@ struct Store: Codable, Identifiable, Equatable {
     let buyerId: String?
     let soldAt: Date?
     let stripePaymentIntentId: String?
+    let condition: ProductCondition?
     
     let clothe: Clothe?
     let user: User?
@@ -20,6 +22,28 @@ struct Store: Codable, Identifiable, Equatable {
     enum StoreStatus: String, Codable {
         case available
         case sold
+    }
+    
+    enum ProductCondition: String, Codable {
+        case new = "new"
+        case used = "used"
+        case damaged = "damaged"
+        
+        var displayName: String {
+            switch self {
+            case .new: return "New"
+            case .used: return "Used"
+            case .damaged: return "Damaged"
+            }
+        }
+        
+        var color: Color {
+            switch self {
+            case .new: return .green
+            case .used: return .orange
+            case .damaged: return .red
+            }
+        }
     }
     
     init(from decoder: Decoder) throws {
@@ -70,6 +94,7 @@ struct Store: Codable, Identifiable, Equatable {
         buyerId = try container.decodeIfPresent(String.self, forKey: .buyerId)
         soldAt = try container.decodeIfPresent(Date.self, forKey: .soldAt)
         stripePaymentIntentId = try container.decodeIfPresent(String.self, forKey: .stripePaymentIntentId)
+        condition = try container.decodeIfPresent(ProductCondition.self, forKey: .condition)
     }
     
     func encode(to encoder: Encoder) throws {
@@ -85,6 +110,7 @@ struct Store: Codable, Identifiable, Equatable {
         try container.encodeIfPresent(buyerId, forKey: .buyerId)
         try container.encodeIfPresent(soldAt, forKey: .soldAt)
         try container.encodeIfPresent(stripePaymentIntentId, forKey: .stripePaymentIntentId)
+        try container.encodeIfPresent(condition, forKey: .condition)
     }
     
     private enum CodingKeys: String, CodingKey {
@@ -100,6 +126,7 @@ struct Store: Codable, Identifiable, Equatable {
         case buyerId
         case soldAt
         case stripePaymentIntentId
+        case condition
     }
     
     // ✅ NOUVEAU : Conformité Equatable

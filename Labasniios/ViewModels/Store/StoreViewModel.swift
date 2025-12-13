@@ -21,6 +21,7 @@ class StoreViewModel: ObservableObject {
     @Published var selectedSize: String = "M"
     @Published var isShoes: Bool = false
     @Published var showUpgradeToPro = false
+    @Published var selectedCondition: Store.ProductCondition = .new
     
     // ✨ NOUVEAU : Suggestions de vente
     @Published var sellSuggestions: [Clothe] = []
@@ -261,7 +262,8 @@ class StoreViewModel: ObservableObject {
         let body: [String: Any] = [
             "clothesId": clothe.id,
             "price": price,
-            "size": size
+            "size": size,
+            "condition": selectedCondition.rawValue
         ]
 
         StoreService.shared.createStoreItem(body: body)

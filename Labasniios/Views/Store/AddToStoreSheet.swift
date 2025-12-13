@@ -37,10 +37,11 @@ struct AddToStoreSheet: View {
                         clothesList
                     }
      
-                    // MARK: - Price + Size (seulement si un vêtement est sélectionné)
+                    // MARK: - Price + Size + Condition (seulement si un vêtement est sélectionné)
                     if viewModel.selectedClothe != nil {
                         priceInput
                         sizeInputSection
+                        conditionPicker
                     }
                 }
                 .padding()
@@ -443,6 +444,48 @@ struct AddToStoreSheet: View {
                     }
                 }
                 .padding(.horizontal)
+            }
+        }
+    }
+    
+    // MARK: - Condition Dropdown
+    private var conditionPicker: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Product Condition")
+                .font(.headline)
+                .foregroundColor(.themeText)
+            
+            Menu {
+                ForEach([Store.ProductCondition.new, .used, .damaged], id: \.self) { condition in
+                    Button {
+                        viewModel.selectedCondition = condition
+                    } label: {
+                        HStack {
+                            Text(condition.displayName)
+                            if viewModel.selectedCondition == condition {
+                                Spacer()
+                                Image(systemName: "checkmark")
+                            }
+                        }
+                    }
+                }
+            } label: {
+                HStack {
+                    Text(viewModel.selectedCondition.displayName)
+                        .foregroundColor(.themeText)
+                    Spacer()
+                    Image(systemName: "chevron.down")
+                        .font(.system(size: 12))
+                        .foregroundColor(.themeSecondary)
+                }
+                .padding()
+                .frame(height: 56)
+                .background(Color.themeCard)
+                .clipShape(RoundedRectangle(cornerRadius: 16))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 16)
+                        .stroke(Color.themeSecondary.opacity(0.3), lineWidth: 1)
+                )
             }
         }
     }

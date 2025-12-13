@@ -416,6 +416,34 @@ private struct ProductCard: View {
                     }
                 }
 
+                // Tag condition en haut à droite (étiquette moderne)
+                if let condition = storeItem.condition {
+                    VStack {
+                        HStack {
+                            Spacer()
+                            HStack(spacing: 4) {
+                                Circle()
+                                    .fill(condition.color)
+                                    .frame(width: 5, height: 5)
+                                Text(condition.displayName)
+                                    .font(.system(size: 9, weight: .semibold))
+                                    .foregroundColor(condition.color)
+                            }
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 4)
+                            .background(condition.color.opacity(0.15))
+                            .clipShape(Capsule())
+                            .overlay(
+                                Capsule()
+                                    .stroke(condition.color.opacity(0.4), lineWidth: 1)
+                            )
+                            .padding(.top, 8)
+                            .padding(.trailing, 8)
+                        }
+                        Spacer()
+                    }
+                }
+
                 if !storeItem.isAvailable {
                     Text("SOLD")
                         .font(.caption.bold())
@@ -434,6 +462,7 @@ private struct ProductCard: View {
                         .font(.system(size: 18, weight: .semibold))
                         .foregroundColor(.themeTeal)
                         .lineLimit(1)
+                    
                     Text("\(storeItem.price, specifier: "%.2f") DT")
                         .font(.system(size: 16, weight: .semibold))
                         .foregroundColor(storeItem.isAvailable ? .themePrimary : .gray)
