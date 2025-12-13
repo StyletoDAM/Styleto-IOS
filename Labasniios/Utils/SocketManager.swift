@@ -8,6 +8,7 @@ final class ChatSocketManager: ObservableObject {
     
     private var manager: SocketManager!
     private var socket: SocketIOClient!
+    private var configuredToken: String? // ✨ Stocker le token utilisé lors de la configuration
     
     @Published var isConnected = false
     @Published var connectionStatus = "Déconnecté"
@@ -23,12 +24,20 @@ final class ChatSocketManager: ObservableObject {
     }
     
     func setupSocket() {
-        debugToken() // ← AJOUT
+        debugToken()
 
         guard let token = TokenManager.shared.getToken() else {
-            print("❌ Pas de token disponible")
+            print("❌ [SocketManager] Pas de token disponible")
             return
         }
+        
+        // ✨ CRITIQUE : Extraire l'userId du JWT pour les logs
+        let currentUserId = JWTDecoder.extractUserId(from: token)
+        print("═══════════════════════════════════════════════════════════")
+        print("🔌 [SocketManager] Connexion au socket...")
+        print("   Token: \(token.prefix(20))...")
+        print("   Current User ID (from JWT): '\(currentUserId ?? "nil")'")
+        print("═══════════════════════════════════════════════════════════")
         
         // Extraire l'URL de base sans le /api
         var baseURLString = APIConstants.baseURL.absoluteString
@@ -37,30 +46,37 @@ final class ChatSocketManager: ObservableObject {
         }
         
         guard let baseURL = URL(string: baseURLString) else {
-            print("❌ URL invalide:", baseURLString)
+            print("❌ [SocketManager] URL invalide:", baseURLString)
             return
         }
         
-        print("🔧 Configuration socket avec URL:", baseURL.absoluteString)
-        print("🔑 Token complet:", token)
+        print("🔧 [SocketManager] Configuration socket avec URL:", baseURL.absoluteString)
         
         // Configuration du SocketManager avec token dans auth
         manager = SocketManager(
             socketURL: baseURL,
             config: [
-                .log(true),
+                .log(false),
                 .compress,
                 .reconnects(true),
                 .reconnectAttempts(-1),
                 .reconnectWait(2),
                 .forceWebsockets(true),
                 .extraHeaders(["Authorization": "Bearer \(token)"]),
-                .connectParams(["token": token])
+                .connectParams(["token": token]),
+                .path("/socket.io/")
             ]
         )
         
+        // ✨ CRITIQUE : Stocker le token utilisé pour la configuration
+        configuredToken = token
+        
         // Connexion au namespace /chat
         socket = manager.socket(forNamespace: "/chat")
+        
+        // ✨ CRITIQUE : Nettoyer les listeners AVANT de les reconfigurer
+        // Supprimer tous les handlers existants
+        socket.removeAllHandlers()
         
         setupListeners()
     }
@@ -127,19 +143,46 @@ final class ChatSocketManager: ObservableObject {
     }
     
     private func handleIncomingMessage(_ data: [Any]) {
-        guard let json = data.first as? [String: Any] else {
-            print("❌ Format de message invalide:", data)
+        print("═══════════════════════════════════════════════════════════")
+        print("📨 [SocketManager] Nouveau message reçu via socket")
+        print("   Data brut: \(data)")
+        
+        guard let messageDict = data.first as? [String: Any] else {
+            print("❌ [SocketManager] Format de données invalide")
+            print("═══════════════════════════════════════════════════════════")
             return
         }
         
-        print("📝 JSON reçu:", json)
+        print("   📦 Message Dict: \(messageDict)")
+        
+        // ✨ CRITIQUE : Extraire les informations pour logs
+        if let senderDict = messageDict["senderId"] as? [String: Any] {
+            let senderId = (senderDict["_id"] as? String) ?? (senderDict["id"] as? String) ?? ""
+            let senderName = senderDict["fullName"] as? String ?? "Unknown"
+            
+            // Récupérer l'ID de l'utilisateur actuel depuis le JWT
+            let currentUserId = TokenManager.shared.getUserId() ?? JWTDecoder.extractUserId(from: TokenManager.shared.getToken() ?? "")
+            let normalizedSenderId = JWTDecoder.normalizeId(senderId)
+            let normalizedUserId = JWTDecoder.normalizeId(currentUserId ?? "")
+            
+            print("   👤 Sender Info:")
+            print("      - ID (raw): '\(senderId)'")
+            print("      - ID (normalized): '\(normalizedSenderId)'")
+            print("      - Name: '\(senderName)'")
+            print("   🔑 Current User Info:")
+            print("      - ID (raw): '\(currentUserId ?? "nil")'")
+            print("      - ID (normalized): '\(normalizedUserId)'")
+            print("   ✅ Comparaison:")
+            print("      - IDs match: \(normalizedSenderId == normalizedUserId && !normalizedSenderId.isEmpty)")
+            print("      - Alignment: \(normalizedSenderId == normalizedUserId ? "➡️ DROITE (Outgoing)" : "⬅️ GAUCHE (Incoming)")")
+        }
         
         do {
-            let messageData = try JSONSerialization.data(withJSONObject: json)
-            let decoder = JSONDecoder()
+            // Convertir en Data pour décoder
+            let messageData = try JSONSerialization.data(withJSONObject: messageDict)
             
             // Configuration du décodeur pour les dates
-            // Créer le formatter localement dans la closure pour éviter les problèmes de Sendable
+            let decoder = JSONDecoder()
             decoder.dateDecodingStrategy = .custom { decoder in
                 let container = try decoder.singleValueContainer()
                 if let dateString = try? container.decode(String.self) {
@@ -158,85 +201,63 @@ final class ChatSocketManager: ObservableObject {
             
             let message = try decoder.decode(ChatMessage.self, from: messageData)
             
-            // Afficher le JSON brut AVANT décodage pour voir la structure exacte
-            if let jsonString = String(data: messageData, encoding: .utf8) {
-                print("📝 JSON BRUT REÇU (avant décodage):")
-                print(jsonString)
-            }
+            print("   ✅ Message décodé avec succès:")
+            print("      - ID: '\(message.id)'")
+            print("      - Content: '\(message.content)'")
+            print("      - Sender ID: '\(message.senderId.id)'")
+            print("      - Sender Name: '\(message.senderId.fullName)'")
+            print("      - Conversation ID: '\(message.conversationId)'")
+            print("═══════════════════════════════════════════════════════════")
             
-            // Afficher aussi le dictionnaire JSON pour voir la structure
-            if let jsonDict = try? JSONSerialization.jsonObject(with: messageData) as? [String: Any],
-               let senderIdDict = jsonDict["senderId"] as? [String: Any] {
-                print("📝 senderId dans JSON brut:")
-                print("   Structure: \(senderIdDict)")
-                print("   Clés disponibles: \(senderIdDict.keys.joined(separator: ", "))")
-                if let rawId = senderIdDict["_id"] {
-                    print("   _id (raw): \(rawId) (type: \(type(of: rawId)))")
-                }
-                if let rawId = senderIdDict["id"] {
-                    print("   id (raw): \(rawId) (type: \(type(of: rawId)))")
-                }
-            }
-            
-            print("✅ MESSAGE DÉCODÉ:")
-            print("   - Content: \(message.content)")
-            print("   - Sender ID (raw): '\(message.senderId.id)'")
-            print("   - Sender ID (normalized): '\(message.senderId.id.trimmingCharacters(in: .whitespacesAndNewlines).lowercased())'")
-            print("   - Sender Name: \(message.senderId.fullName)")
-            print("   - Conversation ID: \(message.conversationId)")
-            
-            // Comparer avec le userId stocké IMMÉDIATEMENT
-            let storedUserId = TokenManager.shared.getUserId()
-            let jwtUserId = JWTDecoder.extractUserId(from: TokenManager.shared.getToken() ?? "")
-            if let storedUserId = storedUserId {
-                let normalizedStored = storedUserId.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-                let normalizedSender = message.senderId.id.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-                print("   ⚠️ COMPARAISON IMMÉDIATE DANS SocketManager:")
-                print("      - Stored User ID: '\(storedUserId)' (normalized: '\(normalizedStored)')")
-                print("      - JWT User ID: '\(jwtUserId ?? "nil")'")
-                print("      - Sender ID (normalized): '\(normalizedSender)'")
-                print("      - Match avec stored: \(normalizedStored == normalizedSender ? "✅ OUI → OUTGOING" : "❌ NON → INCOMING")")
-                if normalizedStored != normalizedSender {
-                    print("      ⚠️ DIFFÉRENCE: '\(normalizedStored)' != '\(normalizedSender)'")
-                    print("      Longueurs: stored=\(normalizedStored.count), sender=\(normalizedSender.count)")
-                }
-            } else if let jwtUserId = jwtUserId {
-                let normalizedJwt = jwtUserId.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-                let normalizedSender = message.senderId.id.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-                print("   ⚠️ COMPARAISON IMMÉDIATE (JWT seulement):")
-                print("      - JWT User ID: '\(jwtUserId)' (normalized: '\(normalizedJwt)')")
-                print("      - Sender ID (normalized): '\(normalizedSender)'")
-                print("      - Match avec JWT: \(normalizedJwt == normalizedSender ? "✅ OUI → OUTGOING" : "❌ NON → INCOMING")")
-            }
-            
-            // Émettre le message via le publisher
+            // Publier le message pour que les vues l'affichent
             Task { @MainActor in
-self.messageSubject.send(message)
+                self.messageSubject.send(message)
             }
             
         } catch {
-            print("❌ ÉCHEC DÉCODAGE MESSAGE:", error)
+            print("❌ [SocketManager] Erreur de décodage:", error)
             if let decodingError = error as? DecodingError {
                 switch decodingError {
                 case .keyNotFound(let key, let context):
-                    print("Clé manquante:", key.stringValue, "contexte:", context.debugDescription)
+                    print("   Clé manquante: \(key.stringValue)")
+                    print("   Context: \(context.debugDescription)")
                 case .typeMismatch(let type, let context):
-                    print("Type incompatible:", type, "contexte:", context.debugDescription)
+                    print("   Type mismatch: \(type)")
+                    print("   Context: \(context.debugDescription)")
                 case .valueNotFound(let type, let context):
-                    print("Valeur manquante:", type, "contexte:", context.debugDescription)
+                    print("   Valeur non trouvée: \(type)")
+                    print("   Context: \(context.debugDescription)")
                 case .dataCorrupted(let context):
-                    print("Données corrompues:", context.debugDescription)
+                    print("   Données corrompues: \(context.debugDescription)")
                 @unknown default:
-                    print("Erreur de décodage inconnue")
+                    print("   Erreur inconnue")
                 }
             }
+            print("═══════════════════════════════════════════════════════════")
         }
     }
     
     // MÉTHODES PUBLIQUES
     
     func connect() {
-        if manager == nil {
+        // ✨ CRITIQUE : Vérifier si le token a changé
+        // Si le token actuel est différent de celui utilisé pour configurer le socket, reconfigurer
+        guard let currentToken = TokenManager.shared.getToken() else {
+            print("❌ [SocketManager] Pas de token disponible pour la connexion")
+            return
+        }
+        
+        // Si le manager existe déjà, vérifier si le token a changé
+        if manager != nil, let oldToken = configuredToken {
+            if oldToken != currentToken {
+                print("🔄 [SocketManager] Token a changé !")
+                print("   - Ancien token (user): '\(JWTDecoder.extractUserId(from: oldToken) ?? "nil")'")
+                print("   - Nouveau token (user): '\(JWTDecoder.extractUserId(from: currentToken) ?? "nil")'")
+                print("   - Reconnexion avec le nouveau token...")
+                disconnect()
+                setupSocket()
+            }
+        } else {
             setupSocket()
         }
         
@@ -250,34 +271,69 @@ self.messageSubject.send(message)
     }
     
     func disconnect() {
+        print("🔌 [SocketManager] Déconnexion...")
+        socket?.removeAllHandlers()  // ✨ Nettoyer tous les listeners
         socket?.disconnect()
-        print("🔌 Déconnexion du socket")
+        isConnected = false
+        configuredToken = nil // ✨ Réinitialiser le token stocké
     }
     
     func sendMessage(_ content: String, in conversationId: String) {
         guard isConnected else {
-            print("⚠️ Socket non connecté, impossible d'envoyer le message")
+            print("⚠️ [SocketManager] Socket non connecté, impossible d'envoyer le message")
+            return
+        }
+        
+        // ✨ CRITIQUE : Récupérer l'ID de l'utilisateur actuel
+        guard let currentUserId = TokenManager.shared.getUserId() ?? JWTDecoder.extractUserId(from: TokenManager.shared.getToken() ?? "") else {
+            print("❌ [SocketManager] Pas d'ID utilisateur disponible")
+            return
+        }
+        
+        let normalizedUserId = JWTDecoder.normalizeId(currentUserId)
+        
+        print("═══════════════════════════════════════════════════════════")
+        print("📤 [SocketManager] Envoi du message:")
+        print("   Content: '\(content)'")
+        print("   Conversation ID: '\(conversationId)'")
+        print("   Sender ID (raw): '\(currentUserId)'")
+        print("   Sender ID (normalized): '\(normalizedUserId)'")
+        print("   ⚠️ IMPORTANT: Ce message DOIT s'afficher à DROITE (Outgoing)")
+        print("═══════════════════════════════════════════════════════════")
+        
+        // ✨ CRITIQUE : Inclure le token actuel dans le payload pour que le backend puisse le re-vérifier
+        guard let currentToken = TokenManager.shared.getToken() else {
+            print("❌ [SocketManager] Pas de token disponible pour l'envoi")
             return
         }
         
         let payload: [String: Any] = [
             "conversationId": conversationId,
-            "content": content
+            "content": content,
+            "token": currentToken  // ✨ NOUVEAU : Inclure le token actuel
         ]
         
-        print("📤 Envoi message via socket:", content)
+        print("📤 [SocketManager] Envoi avec token actuel (user: '\(JWTDecoder.extractUserId(from: currentToken) ?? "nil")')")
         socket.emit("send-message", payload)
     }
     
     func joinConversation(_ conversationId: String) {
         guard isConnected else {
-            print("⚠️ Socket non connecté, impossible de join")
+            print("⚠️ [SocketManager] Socket non connecté, impossible de join")
             return
         }
         
+        print("═══════════════════════════════════════════════════════════")
+        print("🚪 [SocketManager] Rejoindre conversation:")
+        print("   Conversation ID: '\(conversationId)'")
+        
+        // Récupérer l'ID de l'utilisateur actuel pour logs
+        let currentUserId = TokenManager.shared.getUserId() ?? JWTDecoder.extractUserId(from: TokenManager.shared.getToken() ?? "")
+        print("   Current User ID: '\(currentUserId ?? "nil")'")
+        print("═══════════════════════════════════════════════════════════")
+        
         let payload = ["conversationId": conversationId]
         socket.emit("join-conversation", payload)
-        print("🔗 Join conversation:", conversationId)
     }
     
     func sendTypingIndicator(in conversationId: String, isTyping: Bool) {

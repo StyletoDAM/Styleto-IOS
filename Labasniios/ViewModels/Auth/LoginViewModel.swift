@@ -33,10 +33,16 @@ final class LoginViewModel: ObservableObject {
             debugPrint("[LoginViewModel] Signed in user: \(response.user.email)")
             signedInUser = response.user
             accessToken = response.accessToken
+            
+            // ✨ CRITIQUE : Sauvegarder le token (qui va automatiquement extraire et sauvegarder le userId du JWT)
             TokenManager.shared.saveToken(response.accessToken)
             TokenManager.shared.saveRefreshToken(response.refreshToken)
-            // ✨ NOUVEAU : Sauvegarder le userId (comme Android)
-            TokenManager.shared.saveUserId(response.user.id)
+            
+            // ✨ Debug : Afficher les infos du token
+            print("═══════════════════════════════════════════════════════════")
+            print("✅ [LoginViewModel] Login réussi")
+            TokenManager.shared.printDebugInfo()
+            print("═══════════════════════════════════════════════════════════")
         } catch let networkError as NetworkError {
             errorMessage = networkError.errorDescription ?? "An error occurred."
             debugPrint("[LoginViewModel] Network error: \(errorMessage ?? "")")

@@ -18,34 +18,44 @@ class ChatDetailViewModel: ObservableObject {
     init(conversation: ChatConversationResponse) {
         self.conversation = conversation
         
-        // ✨ CORRIGÉ : Utiliser le userId stocké (comme Android) au lieu de l'extraire du JWT
-        // Cela garantit que le userId utilisé est exactement le même format que celui stocké lors du login
-        let storedUserId = TokenManager.shared.getUserId()
-        let jwtUserId = JWTDecoder.extractUserId(from: TokenManager.shared.getToken() ?? "")
+        // ✨ SOLUTION : Utiliser UNIQUEMENT le JWT (qui contient 'sub' = _id MongoDB)
+        // C'est exactement ce que le backend utilise pour identifier l'utilisateur
+        guard let token = TokenManager.shared.getToken() else {
+            print("❌ [ChatDetailViewModel] Aucun token disponible")
+            self.currentUserId = nil
+            return
+        }
         
-        // Priorité : userId stocké > userId du JWT (comme Android utilise getUserId())
-        self.currentUserId = storedUserId ?? jwtUserId
+        // Extraire l'ID depuis le JWT (champ 'sub')
+        self.currentUserId = JWTDecoder.extractUserId(from: token)
         
-        print("📱 ChatDetailViewModel init")
-        print("📦 Conversation ID:", conversation.id)
-        print("📦 Messages dans la conversation:", conversation.messages.count)
-        print("👤 Stored User ID:", storedUserId ?? "nil")
-        print("👤 JWT User ID:", jwtUserId ?? "nil")
-        print("👤 Current User ID (used):", currentUserId ?? "nil")
+        print("═══════════════════════════════════════════════════════════")
+        print("📱 [ChatDetailViewModel] Initialisation")
+        print("   📦 Conversation ID: \(conversation.id)")
+        print("   📦 Messages dans la conversation: \(conversation.messages.count)")
+        print("   🔑 Current User ID (from JWT 'sub'): '\(currentUserId ?? "nil")'")
+        
         if let currentUserId = currentUserId {
-            print("👤 Current User ID (normalized): '\(currentUserId.trimmingCharacters(in: .whitespacesAndNewlines).lowercased())'")
+            let normalized = JWTDecoder.normalizeId(currentUserId)
+            print("   🔑 Current User ID (normalized): '\(normalized)'")
         }
         
-        // Debug: Afficher les participants avec normalisation
-        print("👥 Participants:")
+        // Debug participants
+        print("   👥 Participants de la conversation:")
         for (index, participant) in conversation.participants.enumerated() {
-            let normalizedId = participant.id.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-            let isCurrentUser = currentUserId != nil && 
-                               normalizedId == currentUserId!.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-            print("   [\(index)] ID: '\(participant.id)' (normalized: '\(normalizedId)') Name: '\(participant.fullName)' \(isCurrentUser ? "← CURRENT USER" : "")")
+            let normalizedParticipantId = JWTDecoder.normalizeId(participant.id)
+            let normalizedUserId = JWTDecoder.normalizeId(currentUserId)
+            let isCurrentUser = normalizedParticipantId == normalizedUserId && 
+                               !normalizedParticipantId.isEmpty && 
+                               !normalizedUserId.isEmpty
+            print("      [\(index)] ID: '\(participant.id)'")
+            print("            Normalized: '\(normalizedParticipantId)'")
+            print("            Name: '\(participant.fullName)'")
+            print("            Is Current User: \(isCurrentUser ? "✅ OUI" : "❌ NON")")
         }
+        print("═══════════════════════════════════════════════════════════")
         
-        // ⭐ Charger les messages initiaux
+        // Charger les messages initiaux
         loadInitialMessages()
         
         // S'abonner aux nouveaux messages en temps réel
@@ -60,21 +70,22 @@ class ChatDetailViewModel: ObservableObject {
         }
     }
     
-    // ⭐ NOUVELLE MÉTHODE : Charger les messages initiaux
+    // MARK: - Initial Messages Loading
+    
     private func loadInitialMessages() {
-        // Si la conversation contient déjà des messages, les charger
         if !conversation.messages.isEmpty {
             self.messages = conversation.messages.sorted { $0.createdAt < $1.createdAt }
-            print("✅ \(self.messages.count) messages chargés depuis la conversation")
+            print("✅ [\(self.messages.count)] messages chargés depuis la conversation")
+            
+            // Debug : afficher l'alignement de chaque message
+            debugMessageAlignment()
         } else {
-            // Sinon, charger depuis l'API
             Task {
                 await fetchMessages()
             }
         }
     }
     
-    // ⭐ NOUVELLE MÉTHODE : Récupérer les messages depuis l'API
     func fetchMessages() async {
         isLoadingMessages = true
         
@@ -83,8 +94,11 @@ class ChatDetailViewModel: ObservableObject {
             
             await MainActor.run {
                 self.messages = fetchedMessages.sorted { $0.createdAt < $1.createdAt }
-                print("✅ \(self.messages.count) messages récupérés depuis l'API")
+                print("✅ [\(self.messages.count)] messages récupérés depuis l'API")
                 self.isLoadingMessages = false
+                
+                // Debug : afficher l'alignement de chaque message
+                debugMessageAlignment()
             }
         } catch {
             print("❌ Erreur chargement messages:", error)
@@ -94,6 +108,8 @@ class ChatDetailViewModel: ObservableObject {
         }
     }
     
+    // MARK: - Realtime Updates
+    
     private func setupRealtimeUpdates() {
         // Écouter les nouveaux messages
         ChatSocketManager.shared.messagePublisher
@@ -101,20 +117,23 @@ class ChatDetailViewModel: ObservableObject {
             .sink { [weak self] newMessage in
                 guard let self = self else { return }
                 
-                print("📨 Nouveau message reçu:")
-                print("   - Content: \(newMessage.content)")
+                print("═══════════════════════════════════════════════════════════")
+                print("📨 [ChatDetailViewModel] Nouveau message reçu via socket:")
+                print("   - Content: '\(newMessage.content)'")
                 print("   - Sender ID (raw): '\(newMessage.senderId.id)'")
-                print("   - Sender ID (normalized): '\(newMessage.senderId.id.trimmingCharacters(in: .whitespacesAndNewlines).lowercased())'")
-                print("   - Sender Name: \(newMessage.senderId.fullName)")
-                print("   - Conversation ID: \(newMessage.conversationId)")
-                print("   - Ma conversation: \(self.conversation.id)")
+                print("   - Sender ID (normalized): '\(JWTDecoder.normalizeId(newMessage.senderId.id))'")
+                print("   - Sender Name: '\(newMessage.senderId.fullName)'")
+                print("   - Conversation ID: '\(newMessage.conversationId)'")
+                print("   - Ma conversation: '\(self.conversation.id)'")
                 print("   - Current User ID (raw): '\(self.currentUserId ?? "nil")'")
+                
                 if let currentUserId = self.currentUserId {
-                    print("   - Current User ID (normalized): '\(currentUserId.trimmingCharacters(in: .whitespacesAndNewlines).lowercased())'")
-                    let normalizedSenderId = newMessage.senderId.id.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-                    let normalizedUserId = currentUserId.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-                    print("   - Match: \(normalizedSenderId == normalizedUserId ? "✅ OUI" : "❌ NON")")
+                    let normalizedSenderId = JWTDecoder.normalizeId(newMessage.senderId.id)
+                    let normalizedUserId = JWTDecoder.normalizeId(currentUserId)
+                    print("   - Current User ID (normalized): '\(normalizedUserId)'")
+                    print("   - Match: \(normalizedSenderId == normalizedUserId && !normalizedSenderId.isEmpty ? "✅ OUI (message envoyé par moi)" : "❌ NON (message reçu)")")
                 }
+                print("═══════════════════════════════════════════════════════════")
                 
                 // Vérifier que le message appartient à cette conversation
                 guard newMessage.conversationId == self.conversation.id else {
@@ -122,15 +141,9 @@ class ChatDetailViewModel: ObservableObject {
                     return
                 }
                 
-                // Remplacer le message optimiste s'il existe
-                if let tempIndex = self.messages.firstIndex(where: { $0.id.hasPrefix("temp-") }) {
-                    print("🔄 Remplacement du message optimiste par le vrai")
-                    self.messages.remove(at: tempIndex)
-                }
-                
                 // Éviter les doublons
                 guard !self.messages.contains(where: { $0.id == newMessage.id }) else {
-                    print("⚠️ Message déjà présent, ignoré")
+                    print("⚠️ Message déjà présent (doublon évité)")
                     return
                 }
                 
@@ -140,7 +153,7 @@ class ChatDetailViewModel: ObservableObject {
                     self.messages.sort { $0.createdAt < $1.createdAt }
                 }
                 
-                print("✅ Message ajouté ! Total:", self.messages.count)
+                print("✅ Message ajouté ! Total: \(self.messages.count)")
             }
             .store(in: &cancellables)
         
@@ -149,7 +162,7 @@ class ChatDetailViewModel: ObservableObject {
             .receive(on: DispatchQueue.main)
             .sink { [weak self] connected in
                 self?.isConnected = connected
-                print("🔌 Statut connexion:", connected ? "Connecté" : "Déconnecté")
+                print("🔌 Statut connexion socket:", connected ? "✅ Connecté" : "❌ Déconnecté")
                 
                 // Rejoindre la conversation dès que connecté
                 if connected, let conversationId = self?.conversation.id {
@@ -159,11 +172,18 @@ class ChatDetailViewModel: ObservableObject {
             .store(in: &cancellables)
     }
     
+    // MARK: - Send Message
+    
     func sendMessage() async {
         let text = messageText.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !text.isEmpty else { return }
         
-        print("📤 Envoi du message:", text)
+        print("═══════════════════════════════════════════════════════════")
+        print("📤 [ChatDetailViewModel] Envoi du message:")
+        print("   - Content: '\(text)'")
+        print("   - Sender ID: '\(currentUserId ?? "nil")'")
+        print("   - Conversation ID: '\(conversation.id)'")
+        print("═══════════════════════════════════════════════════════════")
         
         messageText = ""
         isSending = true
@@ -208,5 +228,30 @@ class ChatDetailViewModel: ObservableObject {
         } catch {
             print("❌ Erreur REST API:", error)
         }
+    }
+    
+    // MARK: - Debug Helper
+    
+    /// Affiche l'alignement prévu pour chaque message (debug)
+    private func debugMessageAlignment() {
+        guard let currentUserId = currentUserId else { return }
+        let normalizedUserId = JWTDecoder.normalizeId(currentUserId)
+        
+        print("═══════════════════════════════════════════════════════════")
+        print("🔍 [ChatDetailViewModel] Debug alignement des messages:")
+        print("   Current User ID (normalized): '\(normalizedUserId)'")
+        print("")
+        
+        for (index, message) in messages.enumerated() {
+            let normalizedSenderId = JWTDecoder.normalizeId(message.senderId.id)
+            let isOwnMessage = normalizedSenderId == normalizedUserId && 
+                              !normalizedSenderId.isEmpty && 
+                              !normalizedUserId.isEmpty
+            
+            print("   [\(index)] '\(message.content.prefix(30))...'")
+            print("       Sender ID (normalized): '\(normalizedSenderId)'")
+            print("       Alignment: \(isOwnMessage ? "➡️ DROITE (Outgoing)" : "⬅️ GAUCHE (Incoming)")")
+        }
+        print("═══════════════════════════════════════════════════════════")
     }
 }

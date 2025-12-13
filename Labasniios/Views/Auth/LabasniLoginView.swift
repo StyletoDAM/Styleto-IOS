@@ -249,10 +249,16 @@ struct LabasniLoginView: View {
             hideSnackbar()
             
             appleSignInHelper.onSuccess = { response in
+                // ✨ CRITIQUE : Sauvegarder le token (qui va automatiquement extraire et sauvegarder le userId du JWT)
                 TokenManager.shared.saveToken(response.accessToken)
                 TokenManager.shared.saveRefreshToken(response.refreshToken)
-                // ✨ NOUVEAU : Sauvegarder le userId (comme Android)
-                TokenManager.shared.saveUserId(response.user.id)
+                
+                // ✨ Debug : Afficher les infos du token
+                print("═══════════════════════════════════════════════════════════")
+                print("✅ [LabasniLoginView] Apple Sign-In réussi")
+                TokenManager.shared.printDebugInfo()
+                print("═══════════════════════════════════════════════════════════")
+                
                 viewModel.password = ""
                 hideSnackbar()
                 profileUser = response.user
@@ -264,10 +270,16 @@ struct LabasniLoginView: View {
             }
             
             googleSignInHelper.onSuccess = { response in
+                // ✨ CRITIQUE : Sauvegarder le token (qui va automatiquement extraire et sauvegarder le userId du JWT)
                 TokenManager.shared.saveToken(response.accessToken)
                 TokenManager.shared.saveRefreshToken(response.refreshToken)
-                // ✨ NOUVEAU : Sauvegarder le userId (comme Android)
-                TokenManager.shared.saveUserId(response.user.id)
+                
+                // ✨ Debug : Afficher les infos du token
+                print("═══════════════════════════════════════════════════════════")
+                print("✅ [LabasniLoginView] Google Sign-In réussi")
+                TokenManager.shared.printDebugInfo()
+                print("═══════════════════════════════════════════════════════════")
+                
                 viewModel.password = ""
                 hideSnackbar()
                 profileUser = response.user

@@ -119,9 +119,8 @@ struct ChatParticipant: Codable, Identifiable {
             // Log détaillé pour debug
             print("❌ [ChatParticipant] Impossible d'extraire l'ID.")
             print("   CodingPath: \(decoder.codingPath)")
-            if let allKeys = try? container.allKeys {
-                print("   Clés disponibles: \(allKeys.map { $0.stringValue })")
-            }
+            let allKeys = container.allKeys
+            print("   Clés disponibles: \(allKeys.map { $0.stringValue })")
             throw DecodingError.keyNotFound(
                 CodingKeys.id,
                 DecodingError.Context(

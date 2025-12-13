@@ -40,8 +40,8 @@ class ChatService {
         case 401:
             throw NetworkError.unauthorized
         case 400...499:
-            if let errorResponse = try? JSONDecoder().decode(ErrorResponse.self, from: data),
-               let message = errorResponse.message ?? errorResponse.error {
+            if let errorResponse = try? JSONDecoder().decode(ErrorResponse.self, from: data) {
+                let message = errorResponse.error ?? errorResponse.message
                 throw NetworkError.serverMessage(message)
             }
             throw NetworkError.requestFailed(httpResponse.statusCode)
@@ -155,8 +155,8 @@ class ChatService {
         case 401:
             throw NetworkError.unauthorized
         case 400...499:
-            if let errorResponse = try? JSONDecoder().decode(ErrorResponse.self, from: data),
-               let message = errorResponse.message ?? errorResponse.error {
+            if let errorResponse = try? JSONDecoder().decode(ErrorResponse.self, from: data) {
+                let message = errorResponse.error ?? errorResponse.message
                 throw NetworkError.serverMessage(message)
             }
             throw NetworkError.requestFailed(httpResponse.statusCode)
@@ -203,8 +203,8 @@ class ChatService {
         case 401:
             throw NetworkError.unauthorized
         case 400...499:
-            if let errorResponse = try? JSONDecoder().decode(ErrorResponse.self, from: data),
-               let message = errorResponse.message ?? errorResponse.error {
+            if let errorResponse = try? JSONDecoder().decode(ErrorResponse.self, from: data) {
+                let message = errorResponse.error ?? errorResponse.message
                 throw NetworkError.serverMessage(message)
             }
             throw NetworkError.requestFailed(httpResponse.statusCode)
