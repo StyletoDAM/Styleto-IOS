@@ -143,7 +143,17 @@ class ThemeManager: ObservableObject {
     }
     
     func updateThemeBasedOnUser() {
-        updateTheme() // C'est tout ! Elle fait déjà tout le boulot
+        // ✨ Mettre à jour la variante de thème basée sur le genre de l'utilisateur actuel
+        if let user = AppPreferences.shared.currentUser {
+            let isMale = user.gender == .male
+            let newVariant = isMale ? ThemeVariant.blue : ThemeVariant.pink
+            
+            // Mettre à jour la variante seulement si elle a changé
+            if selectedThemeVariant != newVariant.rawValue {
+                selectedThemeVariant = newVariant.rawValue
+            }
+        }
+        updateTheme()
     }
     
     // NOUVELLE MÉTHODE: Met à jour le thème en fonction du sexe de l'utilisateur ou de la variante choisie
