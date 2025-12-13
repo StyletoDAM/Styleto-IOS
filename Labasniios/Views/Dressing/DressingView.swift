@@ -451,25 +451,6 @@ private struct ClothingCard: View {
                 }
                 Spacer()
                 
-                // Bouton supprimer
-                Button {
-                    showDeleteAlert = true
-                } label: {
-                    Image(systemName: "trash")
-                        .font(.system(size: 16, weight: .medium))
-                        .foregroundColor(.themePrimary)
-                        .frame(width: 32, height: 32)
-                        .background(
-                            Circle()
-                                .fill(Color.themePrimary.opacity(0.15))
-                        )
-                        .overlay(
-                            Circle()
-                                .stroke(Color.themePrimary.opacity(0.3), lineWidth: 1)
-                        )
-                }
-                .opacity(isDeleting ? 0.5 : 1.0)
-                .disabled(isDeleting)
             }
             .padding(14)
             .background(Color.themeCard)

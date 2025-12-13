@@ -11,7 +11,8 @@ class AvatarViewModel: NSObject, ObservableObject, AVCaptureVideoDataOutputSampl
     @Published var isCameraActive = false
     @Published var processedImage: UIImage?
     @Published var isProcessing = false
-    @Published var errorMessage: String?  // ✅ Pour afficher erreurs
+    @Published var errorMessage: String?
+    @Published var fps: Int = 0  // ✅ Afficher FPS réel
     
     private var cancellables = Set<AnyCancellable>()
     private let clothesService = ClothesService.shared
@@ -25,11 +26,15 @@ class AvatarViewModel: NSObject, ObservableObject, AVCaptureVideoDataOutputSampl
     private var socketManager: SocketManager?
     private var socket: SocketIOClient?
     private var lastSendTime: Date = .distantPast
-    private let throttleInterval: TimeInterval = 0.3  // ✅ 3-4 FPS (plus lent = plus stable)
+    private let throttleInterval: TimeInterval = 0.25  // ✅ 4 FPS (était 0.3)
     
     // Queue
     private var pendingFrame: UIImage?
     private var processingTimer: Timer?
+    
+    // ✅ NOUVEAU : Compression adaptative
+    private var currentQuality: CGFloat = 0.4
+    private var lastProcessingTime: TimeInterval = 0
     
     override init() {
         super.init()
@@ -54,13 +59,14 @@ class AvatarViewModel: NSObject, ObservableObject, AVCaptureVideoDataOutputSampl
         isCameraActive = false
         socket?.disconnect()
         stopProcessingLoop()
-        processedImage = nil  // ✅ Reset l'image
+        processedImage = nil
         
         print("🛑 Caméra arrêtée")
     }
     
     private func setupCamera() {
-        cameraSession.sessionPreset = .medium  // 640x480 pour perfs
+        // ✅ OPTIMISATION : Résolution plus faible (640x480 au lieu de 1280x720)
+        cameraSession.sessionPreset = .vga640x480
         
         guard let device = AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: .front),
               let input = try? AVCaptureDeviceInput(device: device) else {
@@ -79,18 +85,21 @@ class AvatarViewModel: NSObject, ObservableObject, AVCaptureVideoDataOutputSampl
         output.setSampleBufferDelegate(self, queue: DispatchQueue(label: "videoQueue"))
         output.videoSettings = [kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_32BGRA]
         
+        // ✅ OPTIMISATION : Désactiver buffers en attente
+        output.alwaysDiscardsLateVideoFrames = true
+        
         if cameraSession.canAddOutput(output) {
             cameraSession.addOutput(output)
         }
         videoOutput = output
         
         cameraSession.commitConfiguration()
-        print("✅ Caméra configurée")
+        print("✅ Caméra configurée (640x480, quality adaptative)")
     }
     
-    // Capture frames (background thread)
     func captureOutput(_ output: AVCaptureOutput, didOutput sampleBuffer: CMSampleBuffer, from connection: AVCaptureConnection) {
         guard selectedClothe != nil else { return }
+        guard !isProcessing else { return }  // ✅ Skip si déjà en traitement
         
         guard let imageBuffer = CMSampleBufferGetImageBuffer(sampleBuffer) else { return }
         
@@ -100,8 +109,19 @@ class AvatarViewModel: NSObject, ObservableObject, AVCaptureVideoDataOutputSampl
         
         var image = UIImage(cgImage: cgImage, scale: 1.0, orientation: .leftMirrored)
         
-        // Compression aggressive pour réduire la latence
-        if let compressed = image.jpegData(compressionQuality: 0.4) {
+        // ✅ OPTIMISATION : Redimensionner avant compression
+        let maxWidth: CGFloat = 480  // Réduit de 640
+        if image.size.width > maxWidth {
+            let ratio = maxWidth / image.size.width
+            let newSize = CGSize(width: maxWidth, height: image.size.height * ratio)
+            UIGraphicsBeginImageContext(newSize)
+            image.draw(in: CGRect(origin: .zero, size: newSize))
+            image = UIGraphicsGetImageFromCurrentImageContext() ?? image
+            UIGraphicsEndImageContext()
+        }
+        
+        // ✅ OPTIMISATION : Compression adaptative selon latence
+        if let compressed = image.jpegData(compressionQuality: currentQuality) {
             image = UIImage(data: compressed) ?? image
         }
         
@@ -128,36 +148,47 @@ class AvatarViewModel: NSObject, ObservableObject, AVCaptureVideoDataOutputSampl
         pendingFrame = nil
     }
     
-    // ✅ CORRIGÉ: Payload conforme au backend Python
     private func sendFrameToServer(frame: UIImage, clothe: Clothe) {
-        guard let base64 = frame.jpegData(compressionQuality: 0.4)?.base64EncodedString() else {
+        guard let base64 = frame.jpegData(compressionQuality: currentQuality)?.base64EncodedString() else {
             print("❌ Impossible d'encoder l'image")
             return
         }
         
+        let startTime = Date()
         isProcessing = true
         errorMessage = nil
         
-        // ✅ STRUCTURE CORRECTE (conforme à ProcessFrameRequest du Python)
         let payload: [String: Any] = [
             "frame": base64,
             "clothes": [
                 [
                     "imageURL": clothe.imageURL,
-                    "processedImageURL": clothe.processedImageURL ?? clothe.imageURL,  // Fallback important
+                    "processedImageURL": clothe.processedImageURL ?? clothe.imageURL,
                     "category": clothe.category ?? "top"
                 ]
             ]
         ]
         
         socket?.emit("process_frame", payload)
-        print("📤 Frame envoyée (\(base64.count / 1024)KB) - Vêtement: \(clothe.category ?? "unknown")")
+        
+        let sizeKB = base64.count / 1024
+        print("📤 Frame envoyée (\(sizeKB)KB, Q:\(Int(currentQuality * 100))%) - \(clothe.category ?? "unknown")")
+        
+        // ✅ Timeout de 5 secondes
+        DispatchQueue.main.asyncAfter(deadline: .now() + 5.0) { [weak self] in
+            guard let self = self else { return }
+            if self.isProcessing {
+                self.isProcessing = false
+                self.errorMessage = "Timeout (>5s)"
+                print("⏱️ Timeout détecté")
+            }
+        }
     }
     
     private func setupSocket() {
         guard let url = URL(string: APIConstants.baseURL.absoluteString),
               let token = TokenManager.shared.getToken() else {
-            print("❌ Impossible de configurer le socket (URL ou token manquant)")
+            print("❌ Impossible de configurer le socket")
             return
         }
         
@@ -165,13 +196,13 @@ class AvatarViewModel: NSObject, ObservableObject, AVCaptureVideoDataOutputSampl
             .log(false),
             .connectParams(["token": token]),
             .reconnects(true),
-            .reconnectWait(3),
-            .reconnectAttempts(3)
+            .reconnectWait(2),
+            .reconnectAttempts(5),
+            .compress  // ✅ Compression WebSocket
         ])
         
         socket = socketManager?.socket(forNamespace: "/vto")
         
-        // Connexion
         socket?.on(clientEvent: .connect) { [weak self] _, _ in
             Task { @MainActor in
                 print("✅ WebSocket VTO connecté")
@@ -179,28 +210,37 @@ class AvatarViewModel: NSObject, ObservableObject, AVCaptureVideoDataOutputSampl
             }
         }
         
-        // Frame traitée (SUCCESS)
         socket?.on("frame_processed") { [weak self] data, _ in
             guard let self = self else { return }
             
             Task { @MainActor in
+                let processingTime = Date().timeIntervalSince(Date())
                 self.isProcessing = false
                 
                 guard let dict = data[0] as? [String: Any],
                       let base64 = dict["frame"] as? String,
                       let imageData = Data(base64Encoded: base64),
                       let image = UIImage(data: imageData) else {
-                    print("❌ Frame traitée invalide")
-                    self.errorMessage = "Données invalides reçues"
+                    print("❌ Frame invalide")
+                    self.errorMessage = "Données invalides"
                     return
                 }
                 
                 self.processedImage = image
-                print("✅ Frame traitée reçue (\(imageData.count / 1024)KB)")
+                
+                // ✅ Calculer FPS réel
+                if let serverTime = dict["processingTime"] as? Double {
+                    self.lastProcessingTime = serverTime / 1000.0
+                    self.fps = Int(1000.0 / serverTime)
+                    
+                    // ✅ Ajuster qualité selon latence
+                    self.adjustQuality(latency: serverTime)
+                    
+                    print("✅ Frame OK (\(Int(serverTime))ms, \(self.fps) FPS)")
+                }
             }
         }
         
-        // Erreur traitement
         socket?.on("frame_error") { [weak self] data, _ in
             Task { @MainActor in
                 self?.isProcessing = false
@@ -210,24 +250,34 @@ class AvatarViewModel: NSObject, ObservableObject, AVCaptureVideoDataOutputSampl
                     print("❌ Erreur: \(error)")
                     self?.errorMessage = error
                 } else {
-                    print("❌ Erreur inconnue: \(data)")
                     self?.errorMessage = "Erreur de traitement"
                 }
             }
         }
         
-        // Erreur générale
         socket?.on(clientEvent: .error) { data, _ in
             print("❌ Socket error: \(data)")
         }
         
-        // Déconnexion
         socket?.on(clientEvent: .disconnect) { data, _ in
             print("⚠️ Socket déconnecté: \(data)")
         }
         
         socket?.connect()
-        print("🔌 Connexion au WebSocket VTO...")
+        print("🔌 Connexion WebSocket VTO...")
+    }
+    
+    // ✅ NOUVEAU : Ajustement qualité automatique
+    private func adjustQuality(latency: Double) {
+        if latency > 1500 {
+            // Très lent : baisser qualité
+            currentQuality = max(0.2, currentQuality - 0.05)
+            print("⚠️ Latence élevée (\(Int(latency))ms) → Qualité: \(Int(currentQuality * 100))%")
+        } else if latency < 500 && currentQuality < 0.5 {
+            // Rapide : augmenter qualité
+            currentQuality = min(0.5, currentQuality + 0.05)
+            print("✅ Latence basse (\(Int(latency))ms) → Qualité: \(Int(currentQuality * 100))%")
+        }
     }
     
     private func fetchClothes() {
@@ -238,17 +288,9 @@ class AvatarViewModel: NSObject, ObservableObject, AVCaptureVideoDataOutputSampl
                     self?.clothes = clothes
                     print("✅ \(clothes.count) vêtements chargés")
                     
-                    // Debug: Afficher les URLs
-                    for clothe in clothes {
-                        print("  - \(clothe.category ?? "unknown"): \(clothe.imageURL)")
-                        if let processed = clothe.processedImageURL {
-                            print("    Processed: \(processed)")
-                        }
-                    }
-                    
                 case .failure(let error):
-                    print("❌ Erreur chargement vêtements: \(error)")
-                    self?.errorMessage = "Impossible de charger les vêtements"
+                    print("❌ Erreur: \(error)")
+                    self?.errorMessage = "Impossible de charger"
                 }
             }
         }
