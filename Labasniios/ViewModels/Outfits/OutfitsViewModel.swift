@@ -11,6 +11,8 @@ class OutfitsViewModel: ObservableObject {
     @Published var aiSuggestion: AIRecommendationResponse?
     @Published var isGenerating = false
     @Published var isAccepting = false
+    @Published var successMessage: String?
+    @Published var deletingIds: Set<String> = []
     
     private var cancellables = Set<AnyCancellable>()
     private let service = OutfitsService.shared
@@ -176,15 +178,38 @@ class OutfitsViewModel: ObservableObject {
     }
     
     func deleteOutfit(_ outfit: Outfit) {
+        // Empêcher les suppressions multiples simultanées
+        guard !deletingIds.contains(outfit.id) else { return }
+        
+        deletingIds.insert(outfit.id)
+        errorMessage = nil
+        successMessage = nil // S'assurer que le message est nil avant de commencer
+        
         service.deleteOutfit(outfit.id)
             .receive(on: DispatchQueue.main)
-            .sink { completion in
+            .sink { [weak self] completion in
+                guard let self = self else { return }
+                self.deletingIds.remove(outfit.id)
+                
                 if case .failure(let error) = completion {
                     print("❌ Erreur suppression outfit:", error)
+                    self.errorMessage = "Erreur lors de la suppression: \(error.errorDescription ?? "Erreur inconnue")"
+                    self.successMessage = nil // S'assurer que successMessage reste nil en cas d'erreur
                 }
             } receiveValue: { [weak self] in
-                self?.outfits.removeAll { $0.id == outfit.id }
+                guard let self = self else { return }
+                // Supprimer l'outfit de la liste
+                withAnimation {
+                    self.outfits.removeAll { $0.id == outfit.id }
+                }
+                // Afficher le message de succès seulement après la suppression réussie
+                self.successMessage = "Tenue supprimée."
             }
             .store(in: &cancellables)
+    }
+    
+    func clearMessages() {
+        errorMessage = nil
+        successMessage = nil
     }
 }

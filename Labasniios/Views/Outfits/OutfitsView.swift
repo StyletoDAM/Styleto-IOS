@@ -4,6 +4,8 @@ struct OutfitsView: View {
     @StateObject private var viewModel = OutfitsViewModel()
     @ObservedObject private var themeManager = ThemeManager.shared
     @State private var showStylePopup = false
+    @State private var snackbarMessage: String?
+    @State private var isSnackbarVisible = false
     @Environment(\.managedObjectContext) private var context
     var onNavigateToStore: (() -> Void)? = nil // ✨ NOUVEAU: Callback pour naviguer vers le store
  
@@ -124,6 +126,43 @@ struct OutfitsView: View {
             }
             .animation(.easeInOut(duration: 0.3), value: viewModel.aiSuggestion != nil)
             .animation(.easeInOut(duration: 0.3), value: viewModel.isGenerating)
+            .onChange(of: viewModel.successMessage) { oldValue, newValue in
+                // Afficher le snackbar seulement si le message change de nil à une valeur (suppression réussie)
+                if let message = newValue, oldValue == nil {
+                    displaySnackbar(message)
+                    // Clear le message après l'affichage du snackbar
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) {
+                        viewModel.clearMessages()
+                    }
+                }
+            }
+            .alert("Erreur", isPresented: Binding(
+                get: { viewModel.errorMessage != nil },
+                set: { if !$0 { viewModel.clearMessages() } }
+            )) {
+                Button("OK", role: .cancel) {
+                    viewModel.clearMessages()
+                }
+            } message: {
+                if let message = viewModel.errorMessage {
+                    Text(message)
+                }
+            }
+            .overlay(alignment: .bottom) {
+                if isSnackbarVisible, let snackbarMessage {
+                    Text(snackbarMessage)
+                        .font(.system(size: 15, weight: .semibold))
+                        .foregroundColor(.white)
+                        .padding(.horizontal, 20)
+                        .padding(.vertical, 12)
+                        .background(
+                            Capsule().fill(Color.themePrimary.opacity(0.92))
+                        )
+                        .padding(.bottom, 28)
+                        .padding(.horizontal, 16)
+                        .transition(.move(edge: .bottom).combined(with: .opacity))
+                }
+            }
         }
     }
  
@@ -238,8 +277,34 @@ struct OutfitsView: View {
     private var tenueList: some View {
         VStack(spacing: 18) {
             ForEach(viewModel.outfits) { outfit in
-                TenueCard(outfit: outfit)
+                TenueCard(
+                    outfit: outfit,
+                    isDeleting: viewModel.deletingIds.contains(outfit.id),
+                    onDelete: {
+                        viewModel.deleteOutfit(outfit)
+                    }
+                )
             }
+        }
+    }
+    
+    // MARK: - Snackbar Helpers (comme Android)
+    private func displaySnackbar(_ message: String) {
+        snackbarMessage = message
+        withAnimation(.easeOut(duration: 0.2)) {
+            isSnackbarVisible = true
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2.2) {
+            hideSnackbar()
+        }
+    }
+    
+    private func hideSnackbar() {
+        withAnimation(.easeInOut(duration: 0.2)) {
+            isSnackbarVisible = false
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+            snackbarMessage = nil
         }
     }
 }
@@ -250,6 +315,10 @@ struct TenueCard: View {
     @ObservedObject private var themeManager = ThemeManager.shared
     
     let outfit: Outfit
+    var isDeleting: Bool = false
+    var onDelete: (() -> Void)? = nil
+    
+    @State private var showDeleteConfirmation = false
  
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -263,6 +332,8 @@ struct TenueCard: View {
                         .foregroundColor(.themeSecondaryText)
                 }
                 Spacer()
+                
+                // ✨ Bouton favoris seulement (comme Android - pas de bouton poubelle visible)
                 Button {
                     FavoritesManager.shared.toggleFavorite(outfitId: outfit.id)
                 } label: {
@@ -319,6 +390,23 @@ struct TenueCard: View {
                 .fill(Color.themeCard)
         )
         .shadow(color: .black.opacity(0.08), radius: 12, x: 0, y: 8)
+        .alert("Delete Outfit", isPresented: $showDeleteConfirmation) {
+            Button("No", role: .cancel) { }
+            Button("Yes", role: .destructive) {
+                onDelete?()
+            }
+        } message: {
+            Text("Are you sure you want to delete this outfit?")
+        }
+        .opacity(isDeleting ? 0.6 : 1.0)
+        .scaleEffect(isDeleting ? 0.98 : 1.0)
+        .animation(.spring(response: 0.3), value: isDeleting)
+        // ✨ Long press pour supprimer (comme Android)
+        .onLongPressGesture(minimumDuration: 0.5) {
+            if onDelete != nil {
+                showDeleteConfirmation = true
+            }
+        }
     }
  
     private var placeholder: some View {
