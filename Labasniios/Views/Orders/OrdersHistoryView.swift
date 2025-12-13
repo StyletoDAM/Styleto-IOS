@@ -127,9 +127,7 @@ private struct HistoryItemCardView: View {
         isPurchased ? "arrow.down" : "arrow.up"
     }
     
-    private var amountPrefix: String {
-        isPurchased ? "-" : "+"
-    }
+    // ✨ Pas de préfixe, juste la couleur indique le type
     
     var body: some View {
         HStack(spacing: 12) {
@@ -204,9 +202,9 @@ private struct HistoryItemCardView: View {
                         .font(.system(size: 12, weight: .semibold))
                         .foregroundColor(arrowColor)
                     
-                    Text("\(String(format: "%.2f", item.price)) TND")
+                    Text("\(String(format: "%.2f", abs(item.price))) TND")
                         .font(.system(size: 16, weight: .bold))
-                        .foregroundColor(arrowColor)
+                        .foregroundColor(arrowColor) // Rouge pour Purchased, Vert pour Sold
                 }
             }
         }
