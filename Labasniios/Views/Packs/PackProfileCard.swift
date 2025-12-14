@@ -66,21 +66,24 @@ struct PackProfileCard: View {
                             title: "Clothing scans",
                             used: stats.clothesDetection.used,
                             isUnlimited: stats.clothesDetection.isUnlimited,
-                            remaining: stats.clothesDetection.remainingCount ?? 0
+                            remaining: stats.clothesDetection.remainingCount ?? 0,
+                            limit: stats.clothesDetection.limitCount
                         )
                         ProgressRow(
                             icon: "wand.and.stars",
                             title: "Outfit suggestions",
                             used: stats.outfitSuggestions.used,
                             isUnlimited: stats.outfitSuggestions.isUnlimited,
-                            remaining: stats.outfitSuggestions.remainingCount ?? 0
+                            remaining: stats.outfitSuggestions.remainingCount ?? 0,
+                            limit: stats.outfitSuggestions.limitCount
                         )
                         ProgressRow(
                             icon: "bag",
                             title: "Items for sale",
                             used: stats.storeSelling.used,
                             isUnlimited: stats.storeSelling.isUnlimited,
-                            remaining: stats.storeSelling.remainingCount ?? 0
+                            remaining: stats.storeSelling.remainingCount ?? 0,
+                            limit: stats.storeSelling.limitCount
                         )
                     }
                 } else {
@@ -172,7 +175,7 @@ struct PackProfileCard: View {
     private var placeholderRows: some View {
         VStack(spacing: 12) {
             ForEach(0..<3) { _ in
-                ProgressRow(icon: "tshirt", title: "Loading...", used: 0, isUnlimited: false, remaining: 1)
+                ProgressRow(icon: "tshirt", title: "Loading...", used: 0, isUnlimited: false, remaining: 1, limit: 1)
             }
         }
         .redacted(reason: .placeholder)
@@ -186,13 +189,28 @@ private struct ProgressRow: View {
     let used: Int
     let isUnlimited: Bool
     let remaining: Int
+    let limit: Int?
+    
+    // ✅ Calculer la limite réelle et limiter l'affichage
+    private var actualLimit: Int {
+        if let limit = limit {
+            return limit
+        }
+        // Si pas de limite explicite, calculer depuis used + remaining
+        return max(0, used + remaining)
+    }
+    
+    // ✅ Limiter used à la limite du plan actuel
+    private var displayedUsed: Int {
+        isUnlimited ? used : min(used, actualLimit)
+    }
     
     private var displayText: String {
-        isUnlimited ? "Unlimited" : "\(used)/\(used + remaining)"
+        isUnlimited ? "Unlimited" : "\(displayedUsed)/\(actualLimit)"
     }
     
     private var progress: Double {
-        isUnlimited ? 1.0 : Double(used) / Double(used + remaining)
+        isUnlimited ? 1.0 : Double(displayedUsed) / Double(actualLimit)
     }
     
     var body: some View {

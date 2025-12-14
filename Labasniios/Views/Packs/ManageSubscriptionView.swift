@@ -173,21 +173,24 @@ struct ManageSubscriptionView: View {
                     icon: "camera.fill",
                     title: "Clothing Scans",
                     used: stats.clothesDetection.used,
-                    isUnlimited: stats.clothesDetection.isUnlimited
+                    isUnlimited: stats.clothesDetection.isUnlimited,
+                    limit: stats.clothesDetection.limitCount
                 )
                 
                 UsageRow(
                     icon: "sparkles",
                     title: "Outfit Suggestions",
                     used: stats.outfitSuggestions.used,
-                    isUnlimited: stats.outfitSuggestions.isUnlimited
+                    isUnlimited: stats.outfitSuggestions.isUnlimited,
+                    limit: stats.outfitSuggestions.limitCount
                 )
                 
                 UsageRow(
                     icon: "bag.fill",
                     title: "Items for Sale",
                     used: stats.storeSelling.used,
-                    isUnlimited: stats.storeSelling.isUnlimited
+                    isUnlimited: stats.storeSelling.isUnlimited,
+                    limit: stats.storeSelling.limitCount
                 )
             }
         }
@@ -296,6 +299,18 @@ private struct UsageRow: View {
     let title: String
     let used: Int
     let isUnlimited: Bool
+    let limit: Int?
+    
+    // ✅ Limiter used à la limite du plan actuel
+    private var displayedUsed: Int {
+        if isUnlimited {
+            return used
+        }
+        if let limit = limit {
+            return min(used, limit)
+        }
+        return used
+    }
     
     var body: some View {
         HStack(spacing: 12) {
@@ -310,7 +325,7 @@ private struct UsageRow: View {
             
             Spacer()
             
-            Text(isUnlimited ? "Unlimited" : "\(used) used")
+            Text(isUnlimited ? "Unlimited" : "\(displayedUsed) used")
                 .font(.callout)
                 .fontWeight(.semibold)
                 .foregroundColor(isUnlimited ? .green : .themePrimary)
