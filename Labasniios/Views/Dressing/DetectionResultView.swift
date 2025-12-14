@@ -1,4 +1,4 @@
-// DetectionResultView.swift
+// DetectionResultView.swift - VERSION CORRIGÉE (avec vérification quota)
 import SwiftUI
  
 struct DetectionResultView: View {
@@ -16,17 +16,16 @@ struct DetectionResultView: View {
     @State private var detectedColor: Color = .pink
     @State private var isSaving = false
     
-    // MARK: - Original Detection States (pour envoi au backend)
+    // MARK: - Original Detection States
     @State private var originalType = ""
     @State private var originalColorHex = ""
     @State private var originalStyle = ""
     @State private var originalSeason = ""
     
-    
     @Environment(\.dismiss) private var dismiss
     let imageURL: String?
     
-    // MARK: - Enums (English)
+    // MARK: - Enums
     enum Category: String, CaseIterable, Identifiable {
         case top = "Top", bottom = "Bottom", dress = "Dress", shoes = "Shoes",
              accessory = "Accessory", jacket = "Jacket"
@@ -70,7 +69,6 @@ struct DetectionResultView: View {
                 
                 // MARK: Image + AI Badge
                 ZStack(alignment: .topTrailing) {
-                    // ✨ AJOUTE un fond en damier pour voir la transparence
                     Rectangle()
                         .fill(
                             LinearGradient(
@@ -84,7 +82,7 @@ struct DetectionResultView: View {
                     if let uiImage = image {
                         Image(uiImage: uiImage)
                             .resizable()
-                            .scaledToFit()  // ✨ CHANGÉ : scaledToFill → scaledToFit pour voir entièrement
+                            .scaledToFit()
                             .frame(height: 340)
                     } else {
                         Rectangle()
@@ -101,20 +99,16 @@ struct DetectionResultView: View {
                     }
                     
                     // Badge AI
-                    Button {
-                        // Re-run AI analysis
-                    } label: {
-                        HStack(spacing: 6) {
-                            Image(systemName: "sparkles")
-                            Text("AI Analyzed")
-                        }
-                        .font(.caption.weight(.semibold))
-                        .foregroundColor(.white)
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 9)
-                        .background(Color.themePrimary.opacity(0.95))
-                        .cornerRadius(20)
+                    HStack(spacing: 6) {
+                        Image(systemName: "sparkles")
+                        Text("AI Analyzed")
                     }
+                    .font(.caption.weight(.semibold))
+                    .foregroundColor(.white)
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 9)
+                    .background(Color.themePrimary.opacity(0.95))
+                    .cornerRadius(20)
                     .padding(16)
                 }
                 .cornerRadius(28)
@@ -252,7 +246,7 @@ struct DetectionResultView: View {
                         await saveClotheToDatabase()
                     }
                 } label: {
-                    Text(isSaving ? "Ajout en cours..." : "Add to Wardrobe")
+                    Text(isSaving ? "Adding..." : "Add to Wardrobe")
                         .font(.title3.bold())
                         .foregroundColor(.white)
                         .frame(maxWidth: .infinity)
@@ -282,23 +276,47 @@ struct DetectionResultView: View {
         }
     }
     
-    // MARK: - Save to Database
+    // MARK: - Save to Database (AVEC VÉRIFICATION QUOTA)
     private func saveClotheToDatabase() async {
         guard let imageURL = imageURL else {
-            print("Erreur : imageURL manquante")
+            print("❌ Erreur : imageURL manquante")
             return
         }
         
         isSaving = true
         
+        // ✅ ÉTAPE 1 : VÉRIFIER LE QUOTA AVANT D'AJOUTER
+        print("🔍 Vérification du quota avant ajout...")
         do {
-            // Prépare l'objet originalDetection
+            let quotaCheck = try await SubscriptionService.shared.canDetectClothes()
+            
+            if !quotaCheck.allowed {
+                // ⚠️ Quota dépassé
+                print("⚠️ Quota dépassé: \(quotaCheck.message ?? "Limite atteinte")")
+                await MainActor.run {
+                    isSaving = false
+                    showPlansView = true
+                }
+                return
+            }
+            
+            print("✅ Quota OK, ajout du vêtement...")
+            
+        } catch {
+            print("❌ Erreur vérification quota: \(error)")
+            await MainActor.run {
+                isSaving = false
+            }
+            return
+        }
+        
+        // ✅ ÉTAPE 2 : AJOUTER LE VÊTEMENT (quota OK)
+        do {
             let originalDetection: [String: String] = [
                 "type": originalType,
                 "color": originalColorHex,
                 "style": originalStyle,
                 "season": originalSeason.lowercased()
-
             ]
             
             try await ClothesService.shared.addClotheAsync(
@@ -310,24 +328,26 @@ struct DetectionResultView: View {
                 originalDetection: originalDetection
             )
             
+            print("✅ Vêtement ajouté avec succès!")
+            
             await MainActor.run {
                 isSaving = false
                 isShowing = false
                 NotificationCenter.default.post(name: .refreshDressing, object: nil)
             }
+            
         } catch {
+            print("❌ Erreur ajout: \(error)")
             await MainActor.run {
                 isSaving = false
-                // Détecter erreur 403/quota - vérifier le message d'erreur
+                
+                // Vérifier si c'est une erreur 403/quota
                 let errorString = error.localizedDescription.lowercased()
-                if errorString.contains("403") || 
-                   errorString.contains("quota") || 
-                   errorString.contains("limit") || 
+                if errorString.contains("403") ||
+                   errorString.contains("quota") ||
+                   errorString.contains("limit") ||
                    errorString.contains("exceeded") {
-                    // Afficher SubscriptionPlansView
                     showPlansView = true
-                } else {
-                    print("Erreur ajout: \(error)")
                 }
             }
         }
@@ -350,9 +370,7 @@ struct DetectionResultView: View {
             // Type / Category
             if key.contains("type") || key.contains("clothing") || key.contains("vêtement") {
                 let v = value.lowercased()
-
-                originalType = value // AJOUT : sauvegarde original
-
+                originalType = value
                 
                 if v.contains("top") || v.contains("shirt") || v.contains("haut") {
                     selectedCategory = .top
@@ -378,22 +396,17 @@ struct DetectionResultView: View {
                 detectedColorName = value.capitalized
                 
                 if let hexColor = extractHex(from: value) {
-
-                    originalColorHex = hexColor // AJOUT : sauvegarde original
-
+                    originalColorHex = hexColor
                     detectedColor = Color(hex: hexColor)
                 } else {
-                    originalColorHex = value // Sauvegarde le nom si pas de hex
+                    originalColorHex = value
                     detectedColor = colorFromName(value) ?? .pink
-                    originalColorHex = value // AJOUT : sauvegarde le nom si pas de hex
                 }
             }
             // Style
             else if key.contains("style") {
                 let v = value.lowercased()
-
-                originalStyle = value // AJOUT : sauvegarde original
-
+                originalStyle = value
                 
                 if v.contains("casual") {
                     selectedStyle = .casual
@@ -417,10 +430,7 @@ struct DetectionResultView: View {
             // Season
             else if key.contains("season") || key.contains("saison") {
                 let v = value.lowercased()
-
-                originalSeason = value // AJOUT : sauvegarde original
-
-
+                originalSeason = value
                 
                 if v.contains("summer") || v.contains("été") {
                     selectedSeason = .summer

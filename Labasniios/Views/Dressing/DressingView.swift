@@ -1,3 +1,4 @@
+// DressingView.swift - VERSION COMPLÈTE CORRIGÉE
 import SwiftUI
 import UIKit
 
@@ -30,7 +31,6 @@ struct DressingView: View {
     
     var body: some View {
         ZStack {
-            // Scrollable Content
             ScrollView {
                 VStack(alignment: .leading, spacing: 18) {
                     header
@@ -45,7 +45,6 @@ struct DressingView: View {
             .background(Color.themeBackground.ignoresSafeArea())
             .refreshable { viewModel.fetchClothes() }
             
-            // Bouton flottant EN BAS À DROITE
             VStack {
                 Spacer()
                 HStack {
@@ -62,7 +61,6 @@ struct DressingView: View {
             themeManager.updateTheme()
             viewModel.fetchClothes()
             
-            // Écoute le refresh global
             NotificationCenter.default.addObserver(
                 forName: .refreshDressing,
                 object: nil,
@@ -71,31 +69,29 @@ struct DressingView: View {
                 viewModel.fetchClothes()
             }
         }
-        // MODAL CAMERA UNIQUEMENT
         .sheet(isPresented: $showCamera) {
             ImagePicker(sourceType: .camera) { image in
                 handleSelectedImage(image)
             }
         }
-        // MODAL GALERIE
         .sheet(isPresented: $showPhotoPicker) {
             ImagePicker(sourceType: .photoLibrary) { image in
                 handleSelectedImage(image)
             }
         }
-        // Loading Screen
+        // ✅ MODIFIÉ : Callback avec imageURL
         .fullScreenCover(isPresented: $isUploading) {
             AIAnalysisLoadingView(
                 image: capturedImage,
-                onAnalysisComplete: { resultText in
+                onAnalysisComplete: { resultText, imageUrl in
                     detectionText = resultText
                     detectedImage = capturedImage
+                    detectedImageURL = imageUrl  // ✅ Stocker l'URL Cloudinary
                     showDetectionResult = true
                     isUploading = false
                 }
             )
         }
-        // Detection Result
         .fullScreenCover(isPresented: $showDetectionResult) {
             DetectionResultView(
                 image: detectedImage,
@@ -105,7 +101,6 @@ struct DressingView: View {
                 imageURL: detectedImageURL
             )
         }
-        // Error Alert
         .alert("Detection Error", isPresented: $showAIErrorAlert) {
             Button("OK") {
                 aiErrorMessage = ""
@@ -113,32 +108,26 @@ struct DressingView: View {
         } message: {
             Text(aiErrorMessage)
         }
-        // Photo Guide Overlay
         .overlay {
             if showPhotoGuide {
                 PhotoGuidePopupView(
                     isShowing: $showPhotoGuide,
                     onContinue: {
-                        // Vérifier le quota AVANT de fermer PhotoGuide
                         print("🔍 [DressingView] Checking quota after 'Got it'...")
                         Task {
                             do {
                                 let quotaCheck = try await SubscriptionService.shared.canDetectClothes()
                                 print("📊 [DressingView] Quota check: allowed=\(quotaCheck.allowed)")
                                 await MainActor.run {
-                                    // Fermer PhotoGuide avec animation
                                     withAnimation {
                                         showPhotoGuide = false
                                     }
                                     
-                                    // Attendre un peu pour laisser l'animation se terminer
                                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
                                         if quotaCheck.allowed {
-                                            // Quota OK, ouvrir ImageSourceSheet
                                             print("✅ [DressingView] Quota OK, opening ImageSourceSheet")
                                             showImageSourceSheet = true
                                         } else {
-                                            // Quota dépassé, afficher SubscriptionPlansView (comme Android)
                                             print("⚠️ [DressingView] Quota exceeded, showing SubscriptionPlansView")
                                             showPlansView = true
                                         }
@@ -147,11 +136,9 @@ struct DressingView: View {
                             } catch {
                                 print("❌ [DressingView] Error checking quota: \(error)")
                                 await MainActor.run {
-                                    // Fermer PhotoGuide même en cas d'erreur
                                     withAnimation {
                                         showPhotoGuide = false
                                     }
-                                    // En cas d'erreur, continuer quand même après un délai
                                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
                                         showImageSourceSheet = true
                                     }
@@ -164,7 +151,6 @@ struct DressingView: View {
                 .animation(.spring(response: 0.4), value: showPhotoGuide)
             }
         }
-        // Image Source Sheet (Camera / Gallery)
         .sheet(isPresented: $showImageSourceSheet) {
             ImageSourceSheet(
                 onCamera: {
@@ -175,73 +161,21 @@ struct DressingView: View {
                 }
             )
         }
-        // Clothing Detail Sheet
         .sheet(item: $selectedClothe) { clothe in
             ClothingDetailSheet(clothe: clothe, viewModel: viewModel)
         }
-        // Subscription Plans View (quand quota dépassé)
         .sheet(isPresented: $showPlansView) {
             SubscriptionPlansView()
         }
     }
     
-    // MARK: - Upload and Detect
-    private func uploadAndDetect(image: UIImage) {
-        guard let imageData = image.jpegData(compressionQuality: 0.85) else { return }
-        
-        isUploading = true
-        detectionText = "Analyzing..."
-        
-        let url = URL(string: "\(APIConstants.baseURL.absoluteString)/detect")!
-        var request = URLRequest(url: url)
-        request.httpMethod = "POST"
-        
-        let boundary = "Boundary-\(UUID().uuidString)"
-        request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
-        
-        var body = Data()
-        body.append("--\(boundary)\r\n".data(using: .utf8)!)
-        body.append("Content-Disposition: form-data; name=\"photo\"; filename=\"photo.jpg\"\r\n".data(using: .utf8)!)
-        body.append("Content-Type: image/jpeg\r\n\r\n".data(using: .utf8)!)
-        body.append(imageData)
-        body.append("\r\n--\(boundary)--\r\n".data(using: .utf8)!)
-        request.httpBody = body
-        
-        URLSession.shared.dataTask(with: request) { data, response, error in
-            DispatchQueue.main.async {
-                isUploading = false
-                
-                if let error = error {
-                    self.showErrorAlert("Network error. Please try again.")
-                    return
-                }
-                
-                guard let data = data,
-                      let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-                      let detectionResult = json["detection_result"] as? String else {
-                    self.showErrorAlert("AI analysis failed. Please try again.")
-                    return
-                }
-                
-                let imageUrl = json["image_url"] as? String
-                let text = detectionResult.lowercased()
-                
-                self.detectionText = detectionResult
-                self.detectedImageURL = imageUrl
-                self.detectedImage = image
-                self.showDetectionResult = true
-            }
-        }.resume()
-    }
-    
+    // ✅ SIMPLIFIÉ : Pas besoin d'uploadAndDetect()
     private func handleSelectedImage(_ image: UIImage?) {
         guard let image = image else { return }
         capturedImage = image
         isUploading = true
-        uploadAndDetect(image: image)
+        // AIAnalysisLoadingView va gérer tout le processus
     }
-
-    
     
     private func showErrorAlert(_ message: String) {
         aiErrorMessage = message
@@ -283,16 +217,6 @@ struct DressingView: View {
                             .fill(Color.themeSoftPink.opacity(0.25))
                     )
             )
-            
-//            Circle()
-//                .fill(Color.themeAqua)
-//                .frame(width: 48, height: 48)
-//                .overlay(
-//                    Image(systemName: "line.3.horizontal.decrease.circle")
-//                        .font(.system(size: 22, weight: .semibold))
-//                        .foregroundColor(.white)
-//                )
-//                .shadow(color: .black.opacity(0.1), radius: 6, x: 0, y: 4)
             Spacer()
         }
     }
@@ -378,7 +302,6 @@ private struct CategoryChip: View {
 }
 
 // MARK: - Clothing Card
-// MARK: - Clothing Card (avec bordure colorée fine et élégante)
 private struct ClothingCard: View {
     let clothe: Clothe
     @ObservedObject var viewModel: DressingViewModel
@@ -387,34 +310,31 @@ private struct ClothingCard: View {
     @State private var showDeleteAlert = false
     @State private var isDeleting = false
     
-    // Couleur de bordure selon la catégorie (mappée proprement)
     private var borderColor: Color {
         let category = (clothe.category ?? "").lowercased()
         
         switch category {
         case "top", "tshirt", "haut", "chemise", "shirt":
-            return Color(hex: "#A7E0E0") // Teal clair (Tops)
+            return Color(hex: "#A7E0E0")
         case "bottom", "pantalon", "jean", "bas", "pants":
-            return Color(hex: "#4D5F8F") // Bleu marine (Pants)
+            return Color(hex: "#4D5F8F")
         case "dress", "robe":
-            return Color(hex: "#DB6A8F") // Rose vif (Dress)
+            return Color(hex: "#DB6A8F")
         case "shoes", "chaussure", "basket", "shoe":
-            return Color(hex: "#4A4A4A") // Gris foncé (Shoes)
+            return Color(hex: "#4A4A4A")
         case "accessory", "accessoire", "sac", "bijou", "jacket", "manteau":
-            return Color(hex: "#E8AABE") // Rose doux (Accessories & Jacket)
+            return Color(hex: "#E8AABE")
         default:
-            return Color(hex: "#D3D3D3") // Gris clair par défaut
+            return Color(hex: "#D3D3D3")
         }
     }
     
-    // Petite pastille de couleur en haut à gauche (optionnel mais très joli)
     private var categoryDotColor: Color {
         CategoryColors.color(for: clothe.category ?? "", in: .light)
     }
     
     var body: some View {
         VStack(spacing: 0) {
-            // Image
             AsyncImage(url: URL(string: clothe.imageURL)) { image in
                 image
                     .resizable()
@@ -426,16 +346,7 @@ private struct ClothingCard: View {
             }
             .frame(height: 140)
             .clipped()
-            // Petit indicateur de catégorie en coin
-//            .overlay(alignment: .topLeading) {
-//                Circle()
-//                    .fill(categoryDotColor)
-//                    .frame(width: 12, height: 12)
-//                    .offset(x: 10, y: 10)
-//                    .shadow(radius: 2)
-//            }
             
-            // Infos + Poubelle
             HStack {
                 VStack(alignment: .leading, spacing: 6) {
                     Text(clothe.category?.capitalized ?? "Inconnu")
@@ -450,16 +361,14 @@ private struct ClothingCard: View {
                     }
                 }
                 Spacer()
-                
             }
             .padding(14)
             .background(Color.themeCard)
         }
-        // === LA MAGIE : Bordure colorée fine et élégante ===
         .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
         .overlay(
             RoundedRectangle(cornerRadius: 20, style: .continuous)
-                .stroke(borderColor, lineWidth: 2.5) // Bordure fine mais visible
+                .stroke(borderColor, lineWidth: 2.5)
         )
         .background(
             RoundedRectangle(cornerRadius: 20, style: .continuous)
