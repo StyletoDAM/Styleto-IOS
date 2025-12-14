@@ -171,6 +171,7 @@ struct EditProfileSectionCard: View {
                                 .textFieldStyle(CustomTextFieldStyle())
                                 .disabled(true)
                                 .foregroundColor(.themeSecondaryText)
+                                .lineLimit(1)
                         }
                        
                         // Phone
@@ -237,7 +238,7 @@ struct EditProfileSectionCard: View {
                                 .background(RoundedRectangle(cornerRadius: 14).fill(Color.themeTeal.opacity(0.1)))
                         }
                         Button(action: onSave) {
-                            Text("Save changes")
+                            Text("Save")
                                 .font(.system(size: 16, weight: .semibold))
                                 .foregroundColor(.white)
                                 .frame(maxWidth: .infinity)
