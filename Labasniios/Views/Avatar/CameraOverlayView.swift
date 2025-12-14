@@ -1,10 +1,12 @@
+// CameraOverlayView.swift - VERSION AMÉLIORÉE avec Badge Experimental
 import SwiftUI
 import AVFoundation
 
 struct CameraOverlayView: View {
     @ObservedObject var viewModel: AvatarViewModel
     @State private var selectedClothe: Clothe?
-    @State private var showDebugInfo = false  // ✅ Toggle debug
+    @State private var showDebugInfo = false
+    @State private var pulseAnimation = false  // ✨ Animation pour le badge
     
     private let columns: [GridItem] = [
         GridItem(.flexible()), GridItem(.flexible()), GridItem(.flexible())
@@ -12,7 +14,7 @@ struct CameraOverlayView: View {
     
     var body: some View {
         ZStack {
-            // ✅ Afficher l'image traitée OU la caméra brute
+            // Afficher l'image traitée OU la caméra brute
             if let processed = viewModel.processedImage {
                 Image(uiImage: processed)
                     .resizable()
@@ -24,7 +26,15 @@ struct CameraOverlayView: View {
                     .ignoresSafeArea()
             }
             
-            // ✅ Indicateur de traitement
+            // ✨ NOUVEAU : Badge Experimental en haut au centre
+            VStack {
+                experimentalBadge
+                    .padding(.top, 60)
+                
+                Spacer()
+            }
+            
+            // Indicateur de traitement
             if viewModel.isProcessing {
                 VStack {
                     HStack {
@@ -32,7 +42,7 @@ struct CameraOverlayView: View {
                         HStack(spacing: 8) {
                             ProgressView()
                                 .tint(.white)
-                            Text("Traitement...")
+                            Text("Processing...")
                                 .font(.caption)
                                 .foregroundColor(.white)
                         }
@@ -40,13 +50,13 @@ struct CameraOverlayView: View {
                         .background(Color.black.opacity(0.6))
                         .cornerRadius(8)
                         .padding(.trailing, 20)
-                        .padding(.top, 100)
+                        .padding(.top, 120)
                     }
                     Spacer()
                 }
             }
             
-            // ✅ Affichage erreur
+            // Affichage erreur
             if let error = viewModel.errorMessage {
                 VStack {
                     Text(error)
@@ -55,20 +65,20 @@ struct CameraOverlayView: View {
                         .padding(12)
                         .background(Color.red.opacity(0.8))
                         .cornerRadius(8)
-                        .padding(.top, 100)
+                        .padding(.top, 120)
                     Spacer()
                 }
             }
             
-            // ✅ Debug info (optionnel)
+            // Debug info (optionnel)
             if showDebugInfo {
                 VStack {
                     HStack {
                         Spacer()
                         VStack(alignment: .trailing, spacing: 4) {
-                            Text("Vêtements: \(viewModel.clothes.count)")
-                            Text("Sélectionné: \(selectedClothe?.category ?? "Aucun")")
-                            Text("Traité: \(viewModel.processedImage != nil ? "Oui" : "Non")")
+                            Text("Clothes: \(viewModel.clothes.count)")
+                            Text("Selected: \(selectedClothe?.category ?? "None")")
+                            Text("Processed: \(viewModel.processedImage != nil ? "Yes" : "No")")
                         }
                         .font(.system(size: 10, design: .monospaced))
                         .foregroundColor(.white)
@@ -88,7 +98,7 @@ struct CameraOverlayView: View {
                 if !viewModel.clothes.isEmpty {
                     VStack(spacing: 12) {
                         // Instructions
-                        Text("Reculez de 1.5m et sélectionnez un vêtement")
+                        Text("Step back 1.5m and select a clothing item")
                             .font(.caption)
                             .foregroundColor(.white)
                             .padding(.horizontal, 20)
@@ -106,7 +116,7 @@ struct CameraOverlayView: View {
                                     .onTapGesture {
                                         selectedClothe = clothe
                                         viewModel.selectedClothe = clothe
-                                        print("👕 Vêtement sélectionné: \(clothe.category ?? "unknown")")
+                                        print("👕 Clothing selected: \(clothe.category ?? "unknown")")
                                     }
                                 }
                             }
@@ -122,7 +132,7 @@ struct CameraOverlayView: View {
                         )
                     )
                 } else {
-                    Text("Aucun vêtement disponible")
+                    Text("No clothing available")
                         .foregroundColor(.white)
                         .padding()
                         .background(Color.red.opacity(0.7))
@@ -148,7 +158,7 @@ struct CameraOverlayView: View {
                     
                     Spacer()
                     
-                    // ✅ Bouton debug (optionnel)
+                    // Bouton debug (optionnel)
                     Button {
                         showDebugInfo.toggle()
                     } label: {
@@ -166,6 +176,68 @@ struct CameraOverlayView: View {
                 Spacer()
             }
         }
+        .onAppear {
+            // Démarrer l'animation pulse
+            withAnimation(
+                Animation.easeInOut(duration: 2.0)
+                    .repeatForever(autoreverses: true)
+            ) {
+                pulseAnimation = true
+            }
+        }
+    }
+    
+    // ✨ NOUVEAU : Badge Experimental élégant et discret
+    private var experimentalBadge: some View {
+        HStack(spacing: 8) {
+            // Icône animée
+            Image(systemName: "flask.fill")
+                .font(.system(size: 14, weight: .medium))
+                .foregroundColor(.white)
+                .opacity(pulseAnimation ? 0.6 : 1.0)
+            
+            // Texte
+            Text("EXPERIMENTAL")
+                .font(.system(size: 11, weight: .semibold))
+                .tracking(1.2)
+                .foregroundColor(.white)
+            
+            // Petit badge "Beta"
+            Text("BETA")
+                .font(.system(size: 8, weight: .bold))
+                .foregroundColor(.white)
+                .padding(.horizontal, 6)
+                .padding(.vertical, 2)
+                .background(
+                    Capsule()
+                        .fill(Color.themePrimary.opacity(0.8))
+                )
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 8)
+        .background(
+            // Fond avec glassmorphism
+            ZStack {
+                // Backdrop blur simulé
+                RoundedRectangle(cornerRadius: 20)
+                    .fill(Color.black.opacity(0.4))
+                
+                // Bordure lumineuse
+                RoundedRectangle(cornerRadius: 20)
+                    .strokeBorder(
+                        LinearGradient(
+                            colors: [
+                                Color.white.opacity(0.3),
+                                Color.themePrimary.opacity(0.3)
+                            ],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        ),
+                        lineWidth: 1
+                    )
+            }
+        )
+        .shadow(color: .black.opacity(0.3), radius: 8, x: 0, y: 4)
     }
 }
 
