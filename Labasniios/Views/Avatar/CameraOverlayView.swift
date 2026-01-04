@@ -6,7 +6,6 @@ struct CameraOverlayView: View {
     @ObservedObject var viewModel: AvatarViewModel
     @State private var selectedClothe: Clothe?
     @State private var showDebugInfo = false
-    @State private var pulseAnimation = false  // ✨ Animation pour le badge
     
     private let columns: [GridItem] = [
         GridItem(.flexible()), GridItem(.flexible()), GridItem(.flexible())
@@ -26,13 +25,7 @@ struct CameraOverlayView: View {
                     .ignoresSafeArea()
             }
             
-            // ✨ NOUVEAU : Badge Experimental en haut au centre
-            VStack {
-                experimentalBadge
-                    .padding(.top, 60)
-                
-                Spacer()
-            }
+            // Badge Experimental removed - shown in dialog instead
             
             // Indicateur de traitement
             if viewModel.isProcessing {
@@ -176,69 +169,8 @@ struct CameraOverlayView: View {
                 Spacer()
             }
         }
-        .onAppear {
-            // Démarrer l'animation pulse
-            withAnimation(
-                Animation.easeInOut(duration: 2.0)
-                    .repeatForever(autoreverses: true)
-            ) {
-                pulseAnimation = true
-            }
-        }
     }
     
-    // ✨ NOUVEAU : Badge Experimental élégant et discret
-    private var experimentalBadge: some View {
-        HStack(spacing: 8) {
-            // Icône animée
-            Image(systemName: "flask.fill")
-                .font(.system(size: 14, weight: .medium))
-                .foregroundColor(.white)
-                .opacity(pulseAnimation ? 0.6 : 1.0)
-            
-            // Texte
-            Text("EXPERIMENTAL")
-                .font(.system(size: 11, weight: .semibold))
-                .tracking(1.2)
-                .foregroundColor(.white)
-            
-            // Petit badge "Beta"
-            Text("BETA")
-                .font(.system(size: 8, weight: .bold))
-                .foregroundColor(.white)
-                .padding(.horizontal, 6)
-                .padding(.vertical, 2)
-                .background(
-                    Capsule()
-                        .fill(Color.themePrimary.opacity(0.8))
-                )
-        }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 8)
-        .background(
-            // Fond avec glassmorphism
-            ZStack {
-                // Backdrop blur simulé
-                RoundedRectangle(cornerRadius: 20)
-                    .fill(Color.black.opacity(0.4))
-                
-                // Bordure lumineuse
-                RoundedRectangle(cornerRadius: 20)
-                    .strokeBorder(
-                        LinearGradient(
-                            colors: [
-                                Color.white.opacity(0.3),
-                                Color.themePrimary.opacity(0.3)
-                            ],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        ),
-                        lineWidth: 1
-                    )
-            }
-        )
-        .shadow(color: .black.opacity(0.3), radius: 8, x: 0, y: 4)
-    }
 }
 
 struct ClothingThumb: View {

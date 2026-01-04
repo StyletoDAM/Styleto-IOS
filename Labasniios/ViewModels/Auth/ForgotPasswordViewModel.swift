@@ -1,5 +1,43 @@
+//
+//  ForgotPasswordViewModel.swift
+//  Labasniios
+//
+//  ViewModel pour l'écran de réinitialisation de mot de passe
+//
+//  Ce fichier gère la logique métier du flux de réinitialisation :
+//  - Demande de code OTP par email
+//  - Vérification du code OTP
+//  - Réinitialisation du mot de passe
+//  - Gestion des timers de renvoi de code
+//
+//  Architecture : MVVM avec ObservableObject (Combine)
+//  Dépendances : Foundation, AuthService
+//
+
 import Foundation
 
+/**
+ * ViewModel pour l'écran de réinitialisation de mot de passe
+ * 
+ * Cette classe gère toute la logique métier du flux de réinitialisation
+ * de mot de passe. Elle est marquée @MainActor pour garantir que toutes
+ * les opérations se déroulent sur le thread principal.
+ * 
+ * Le flux comprend trois étapes :
+ * 1. Demande de code OTP (envoyé par email)
+ * 2. Vérification du code OTP (obtention du token de réinitialisation)
+ * 3. Réinitialisation du mot de passe avec le nouveau mot de passe
+ * 
+ * Fonctionnalités :
+ * - Validation des champs de formulaire
+ * - Gestion des timers de renvoi de code
+ * - Navigation entre les différentes étapes du flux
+ * - Gestion des erreurs et messages de succès
+ * 
+ * @see ObservableObject pour la réactivité avec SwiftUI
+ * @see @MainActor pour l'exécution sur le thread principal
+ * @see AuthService pour les opérations backend
+ */
 @MainActor
 final class ForgotPasswordViewModel: ObservableObject {
     @Published var email: String = ""

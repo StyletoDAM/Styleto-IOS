@@ -3,12 +3,14 @@ import SwiftUI
 struct AvatarView: View {
     
     @EnvironmentObject var viewModel: AvatarViewModel
+    @State private var showExperimentalDialog = true
+    @State private var hasAcceptedExperimental = false
+    
     var body: some View {
         ZStack {
-            if viewModel.isCameraActive {
+            if viewModel.isCameraActive && hasAcceptedExperimental {
                 CameraOverlayView(viewModel: viewModel)
             } else {
-                
                 VStack(spacing: 30) {
                     Image(systemName: "camera.fill")
                         .font(.system(size: 80))
@@ -29,8 +31,18 @@ struct AvatarView: View {
                 .background(Color.themeBackground.ignoresSafeArea())
             }
         }
+        .sheet(isPresented: $showExperimentalDialog) {
+            ExperimentalModeDialog {
+                hasAcceptedExperimental = true
+                showExperimentalDialog = false
+                if !viewModel.isCameraActive {
+                    viewModel.startCamera()
+                }
+            }
+        }
         .onAppear {
-            if !viewModel.isCameraActive {
+            // Only start camera if user has accepted experimental mode
+            if hasAcceptedExperimental && !viewModel.isCameraActive {
                 viewModel.startCamera()
             }
         }

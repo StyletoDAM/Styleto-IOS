@@ -1,9 +1,32 @@
-// Labasniios/Services/Subscriptions/StripeCheckoutService.swift
-// 📌 NOUVEAU FICHIER - Créer ce fichier dans Xcode
+//
+//  StripeCheckoutService.swift
+//  Labasniios
+//
+//  Service dédié aux Stripe Checkout Sessions pour les abonnements
+//
+//  Ce fichier gère toutes les opérations liées aux sessions Stripe Checkout :
+//  - Création de sessions de checkout pour les abonnements
+//  - Vérification du statut des sessions après redirection
+//  - Gestion des deep links depuis Stripe
+//
+//  Architecture : Singleton pattern avec méthodes async/await
+//  Dépendances : Foundation, URLSession
+//
 
 import Foundation
 
-/// Service dédié aux Stripe Checkout Sessions pour les abonnements
+/**
+ * Service dédié aux Stripe Checkout Sessions pour les abonnements
+ * 
+ * Cette classe implémente le pattern Singleton pour fournir un accès
+ * global aux opérations Stripe Checkout. Elle gère la création de sessions
+ * de checkout et la vérification de leur statut après redirection depuis
+ * le navigateur Stripe.
+ * 
+ * Les sessions Stripe Checkout permettent aux utilisateurs de s'abonner
+ * via une interface web sécurisée gérée par Stripe, puis de revenir à
+ * l'application via un deep link.
+ */
 final class StripeCheckoutService {
     static let shared = StripeCheckoutService()
     

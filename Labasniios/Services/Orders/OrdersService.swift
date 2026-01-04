@@ -1,8 +1,36 @@
-// Services/Orders/OrdersService.swift
+//
+//  OrdersService.swift
+//  Labasniios
+//
+//  Service pour la gestion des commandes
+//
+//  Ce fichier gère toutes les opérations liées aux commandes :
+//  - Récupération de l'historique des commandes
+//  - Récupération de l'historique unifié (achats et ventes)
+//  - Gestion des modèles de données pour les commandes
+//
+//  Architecture : Service avec modèles de données intégrés
+//  Dépendances : Foundation, Codable
+//
+
 import Foundation
 
 // MARK: - Order Models
 
+/**
+ * Structure représentant les informations d'un vêtement dans une commande
+ * 
+ * Cette structure est utilisée pour représenter un vêtement dans le contexte
+ * d'une commande. Elle gère la compatibilité avec différents formats de données
+ * depuis le backend (imageURL vs imageUrl, category vs type).
+ * 
+ * @property id Identifiant unique du vêtement
+ * @property name Nom du vêtement
+ * @property category Catégorie du vêtement
+ * @property type Type du vêtement (fallback pour compatibilité)
+ * @property imageURL URL de l'image (format backend standard)
+ * @property imageUrl URL de l'image (fallback pour compatibilité)
+ */
 struct OrderClothInfo: Codable, Equatable {
     let id: String
     let name: String?

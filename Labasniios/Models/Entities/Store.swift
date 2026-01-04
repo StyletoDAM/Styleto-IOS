@@ -1,6 +1,46 @@
+//
+//  Store.swift
+//  Labasniios
+//
+//  Modèle de données représentant un article du store (marketplace)
+//
+//  Ce fichier définit la structure Store qui représente un article
+//  mis en vente dans le marketplace de l'application Labasni.
+//  Un article peut être un vêtement avec un prix, une taille, et un état.
+//
+//  Architecture : Modèle de données (Entity)
+//  Dépendances : Foundation, SwiftUI, Codable
+//
+
 import Foundation
 import SwiftUI
 
+/**
+ * Structure représentant un article du store (marketplace)
+ * 
+ * Cette structure représente un article mis en vente dans le marketplace.
+ * Elle contient toutes les informations nécessaires pour la vente :
+ * - Le vêtement associé
+ * - Le prix et la taille
+ * - L'état du produit (neuf, usé, endommagé)
+ * - Le statut de vente (disponible, vendu)
+ * - Les informations de paiement Stripe
+ * 
+ * @property id Identifiant unique de l'article
+ * @property userId Identifiant du vendeur
+ * @property clothesId Identifiant du vêtement mis en vente
+ * @property price Prix de vente en dinars tunisiens
+ * @property size Taille du vêtement (optionnel)
+ * @property status Statut de vente (available, sold)
+ * @property createdAt Date de création de l'annonce
+ * @property updatedAt Date de dernière mise à jour
+ * @property buyerId Identifiant de l'acheteur (si vendu)
+ * @property soldAt Date de vente (si vendu)
+ * @property stripePaymentIntentId ID de l'intention de paiement Stripe
+ * @property condition État du produit (new, used, damaged)
+ * @property clothe Objet vêtement complet (si fourni par le serveur)
+ * @property user Objet utilisateur complet (si fourni par le serveur)
+ */
 struct Store: Codable, Identifiable, Equatable { 
     let id: String
     let userId: String

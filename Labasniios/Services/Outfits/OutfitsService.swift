@@ -1,11 +1,43 @@
+//
+//  OutfitsService.swift
+//  Labasniios
+//
+//  Service pour la gestion des tenues (outfits)
+//
+//  Ce fichier gère toutes les opérations liées aux tenues dans l'application :
+//  - Récupération des tenues de l'utilisateur
+//  - Génération de recommandations d'outfits par IA
+//  - Création de nouvelles tenues
+//  - Gestion des favoris
+//
+//  Architecture : Singleton pattern avec Combine Publishers
+//  Dépendances : Foundation, Combine, URLSession
+//
+
 import Foundation
 import Combine
- 
+
+/**
+ * Service pour la gestion des tenues (outfits)
+ * 
+ * Cette classe implémente le pattern Singleton pour fournir un accès
+ * global aux opérations sur les tenues. Elle utilise Combine Publishers
+ * pour une gestion réactive des données et des erreurs.
+ * 
+ * Les méthodes retournent des AnyPublisher pour permettre la composition
+ * et la transformation des données de manière déclarative.
+ */
 class OutfitsService {
+    /// Instance singleton partagée
     static let shared = OutfitsService()
+    
+    /// Initialiseur privé pour garantir le pattern Singleton
     private init() {}
  
+    /// URL de base du backend
     private let baseURL = APIConstants.baseURL
+    
+    /// Gestionnaire de tokens pour l'authentification
     private let tokenManager = TokenManager.shared
  
     // MARK: - Fetch User Authenticated Outfits

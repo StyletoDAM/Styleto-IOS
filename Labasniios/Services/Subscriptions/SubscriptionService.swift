@@ -1,8 +1,39 @@
-// Services/Subscriptions/SubscriptionService.swift
+//
+//  SubscriptionService.swift
+//  Labasniios
+//
+//  Service pour la gestion des abonnements
+//
+//  Ce fichier gère toutes les opérations liées aux abonnements :
+//  - Récupération de l'abonnement actuel
+//  - Récupération des statistiques d'utilisation
+//  - Vérification des quotas (détection, génération d'outfits, vente)
+//  - Mise à jour d'abonnement
+//  - Gestion des sessions Stripe Checkout
+//  - Annulation d'abonnement
+//
+//  Architecture : Singleton pattern avec méthodes async/await
+//  Dépendances : Foundation, URLSession
+//
+
 import Foundation
 
+/**
+ * Service pour la gestion des abonnements
+ * 
+ * Cette classe implémente le pattern Singleton pour fournir un accès
+ * global aux opérations d'abonnement. Elle utilise async/await pour
+ * les opérations asynchrones et gère les quotas d'utilisation pour
+ * chaque plan d'abonnement (Free, Premium, Pro Seller).
+ * 
+ * Les quotas sont vérifiés avant chaque opération limitée pour afficher
+ * des paywalls appropriés si nécessaire.
+ */
 class SubscriptionService {
+    /// Instance singleton partagée
     static let shared = SubscriptionService()
+    
+    /// Initialiseur privé pour garantir le pattern Singleton
     private init() {}
     
     func getMySubscription() async throws -> SubscriptionResponse {

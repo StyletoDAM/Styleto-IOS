@@ -1,7 +1,39 @@
+//
+//  CartService.swift
+//  Labasniios
+//
+//  Service pour la gestion du panier d'achat
+//
+//  Ce fichier gère toutes les opérations liées au panier d'achat :
+//  - Récupération du panier depuis le backend
+//  - Ajout et suppression d'articles
+//  - Synchronisation avec le serveur
+//  - Gestion du cache local
+//
+//  Architecture : Singleton avec ObservableObject (Combine)
+//  Dépendances : Foundation, Combine, CartAPIService
+//
+
 import Foundation
 import Combine
 
-/// ✨ MODIFIÉ : CartManager utilise maintenant l'API backend au lieu de CoreData
+/**
+ * Gestionnaire de panier d'achat
+ * 
+ * Cette classe gère le panier d'achat de l'utilisateur en utilisant
+ * l'API backend au lieu de CoreData. Elle est marquée @MainActor pour
+ * garantir que toutes les opérations se déroulent sur le thread principal.
+ * 
+ * Fonctionnalités :
+ * - Synchronisation automatique avec le serveur
+ * - Cache local pour les performances
+ * - Observation des changements d'utilisateur
+ * - Gestion automatique du logout (vidage du panier)
+ * 
+ * @see ObservableObject pour la réactivité avec SwiftUI
+ * @see @MainActor pour l'exécution sur le thread principal
+ * @see CartAPIService pour les appels API backend
+ */
 @MainActor
 class CartManager: ObservableObject {
     static let shared = CartManager()

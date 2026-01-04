@@ -1,7 +1,31 @@
+//
+//  ThemeManager.swift
+//  Labasniios
+//
+//  Gestionnaire de thème de l'application
+//
+//  Ce fichier gère le système de thème dynamique de l'application Labasni.
+//  Il supporte :
+//  - Les modes clair/sombre avec suivi du thème système
+//  - Les variantes de couleur basées sur le genre (Pink pour Female, Blue pour Male)
+//  - La synchronisation automatique avec le genre de l'utilisateur
+//  - Les transitions animées entre les thèmes
+//
+//  Architecture : Singleton avec ObservableObject (Combine)
+//  Dépendances : SwiftUI, UIKit, Combine
+//
+
 import SwiftUI
 import UIKit
 
 // MARK: - Theme Mode
+
+/**
+ * Enumération des modes de thème disponibles
+ * 
+ * Les modes définissent si l'application utilise le thème clair, sombre,
+ * ou suit automatiquement les préférences système de l'utilisateur.
+ */
 enum ThemeMode: String, CaseIterable {
     case light = "Light"
     case dark = "Dark"
@@ -9,12 +33,31 @@ enum ThemeMode: String, CaseIterable {
 }
 
 // MARK: - Theme Variant
+
+/**
+ * Enumération des variantes de couleur du thème
+ * 
+ * Les variantes définissent la palette de couleurs utilisée :
+ * - Pink : Palette rose (par défaut pour les utilisatrices)
+ * - Blue : Palette bleue (par défaut pour les utilisateurs masculins)
+ * 
+ * La variante est synchronisée automatiquement avec le genre de l'utilisateur
+ * mais peut être modifiée manuellement dans les paramètres.
+ */
 enum ThemeVariant: String, CaseIterable {
     case pink = "Pink"
     case blue = "Blue"
 }
 
 // MARK: - Theme Protocol
+
+/**
+ * Protocole définissant l'interface d'un thème
+ * 
+ * Tous les thèmes (LightTheme, DarkTheme) doivent implémenter ce protocole
+ * pour fournir les couleurs nécessaires à l'interface utilisateur.
+ * Les couleurs varient selon le genre de l'utilisateur (isMale).
+ */
 protocol Theme {
     var primary: Color { get }
     var secondary: Color { get }
@@ -28,6 +71,15 @@ protocol Theme {
 }
 
 // MARK: - Light Theme
+
+/**
+ * Thème clair de l'application
+ * 
+ * Ce thème définit la palette de couleurs pour le mode clair.
+ * Les couleurs varient selon le genre de l'utilisateur :
+ * - Male : Palette bleue/teal
+ * - Female : Palette rose/pink
+ */
 struct LightTheme: Theme {
     let isMale: Bool
     
@@ -62,6 +114,15 @@ struct LightTheme: Theme {
 }
 
 // MARK: - Dark Theme
+
+/**
+ * Thème sombre de l'application
+ * 
+ * Ce thème définit la palette de couleurs pour le mode sombre.
+ * Les couleurs sont plus saturées et contrastées que le thème clair
+ * pour une meilleure lisibilité en conditions de faible luminosité.
+ * Les couleurs varient selon le genre de l'utilisateur.
+ */
 struct DarkTheme: Theme {
     let isMale: Bool
     
@@ -96,6 +157,22 @@ struct DarkTheme: Theme {
 }
 
 // MARK: - Theme Manager
+
+/**
+ * Gestionnaire de thème global de l'application
+ * 
+ * Cette classe gère le thème de l'application de manière centralisée.
+ * Elle :
+ * - Observe les changements du thème système
+ * - Synchronise la variante avec le genre de l'utilisateur
+ * - Publie les changements de thème pour la réactivité SwiftUI
+ * - Gère les transitions animées entre les thèmes
+ * 
+ * Le thème est persistant via @AppStorage et est restauré au démarrage.
+ * 
+ * @see ObservableObject pour la réactivité avec SwiftUI
+ * @see @MainActor pour l'exécution sur le thread principal
+ */
 @MainActor
 class ThemeManager: ObservableObject {
     static let shared = ThemeManager()
@@ -195,6 +272,20 @@ class ThemeManager: ObservableObject {
 }
 
 // MARK: - Color Extension for Theme
+
+/**
+ * Extension Color pour accéder facilement aux couleurs du thème
+ * 
+ * Cette extension fournit des propriétés statiques pour accéder
+ * aux couleurs du thème actuel depuis n'importe où dans l'application.
+ * Toutes les propriétés sont @MainActor car elles dépendent de ThemeManager.
+ * 
+ * Exemple d'utilisation :
+ * ```swift
+ * Text("Hello")
+ *     .foregroundColor(.themePrimary)
+ * ```
+ */
 extension Color {
     @MainActor
     static var themePrimary: Color {

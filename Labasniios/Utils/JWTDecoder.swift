@@ -1,7 +1,42 @@
+//
+//  JWTDecoder.swift
+//  Labasniios
+//
+//  Utilitaire pour décoder les tokens JWT
+//
+//  Ce fichier fournit des fonctions utilitaires pour décoder les tokens JWT
+//  et extraire des informations, notamment l'ID utilisateur depuis le champ 'sub'.
+//  Le décodage JWT est utilisé pour extraire automatiquement l'ID utilisateur
+//  sans avoir besoin d'une requête API supplémentaire.
+//
+//  Architecture : Utilitaire statique
+//  Dépendances : Foundation
+//
+
 import Foundation
 
+/**
+ * Utilitaire pour décoder les tokens JWT
+ * 
+ * Cette structure fournit des méthodes statiques pour :
+ * - Décoder un token JWT et extraire le payload
+ * - Extraire l'ID utilisateur depuis le champ 'sub' du JWT
+ * - Normaliser les IDs pour les comparaisons
+ * 
+ * ⚠️ IMPORTANT : Le backend utilise le champ 'sub' pour stocker l'ID MongoDB
+ * de l'utilisateur. C'est la source de vérité pour l'identification.
+ */
 struct JWTDecoder {
-    /// Décode un JWT et retourne le payload
+    /**
+     * Décode un JWT et retourne le payload
+     * 
+     * Cette méthode décode la partie payload d'un token JWT (la partie centrale
+     * entre les deux points). Le payload est décodé depuis Base64URL et parsé
+     * comme JSON.
+     * 
+     * @param jwtToken Le token JWT complet (format: header.payload.signature)
+     * @return Le payload décodé comme dictionnaire, ou nil en cas d'erreur
+     */
     static func decode(jwtToken: String) -> [String: Any]? {
         let parts = jwtToken.split(separator: ".")
         guard parts.count > 1 else { 

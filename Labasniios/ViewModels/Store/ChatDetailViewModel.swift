@@ -1,7 +1,49 @@
+//
+//  ChatDetailViewModel.swift
+//  Labasniios
+//
+//  ViewModel pour l'écran de détail d'une conversation de chat
+//
+//  Ce fichier gère la logique métier de l'écran de détail d'une conversation :
+//  - Chargement et affichage des messages
+//  - Envoi de nouveaux messages
+//  - Synchronisation en temps réel via WebSocket
+//  - Identification de l'utilisateur actuel (pour l'affichage des bulles)
+//
+//  Architecture : MVVM avec ObservableObject (Combine)
+//  Dépendances : Foundation, Combine, SwiftUI, ChatService, ChatSocketManager
+//
+
 import Foundation
 import Combine
 import SwiftUI
 
+/**
+ * ViewModel pour l'écran de détail d'une conversation de chat
+ * 
+ * Cette classe gère toute la logique métier de l'écran de détail d'une
+ * conversation de chat. Elle est marquée @MainActor pour garantir que toutes
+ * les opérations se déroulent sur le thread principal.
+ * 
+ * Fonctionnalités :
+ * - Chargement et affichage des messages de la conversation
+ * - Envoi de nouveaux messages via ChatService
+ * - Synchronisation en temps réel via ChatSocketManager (WebSocket)
+ * - Identification de l'utilisateur actuel depuis le JWT (champ 'sub')
+ * - Mise à jour automatique de la liste lors de nouveaux messages
+ * - Gestion des états de chargement et erreurs
+ * 
+ * L'identification de l'utilisateur actuel est cruciale pour déterminer
+ * si un message doit être affiché à gauche (expéditeur) ou à droite
+ * (utilisateur actuel). L'ID est extrait depuis le JWT pour garantir
+ * la cohérence avec le backend.
+ * 
+ * @see ObservableObject pour la réactivité avec SwiftUI
+ * @see @MainActor pour l'exécution sur le thread principal
+ * @see ChatService pour les opérations backend
+ * @see ChatSocketManager pour la synchronisation en temps réel
+ * @see JWTDecoder pour l'extraction de l'ID utilisateur
+ */
 @MainActor
 class ChatDetailViewModel: ObservableObject {
     @Published var messages: [ChatMessage] = []

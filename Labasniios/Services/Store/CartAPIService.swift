@@ -1,7 +1,33 @@
+//
+//  CartAPIService.swift
+//  Labasniios
+//
+//  Service API pour la gestion du panier via le backend
+//
+//  Ce fichier gère toutes les opérations API liées au panier d'achat :
+//  - Récupération du panier depuis le serveur
+//  - Ajout et suppression d'articles
+//  - Vidage du panier
+//  - Vérification du statut des articles (disponible/vendu)
+//
+//  Architecture : Singleton pattern avec méthodes async/await
+//  Dépendances : Foundation, URLSession
+//
+
 import Foundation
 import Combine
 
-/// ✨ NOUVEAU : Service API pour gérer le panier via le backend
+/**
+ * Service API pour la gestion du panier via le backend
+ * 
+ * Cette classe implémente le pattern Singleton pour fournir un accès
+ * global aux opérations API du panier. Elle utilise async/await pour
+ * les opérations asynchrones et gère l'authentification automatique
+ * via TokenManager.
+ * 
+ * Le panier est géré côté serveur pour garantir la cohérence entre
+ * les appareils et permettre la synchronisation en temps réel.
+ */
 final class CartAPIService {
     static let shared = CartAPIService()
     

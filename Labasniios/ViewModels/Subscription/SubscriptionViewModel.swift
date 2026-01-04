@@ -1,9 +1,48 @@
-// ViewModels/Subscription/SubscriptionViewModel.swift
-// ✨ MISE À JOUR - Détection de l'état "Canceled"
+//
+//  SubscriptionViewModel.swift
+//  Labasniios
+//
+//  ViewModel pour la gestion des abonnements
+//
+//  Ce fichier gère la logique métier de la gestion des abonnements :
+//  - Chargement des informations d'abonnement
+//  - Récupération des statistiques d'utilisation
+//  - Mise à jour d'abonnement
+//  - Annulation d'abonnement
+//  - Gestion des sessions Stripe Checkout
+//
+//  Architecture : MVVM avec ObservableObject (Combine) + Singleton
+//  Dépendances : Foundation, Combine, SubscriptionService
+//
 
 import Foundation
 import Combine
 
+/**
+ * ViewModel pour la gestion des abonnements
+ * 
+ * Cette classe gère toute la logique métier de la gestion des abonnements.
+ * Elle implémente le pattern Singleton pour permettre un accès global depuis
+ * n'importe où dans l'application. Elle est marquée @MainActor pour garantir
+ * que toutes les opérations se déroulent sur le thread principal.
+ * 
+ * Fonctionnalités :
+ * - Chargement des informations d'abonnement (plan, statut, dates)
+ * - Récupération des statistiques d'utilisation (quotas utilisés/restants)
+ * - Mise à jour d'abonnement (upgrade/downgrade)
+ * - Annulation d'abonnement avec refresh automatique
+ * - Gestion des sessions Stripe Checkout pour les nouveaux abonnements
+ * - Détection des états d'abonnement (active, canceled, expired)
+ * 
+ * Les statistiques d'utilisation incluent :
+ * - Détection de vêtements (clothes detection)
+ * - Génération d'outfits (outfit suggestions)
+ * - Vente dans le store (store selling)
+ * 
+ * @see ObservableObject pour la réactivité avec SwiftUI
+ * @see @MainActor pour l'exécution sur le thread principal
+ * @see SubscriptionService pour les opérations backend
+ */
 @MainActor
 class SubscriptionViewModel: ObservableObject {
     @Published var currentPlan: SubscriptionPlan = .free

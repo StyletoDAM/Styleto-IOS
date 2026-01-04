@@ -8,6 +8,7 @@ import SwiftUI
 struct StoreView: View {
     @ObservedObject private var themeManager = ThemeManager.shared
     @StateObject private var viewModel = StoreViewModel()
+    @StateObject private var chatViewModel = ChatViewModel()
     @ObservedObject private var cartManager = CartManager.shared
     @State private var searchText = ""
     @State private var showCart = false
@@ -274,16 +275,35 @@ struct StoreView: View {
                 Button {
                     showChat = true
                 } label: {
-                    Image(systemName: "message.fill")
-                        .font(.system(size: 20, weight: .semibold))
-                        .foregroundColor(.white)
-                        .frame(width: 48, height: 48)
-                        .background(Color.themePrimary)
-                        .clipShape(Circle())
-                        .shadow(color: .black.opacity(0.2), radius: 8)
+                    ZStack(alignment: .topTrailing) {
+                        Image(systemName: "message.fill")
+                            .font(.system(size: 20, weight: .semibold))
+                            .foregroundColor(.white)
+                            .frame(width: 48, height: 48)
+                            .background(Color.themePrimary)
+                            .clipShape(Circle())
+                            .shadow(color: .black.opacity(0.2), radius: 8)
+                        
+                        // Badge rouge – apparaît uniquement si > 0 (comme Android)
+                        if chatViewModel.unreadCount > 0 {
+                            Text(chatViewModel.unreadCount > 9 ? "9+" : "\(chatViewModel.unreadCount)")
+                                .font(.system(size: 10, weight: .bold))
+                                .foregroundColor(.white)
+                                .frame(minWidth: 20, minHeight: 20)
+                                .background(Color.red)
+                                .clipShape(Circle())
+                                .padding(4)
+                                .transition(.scale.combined(with: .opacity))
+                        }
+                    }
                 }
                 .fullScreenCover(isPresented: $showChat) {
                     ChatView()
+                }
+                .onAppear {
+                    Task {
+                        await chatViewModel.loadConversations(showLoader: false)
+                    }
                 }
 
                 Button {

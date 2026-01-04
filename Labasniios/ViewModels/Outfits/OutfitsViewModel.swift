@@ -1,7 +1,47 @@
+//
+//  OutfitsViewModel.swift
+//  Labasniios
+//
+//  ViewModel pour l'écran Tenues (outfits)
+//
+//  Ce fichier gère la logique métier de l'écran Tenues :
+//  - Récupération des tenues de l'utilisateur
+//  - Génération de suggestions d'outfits par IA
+//  - Acceptation et rejet de suggestions
+//  - Suppression de tenues
+//  - Gestion des erreurs et états de chargement
+//
+//  Architecture : MVVM avec ObservableObject (Combine)
+//  Dépendances : Foundation, Combine, SwiftUI, OutfitsService
+//
+
 import Foundation
 import Combine
 import SwiftUI
- 
+
+/**
+ * ViewModel pour l'écran Tenues (outfits)
+ * 
+ * Cette classe gère toute la logique métier de l'écran Tenues, où
+ * l'utilisateur peut voir ses tenues créées et recevoir des suggestions
+ * d'outfits générées par l'IA.
+ * 
+ * Fonctionnalités :
+ * - Récupération des tenues depuis OutfitsService
+ * - Génération de suggestions d'outfits par IA (basées sur le style)
+ * - Acceptation de suggestions (création d'une nouvelle tenue)
+ * - Rejet de suggestions
+ * - Suppression de tenues existantes
+ * - Gestion des erreurs spécifiques aux recommandations IA
+ * - Gestion des états de chargement multiples (chargement, génération, acceptation)
+ * 
+ * Les suggestions IA peuvent prendre jusqu'à 2.5 minutes car elles
+ * exécutent des scripts Python de machine learning côté serveur.
+ * 
+ * @see ObservableObject pour la réactivité avec SwiftUI
+ * @see @MainActor pour l'exécution sur le thread principal
+ * @see OutfitsService pour les opérations backend
+ */
 @MainActor
 class OutfitsViewModel: ObservableObject {
     @Published var outfits: [Outfit] = []

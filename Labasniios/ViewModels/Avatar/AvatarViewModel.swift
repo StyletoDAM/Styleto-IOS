@@ -1,9 +1,52 @@
+//
+//  AvatarViewModel.swift
+//  Labasniios
+//
+//  ViewModel pour l'écran Avatar (Virtual Try-On)
+//
+//  Ce fichier gère la logique métier de l'écran Avatar qui permet
+//  d'essayer virtuellement des vêtements via la caméra :
+//  - Gestion de la caméra (AVFoundation)
+//  - Capture et envoi de frames au serveur via WebSocket
+//  - Réception et affichage des images traitées
+//  - Gestion des vêtements disponibles pour VTO
+//
+//  Architecture : MVVM avec ObservableObject (Combine) + AVFoundation
+//  Dépendances : Foundation, UIKit, AVFoundation, Combine, SocketIO
+//
+
 import Foundation
 import UIKit
 import AVFoundation
 import Combine
 import SocketIO
 
+/**
+ * ViewModel pour l'écran Avatar (Virtual Try-On)
+ * 
+ * Cette classe gère toute la logique métier de l'écran Avatar, qui permet
+ * aux utilisateurs d'essayer virtuellement des vêtements en temps réel via
+ * la caméra. Elle est marquée @MainActor pour garantir que toutes les
+ * opérations se déroulent sur le thread principal.
+ * 
+ * Fonctionnalités :
+ * - Configuration et gestion de la caméra (AVFoundation)
+ * - Capture de frames vidéo à 4 FPS (throttling)
+ * - Envoi des frames au serveur via WebSocket pour traitement
+ * - Réception et affichage des images traitées avec fond transparent
+ * - Compression adaptative selon les performances
+ * - Gestion des vêtements disponibles pour VTO
+ * - Calcul et affichage des FPS réels
+ * 
+ * Le Virtual Try-On utilise un WebSocket pour envoyer les frames de la caméra
+ * au serveur, qui les traite avec un modèle IA et renvoie l'image avec le
+ * vêtement superposé et le fond transparent.
+ * 
+ * @see ObservableObject pour la réactivité avec SwiftUI
+ * @see @MainActor pour l'exécution sur le thread principal
+ * @see AVCaptureVideoDataOutputSampleBufferDelegate pour la capture vidéo
+ * @see SocketIO pour la communication WebSocket
+ */
 @MainActor
 class AvatarViewModel: NSObject, ObservableObject, AVCaptureVideoDataOutputSampleBufferDelegate {
     @Published var clothes: [Clothe] = []

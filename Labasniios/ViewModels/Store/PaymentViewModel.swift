@@ -1,7 +1,48 @@
+//
+//  PaymentViewModel.swift
+//  Labasniios
+//
+//  ViewModel pour l'écran de paiement
+//
+//  Ce fichier gère la logique métier de l'écran de paiement :
+//  - Création de payment intents Stripe
+//  - Gestion du paiement avec solde utilisateur
+//  - Affichage du Stripe Payment Sheet
+//  - Confirmation des achats
+//  - Rafraîchissement du solde après paiement
+//
+//  Architecture : MVVM avec ObservableObject (Combine)
+//  Dépendances : Foundation, Combine, StripePaymentSheet, PaymentService, CartManager
+//
+
 import Foundation
 import Combine
 import StripePaymentSheet
- 
+
+/**
+ * ViewModel pour l'écran de paiement
+ * 
+ * Cette classe gère toute la logique métier de l'écran de paiement dans
+ * le contexte du panier d'achat. Elle est marquée @MainActor pour garantir
+ * que toutes les opérations se déroulent sur le thread principal.
+ * 
+ * Fonctionnalités :
+ * - Création de payment intents Stripe via PaymentService
+ * - Gestion du paiement avec solde utilisateur (si suffisant)
+ * - Affichage du Stripe Payment Sheet pour les paiements par carte
+ * - Confirmation des achats après paiement réussi
+ * - Rafraîchissement automatique du solde après paiement
+ * - Gestion des erreurs et messages de succès
+ * 
+ * Le paiement peut être effectué de deux manières :
+ * 1. Avec le solde utilisateur (si suffisant)
+ * 2. Avec Stripe Payment Sheet (carte bancaire)
+ * 
+ * @see ObservableObject pour la réactivité avec SwiftUI
+ * @see @MainActor pour l'exécution sur le thread principal
+ * @see PaymentService pour les opérations Stripe
+ * @see CartManager pour les informations du panier
+ */
 @MainActor
 final class PaymentViewModel: ObservableObject {
     @Published var isProcessing = false

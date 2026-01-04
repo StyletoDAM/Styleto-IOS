@@ -1,6 +1,41 @@
+//
+//  LoginViewModel.swift
+//  Labasniios
+//
+//  ViewModel pour l'écran de connexion
+//
+//  Ce fichier gère la logique métier de l'écran de connexion :
+//  - Validation des champs (email, mot de passe)
+//  - Appel au service d'authentification
+//  - Gestion des états (chargement, erreurs, succès)
+//  - Sauvegarde des tokens d'authentification
+//
+//  Architecture : MVVM avec ObservableObject (Combine)
+//  Dépendances : Foundation, Combine, AuthService
+//
+
 import Combine
 import Foundation
 
+/**
+ * ViewModel pour l'écran de connexion
+ * 
+ * Cette classe gère toute la logique métier de l'écran de connexion.
+ * Elle est marquée @MainActor pour garantir que toutes les opérations
+ * se déroulent sur le thread principal, nécessaire pour les mises à jour
+ * de l'UI via les @Published properties.
+ * 
+ * Fonctionnalités :
+ * - Validation des champs de formulaire
+ * - Authentification via AuthService
+ * - Gestion des états (chargement, erreurs, succès)
+ * - Sauvegarde automatique des tokens (access + refresh)
+ * - Extraction automatique de l'ID utilisateur depuis le JWT
+ * 
+ * @see ObservableObject pour la réactivité avec SwiftUI
+ * @see @MainActor pour l'exécution sur le thread principal
+ * @see AuthService pour l'authentification backend
+ */
 @MainActor
 final class LoginViewModel: ObservableObject {
     @Published var email: String = ""

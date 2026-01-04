@@ -1,6 +1,28 @@
+//
+//  Clothe.swift
+//  Labasniios
+//
+//  Modèle de données représentant un vêtement
+//
+//  Ce fichier définit la structure Clothe qui représente un vêtement
+//  dans l'application Labasni. Il contient toutes les informations
+//  nécessaires pour gérer les vêtements scannés et analysés par l'IA.
+//
+//  Architecture : Modèle de données (Entity)
+//  Dépendances : Foundation, Codable
+//
+
 import Foundation
 
-// MARK: - ClotheUserInfo (objet complet pour Clothe)
+// MARK: - ClotheUserInfo
+
+/**
+ * Structure représentant les informations utilisateur associées à un vêtement
+ * 
+ * Cette structure est utilisée lorsque le serveur renvoie un objet utilisateur
+ * complet au lieu d'un simple ID. Elle contient toutes les informations
+ * de profil de l'utilisateur propriétaire du vêtement.
+ */
 struct ClotheUserInfo: Codable {
     let id: String
     let fullName: String?

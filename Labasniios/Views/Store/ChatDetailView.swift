@@ -51,6 +51,13 @@ struct ChatDetailView: View {
             .navigationTitle(partnerName)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar { toolbarContent }
+            .onAppear {
+                // Mark conversation as read when opening
+                Task {
+                    // You could call an API here to mark as read on the server
+                    // For now, we'll just rely on the local state update
+                }
+            }
         }
     }
     
@@ -91,7 +98,7 @@ struct ChatDetailView: View {
                 keyboardFocused = false  // Ferme le clavier
             }
             .onAppear { scrollToBottom(proxy: proxy) }
-            .onChange(of: viewModel.messages.count) {
+            .onChange(of: viewModel.messages.count) { oldValue, newValue in
                 scrollToBottom(proxy: proxy)
             }
         }

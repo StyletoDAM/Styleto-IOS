@@ -2,15 +2,35 @@
 //  StripeConfig.swift
 //  Labasniios
 //
-//  Created by Aziz on 23/11/2025.
+//  Configuration centralisée pour Stripe
+//
+//  Ce fichier gère la configuration du SDK Stripe pour les paiements
+//  dans l'application Labasni. Il centralise la clé publishable et
+//  la configuration du Payment Sheet pour une utilisation cohérente
+//  dans toute l'application.
+//
+//  Architecture : Singleton pattern
+//  Dépendances : Foundation, Stripe, StripePaymentSheet, UIKit
 //
 
 import Foundation
 import Stripe
 import StripePaymentSheet
-import UIKit  // ✅ Pour UIColor.systemPink
+import UIKit
 
-/// Configuration centralisée pour Stripe
+/**
+ * Configuration centralisée pour Stripe
+ * 
+ * Cette classe implémente le pattern Singleton pour fournir une configuration
+ * centralisée du SDK Stripe. Elle gère :
+ * - L'initialisation du SDK avec la clé publishable
+ * - La création de configurations personnalisées pour Payment Sheet
+ * - Le style visuel des formulaires de paiement
+ * 
+ * La clé publishable est stockée directement dans le code (pour le développement).
+ * En production, elle devrait être chargée depuis un fichier de configuration
+ * sécurisé ou depuis les variables d'environnement.
+ */
 final class StripeConfig {
     static let shared = StripeConfig()
     

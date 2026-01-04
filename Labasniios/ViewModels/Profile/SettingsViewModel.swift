@@ -1,8 +1,49 @@
+//
+//  SettingsViewModel.swift
+//  Labasniios
+//
+//  ViewModel pour l'écran Settings (paramètres/profil)
+//
+//  Ce fichier gère la logique métier de l'écran Settings :
+//  - Chargement et mise à jour du profil utilisateur
+//  - Mise à jour de la photo de profil
+//  - Rechargement du solde (top-up) via Stripe
+//  - Gestion des abonnements
+//  - Gestion du thème
+//
+//  Architecture : MVVM avec ObservableObject (Combine)
+//  Dépendances : Foundation, UIKit, PhotosUI, StripePaymentSheet, ProfileService
+//
+
 import Foundation
 import UIKit
 import _PhotosUI_SwiftUI
 import StripePaymentSheet
 
+/**
+ * ViewModel pour l'écran Settings (paramètres/profil)
+ * 
+ * Cette classe gère toute la logique métier de l'écran Settings, où
+ * l'utilisateur peut gérer son profil, son solde et ses préférences.
+ * Elle est marquée @MainActor pour garantir que toutes les opérations
+ * se déroulent sur le thread principal.
+ * 
+ * Fonctionnalités :
+ * - Chargement et mise à jour du profil utilisateur
+ * - Mise à jour de la photo de profil (via PhotosPicker)
+ * - Rechargement du solde via Stripe Payment Sheet
+ * - Gestion des abonnements
+ * - Synchronisation du thème avec le genre de l'utilisateur
+ * - Gestion des erreurs et messages de succès
+ * 
+ * Le rechargement de solde utilise Stripe Payment Sheet pour un paiement
+ * sécurisé et conforme aux standards de l'industrie.
+ * 
+ * @see ObservableObject pour la réactivité avec SwiftUI
+ * @see @MainActor pour l'exécution sur le thread principal
+ * @see ProfileService pour les opérations backend
+ * @see PaymentService pour les paiements Stripe
+ */
 @MainActor
 final class SettingsViewModel: ObservableObject {
     @Published private(set) var isLoading: Bool = false

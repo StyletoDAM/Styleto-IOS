@@ -1,10 +1,44 @@
+//
+//  ProfileService.swift
+//  Labasniios
+//
+//  Service pour la gestion du profil utilisateur
+//
+//  Ce fichier gère toutes les opérations liées au profil utilisateur :
+//  - Récupération du profil
+//  - Mise à jour du profil (nom, email, genre, préférences)
+//  - Mise à jour de la photo de profil
+//  - Rechargement du solde (top-up)
+//  - Suppression du compte
+//
+//  Architecture : Service avec méthodes async/await
+//  Dépendances : Foundation, UIKit, URLSession
+//
+
 import Foundation
 import UIKit
+
+/**
+ * Structure privée pour la réponse de rechargement de solde
+ * 
+ * Utilisée uniquement pour le décodage de la réponse API.
+ */
 private struct TopUpResponse: Decodable {
     let message: String
     let newBalance: String
     let user: User
 }
+
+/**
+ * Service pour la gestion du profil utilisateur
+ * 
+ * Cette classe gère toutes les opérations liées au profil utilisateur.
+ * Elle utilise async/await pour les opérations asynchrones et gère
+ * automatiquement le décodage des dates ISO8601 avec fractions de secondes.
+ * 
+ * Le service configure un JSONDecoder personnalisé pour gérer les différents
+ * formats de dates retournés par le backend.
+ */
 final class ProfileService {
     private let session: URLSession
     private let encoder: JSONEncoder

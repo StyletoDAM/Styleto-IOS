@@ -1,6 +1,30 @@
+//
+//  ChatMessage.swift
+//  Labasniios
+//
+//  Modèle de données représentant un message de chat
+//
+//  Ce fichier définit les structures nécessaires pour représenter
+//  un message de chat dans l'application Labasni. Il inclut :
+//  - ChatMessage : Le message principal
+//  - ChatParticipant : Les participants à la conversation
+//  - ExtractedInfo : Informations extraites du message (téléphones, emails, etc.)
+//  - Helpers : Structures pour le décodage flexible JSON
+//
+//  Architecture : Modèle de données (Entity)
+//  Dépendances : Foundation, Codable
+//
+
 import Foundation
 
-// Helper pour décoder des clés dynamiques
+// MARK: - Helper Structures
+
+/**
+ * Helper pour décoder des clés dynamiques dans JSON
+ * 
+ * Permet de décoder des clés JSON qui ne sont pas connues à l'avance.
+ * Utilisé pour le décodage flexible des structures MongoDB.
+ */
 struct DynamicCodingKeys: CodingKey {
     var stringValue: String
     var intValue: Int?
@@ -14,7 +38,15 @@ struct DynamicCodingKeys: CodingKey {
     }
 }
 
-// Helper pour décoder des valeurs JSON dynamiques (comme Android)
+/**
+ * Enum pour décoder des valeurs JSON dynamiques
+ * 
+ * Permet de décoder des valeurs JSON de types variés (String, Int, Double, Bool, Dict, Array, null).
+ * Utilisé pour gérer les structures MongoDB complexes où les types peuvent varier.
+ * 
+ * Cette structure est compatible avec le parsing Android pour garantir
+ * la cohérence entre les plateformes.
+ */
 enum AnyCodableValue: Codable {
     case string(String)
     case int(Int)
@@ -76,6 +108,21 @@ enum AnyCodableValue: Codable {
     }
 }
 
+// MARK: - ChatParticipant
+
+/**
+ * Structure représentant un participant à une conversation
+ * 
+ * Cette structure représente un utilisateur participant à une conversation.
+ * Le décodage est flexible pour gérer différents formats depuis le serveur :
+ * - ID comme String simple
+ * - ID comme objet MongoDB avec "_id" ou "$oid"
+ * - Objet complet avec toutes les informations utilisateur
+ * 
+ * @property id Identifiant unique du participant
+ * @property fullName Nom complet du participant
+ * @property profilePicture URL de la photo de profil (optionnel)
+ */
 struct ChatParticipant: Codable, Identifiable {
     let id: String
     let fullName: String
@@ -153,6 +200,20 @@ struct ChatParticipant: Codable, Identifiable {
     }
 }
 
+// MARK: - ExtractedInfo
+
+/**
+ * Structure représentant les informations extraites d'un message
+ * 
+ * Cette structure contient les informations sensibles extraites automatiquement
+ * d'un message de chat (téléphones, adresses, emails, URLs) pour permettre
+ * leur affichage sécurisé ou leur masquage selon les préférences.
+ * 
+ * @property phoneNumbers Liste des numéros de téléphone détectés
+ * @property addresses Liste des adresses détectées
+ * @property emails Liste des emails détectés
+ * @property urls Liste des URLs détectées
+ */
 struct ExtractedInfo: Codable {
     let phoneNumbers: [String]?
     let addresses: [String]?
@@ -160,6 +221,27 @@ struct ExtractedInfo: Codable {
     let urls: [String]?
 }
 
+// MARK: - ChatMessage
+
+/**
+ * Structure représentant un message de chat
+ * 
+ * Cette structure représente un message individuel dans une conversation.
+ * Le décodage est très flexible pour gérer les différents formats MongoDB :
+ * - senderId peut être un String (ID simple) ou un objet JSON complet
+ * - L'ID peut être dans "id", "_id", ou "$oid" selon le format
+ * - Les dates peuvent être en ISO8601 ou timestamp
+ * 
+ * Cette flexibilité garantit la compatibilité avec différentes versions
+ * du backend et différents formats de données MongoDB.
+ * 
+ * @property id Identifiant unique du message
+ * @property conversationId Identifiant de la conversation
+ * @property senderId Participant ayant envoyé le message
+ * @property content Contenu textuel du message
+ * @property createdAt Date de création du message
+ * @property extractedInfo Informations extraites du message (optionnel)
+ */
 struct ChatMessage: Codable, Identifiable {
     let id: String
     let conversationId: String

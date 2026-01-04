@@ -1,6 +1,35 @@
+//
+//  Outfit.swift
+//  Labasniios
+//
+//  Modèle de données représentant une tenue (outfit)
+//
+//  Ce fichier définit la structure Outfit qui représente une tenue
+//  dans l'application Labasni. Une tenue est une combinaison de vêtements
+//  suggérée par l'IA ou créée par l'utilisateur.
+//
+//  Architecture : Modèle de données (Entity)
+//  Dépendances : Foundation, CoreData, Codable
+//
+
 import Foundation
 import CoreData
 
+/**
+ * Structure représentant une tenue (outfit)
+ * 
+ * Une tenue est une combinaison de plusieurs vêtements suggérée par l'IA
+ * ou créée manuellement par l'utilisateur. Elle peut être associée à un
+ * type d'événement et un type de météo pour une meilleure personnalisation.
+ * 
+ * @property id Identifiant unique de la tenue
+ * @property clothesIds Liste des vêtements composant la tenue
+ * @property eventType Type d'événement (ex: "casual", "formal", "party")
+ * @property weatherType Type de météo (ex: "sunny", "rainy", "cold")
+ * @property status Statut de la tenue (ex: "pending", "approved", "rejected")
+ * @property createdAt Date de création de la tenue
+ * @property updatedAt Date de dernière mise à jour
+ */
 struct Outfit: Identifiable, Codable {
     let id: String
     let clothesIds: [Clothe]

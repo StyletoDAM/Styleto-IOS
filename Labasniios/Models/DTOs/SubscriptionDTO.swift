@@ -1,8 +1,32 @@
-// Models/DTOs/SubscriptionDTO.swift
-// ✨ MISE À JOUR - Ajout du champ "status"
+//
+//  SubscriptionDTO.swift
+//  Labasniios
+//
+//  Data Transfer Objects pour les abonnements
+//
+//  Ce fichier définit toutes les structures de données utilisées pour
+//  la gestion des abonnements (plans, statistiques d'utilisation, quotas, etc.).
+//  Ces DTOs gèrent la sérialisation/désérialisation JSON avec le backend
+//  et incluent une gestion flexible des types (String ou Number) pour
+//  la compatibilité avec différentes versions de l'API.
+//
+//  Architecture : Data Transfer Objects (DTOs)
+//  Dépendances : Foundation, Codable
+//
 
 import Foundation
 
+// MARK: - Subscription Plan
+
+/**
+ * Enumération des plans d'abonnement disponibles
+ * 
+ * Les plans définissent les limites et fonctionnalités disponibles
+ * pour chaque niveau d'abonnement :
+ * - FREE : Plan gratuit avec limitations
+ * - PREMIUM : Plan premium avec fonctionnalités étendues
+ * - PRO_SELLER : Plan professionnel pour les vendeurs
+ */
 enum SubscriptionPlan: String, Codable {
     case free = "FREE"
     case premium = "PREMIUM"

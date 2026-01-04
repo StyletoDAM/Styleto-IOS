@@ -1,8 +1,39 @@
+//
+//  AppleSignInHelper.swift
+//  Labasniios
+//
+//  Helper pour l'authentification Apple Sign-In
+//
+//  Ce fichier gère l'intégration avec Apple Sign-In pour permettre
+//  aux utilisateurs de se connecter avec leur compte Apple. Il utilise
+//  AuthenticationServices pour gérer le flux d'authentification OAuth.
+//
+//  Architecture : Helper avec ObservableObject (Combine)
+//  Dépendances : Foundation, AuthenticationServices, SwiftUI, UIKit
+//
+
 import Foundation
 import AuthenticationServices
 import SwiftUI
 import UIKit
 
+/**
+ * Helper pour l'authentification Apple Sign-In
+ * 
+ * Cette classe gère le flux d'authentification Apple Sign-In en utilisant
+ * ASAuthorizationController. Elle est marquée @MainActor pour garantir que
+ * toutes les opérations se déroulent sur le thread principal.
+ * 
+ * Fonctionnalités :
+ * - Lancement du flux Apple Sign-In
+ * - Gestion des credentials Apple
+ * - Délégation vers AuthService pour l'authentification backend
+ * - Gestion des erreurs et des états de chargement
+ * 
+ * @see ObservableObject pour la réactivité avec SwiftUI
+ * @see @MainActor pour l'exécution sur le thread principal
+ * @see ASAuthorizationControllerDelegate pour les callbacks Apple
+ */
 @MainActor
 final class AppleSignInHelper: NSObject, ObservableObject {
     private let authService: AuthService

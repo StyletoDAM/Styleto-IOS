@@ -1,10 +1,40 @@
+//
+//  ClothesService.swift
+//  Labasniios
+//
+//  Service pour la gestion des vêtements
+//
+//  Ce fichier gère toutes les opérations liées aux vêtements dans l'application :
+//  - Récupération des vêtements de l'utilisateur
+//  - Création de nouveaux vêtements (après scan IA)
+//  - Suppression de vêtements
+//  - Mise à jour du feedback (accepté/rejeté)
+//
+//  Architecture : Singleton pattern avec callbacks
+//  Dépendances : Foundation, Combine, URLSession
+//
+
 import Foundation
 import Combine
 
+/**
+ * Service pour la gestion des vêtements
+ * 
+ * Cette classe implémente le pattern Singleton pour fournir un accès
+ * global aux opérations sur les vêtements. Elle utilise URLSession
+ * pour les requêtes HTTP et TokenManager pour l'authentification.
+ * 
+ * Toutes les méthodes utilisent des callbacks pour gérer les résultats
+ * de manière asynchrone.
+ */
 class ClothesService {
+    /// Instance singleton partagée
     static let shared = ClothesService()
     
+    /// URL de base du backend
     private let baseURL = APIConstants.baseURL
+    
+    /// Gestionnaire de tokens pour l'authentification
     private let tokenManager = TokenManager.shared
     
     // MARK: - Fetch My Clothes

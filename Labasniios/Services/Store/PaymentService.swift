@@ -1,15 +1,50 @@
+//
+//  PaymentService.swift
+//  Labasniios
+//
+//  Service pour la gestion des paiements Stripe
+//
+//  Ce fichier gère toutes les opérations liées aux paiements :
+//  - Création de payment intents Stripe
+//  - Confirmation des achats
+//  - Gestion des transactions
+//
+//  Architecture : Singleton pattern avec méthodes async/await
+//  Dépendances : Foundation, URLSession, Stripe SDK
+//
+
 import Foundation
 import Combine
 
+/**
+ * Service pour la gestion des paiements Stripe
+ * 
+ * Cette classe implémente le pattern Singleton pour fournir un accès
+ * global aux opérations de paiement. Elle gère la création de payment intents
+ * Stripe et la confirmation des achats via le backend.
+ * 
+ * Le service stocke le dernier client secret créé pour permettre la réutilisation
+ * dans les cas où le paiement échoue et doit être réessayé.
+ */
 final class PaymentService {
+    /// Instance singleton partagée
     static let shared = PaymentService()
     
+    /// URL de base du backend
     private let baseURL = APIConstants.baseURL
+    
+    /// Gestionnaire de tokens pour l'authentification
     private let tokenManager = TokenManager.shared
     
-    //  Stocker le dernier client secret créé
+    /**
+     * Dernier client secret créé
+     * 
+     * Stocké pour permettre la réutilisation en cas d'échec de paiement.
+     * Accessible en lecture seule depuis l'extérieur.
+     */
     private(set) var lastClientSecret: String?
     
+    /// Initialiseur privé pour garantir le pattern Singleton
     private init() {}
     
     // MARK: - Create REAL Payment Intent (STRIPE UI)

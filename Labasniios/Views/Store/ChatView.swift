@@ -140,7 +140,7 @@ struct ChatView: View {
             .fullScreenCover(item: $selectedConversation) { conv in
                 ChatDetailView(conversation: conv)
             }
-            .onChange(of: selectedConversation) { newValue in
+            .onChange(of: selectedConversation) { oldValue, newValue in
                 if newValue == nil {
                     Task { await viewModel.loadConversations(showLoader: false) }
                 }
@@ -195,6 +195,10 @@ struct ChatView: View {
         
         let lastMsg = conversation.messages.last
         
+        // Check if conversation has unread messages
+        let normalizedUserId = currentUserId?.trimmingCharacters(in: .whitespaces).lowercased() ?? ""
+        let hasUnread = lastMsg != nil && lastMsg!.senderId.id.trimmingCharacters(in: .whitespaces).lowercased() != normalizedUserId
+        
         ChatRow(
             name: partner.fullName,
             message: lastMsg?.content ?? "Start the conversation",
@@ -202,10 +206,13 @@ struct ChatView: View {
             badge: nil,
             isOnline: false,
             profilePictureURL: partner.profilePicture,
-            searchText: searchText
+            searchText: searchText,
+            isUnread: hasUnread
         )
         .onTapGesture {
             isSearchFocused = false
+            // Mark conversation as read when opening
+            viewModel.markConversationAsRead(conversationId: conversation.id)
             selectedConversation = conversation
         }
     }
@@ -230,6 +237,7 @@ struct ChatRow: View {
     let isOnline: Bool
     let profilePictureURL: String?
     var searchText: String = ""
+    var isUnread: Bool = false
     
     var body: some View {
         HStack(spacing: 14) {
@@ -279,7 +287,7 @@ struct ChatRow: View {
                     .foregroundColor(.themePrimary)
                 
                 Text(message)
-                    .font(.system(size: 15))
+                    .font(.system(size: 15, weight: isUnread ? .bold : .regular))
                     .foregroundColor(.gray)
                     .lineLimit(1)
             }

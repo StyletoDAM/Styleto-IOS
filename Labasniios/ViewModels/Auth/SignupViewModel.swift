@@ -1,5 +1,41 @@
+//
+//  SignupViewModel.swift
+//  Labasniios
+//
+//  ViewModel pour l'écran d'inscription
+//
+//  Ce fichier gère la logique métier de l'écran d'inscription :
+//  - Validation des champs du formulaire
+//  - Vérification de la force du mot de passe
+//  - Inscription via AuthService
+//  - Vérification d'email avec code PIN
+//  - Gestion des timers de renvoi de code
+//
+//  Architecture : MVVM avec ObservableObject (Combine)
+//  Dépendances : Foundation, AuthService
+//
+
 import Foundation
 
+/**
+ * ViewModel pour l'écran d'inscription
+ * 
+ * Cette classe gère toute la logique métier de l'écran d'inscription.
+ * Elle est marquée @MainActor pour garantir que toutes les opérations
+ * se déroulent sur le thread principal.
+ * 
+ * Fonctionnalités :
+ * - Validation des champs de formulaire
+ * - Vérification de la force du mot de passe
+ * - Inscription via AuthService
+ * - Vérification d'email avec code PIN
+ * - Gestion des timers de renvoi de code
+ * - Support des codes de pays pour les numéros de téléphone
+ * 
+ * @see ObservableObject pour la réactivité avec SwiftUI
+ * @see @MainActor pour l'exécution sur le thread principal
+ * @see AuthService pour l'inscription backend
+ */
 @MainActor
 final class SignupViewModel: ObservableObject {
     @Published var fullName = ""

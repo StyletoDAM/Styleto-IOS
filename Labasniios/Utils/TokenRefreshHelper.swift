@@ -1,6 +1,38 @@
+//
+//  TokenRefreshHelper.swift
+//  Labasniios
+//
+//  Helper pour le rafraîchissement automatique des tokens
+//
+//  Ce fichier fournit un helper pour rafraîchir automatiquement les tokens
+//  d'authentification lorsqu'une requête API retourne une erreur 401 (Unauthorized).
+//  Il évite les boucles infinies de rafraîchissement en gérant un état de
+//  rafraîchissement en cours.
+//
+//  Architecture : Singleton pattern avec async/await
+//  Dépendances : Foundation, AuthService
+//
+
 import Foundation
 
-/// ✨ NOUVEAU : Helper pour rafraîchir automatiquement le token lors des erreurs 401
+/**
+ * Helper pour le rafraîchissement automatique des tokens
+ * 
+ * Cette classe implémente le pattern Singleton pour fournir un mécanisme
+ * centralisé de rafraîchissement automatique des tokens. Elle est marquée
+ * @MainActor pour garantir que toutes les opérations se déroulent sur le
+ * thread principal.
+ * 
+ * Fonctionnalités :
+ * - Détection automatique des erreurs 401
+ * - Rafraîchissement du token via AuthService
+ * - Réessai automatique de la requête originale avec le nouveau token
+ * - Prévention des boucles infinies de rafraîchissement
+ * - Gestion de la déconnexion si le refresh échoue
+ * 
+ * @see @MainActor pour l'exécution sur le thread principal
+ * @see AuthService pour le rafraîchissement du token
+ */
 @MainActor
 final class TokenRefreshHelper {
     static let shared = TokenRefreshHelper()

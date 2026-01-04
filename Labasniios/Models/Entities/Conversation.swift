@@ -1,5 +1,38 @@
+//
+//  Conversation.swift
+//  Labasniios
+//
+//  Modèle de données représentant une conversation de chat
+//
+//  Ce fichier définit la structure ChatConversationResponse qui représente
+//  une conversation de chat dans l'application Labasni. Une conversation
+//  peut être entre deux utilisateurs ou un groupe.
+//
+//  Architecture : Modèle de données (Entity)
+//  Dépendances : Foundation, Codable
+//
+
 import Foundation
 
+/**
+ * Structure représentant une conversation de chat
+ * 
+ * Cette structure représente une conversation entre utilisateurs dans
+ * le contexte du marketplace. Elle contient :
+ * - Les participants à la conversation
+ * - Les messages échangés
+ * - Les métadonnées (dates, type de conversation)
+ * 
+ * Le décodage est flexible pour gérer différents formats de données
+ * depuis le serveur (participants comme IDs ou objets complets).
+ * 
+ * @property id Identifiant unique de la conversation
+ * @property participants Liste des participants à la conversation
+ * @property isGroup Indique si c'est une conversation de groupe
+ * @property messages Liste des messages de la conversation
+ * @property createdAt Date de création de la conversation
+ * @property updatedAt Date de dernière mise à jour
+ */
 struct ChatConversationResponse: Codable, Identifiable, Equatable {
     let id: String
     var participants: [ChatParticipant]

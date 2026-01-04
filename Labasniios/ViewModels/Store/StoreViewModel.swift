@@ -1,7 +1,48 @@
+//
+//  StoreViewModel.swift
+//  Labasniios
+//
+//  ViewModel pour l'écran Store (marketplace)
+//
+//  Ce fichier gère la logique métier de l'écran Store :
+//  - Récupération des articles du store (mes articles + découverte)
+//  - Ajout de nouveaux articles à vendre
+//  - Recherche et filtrage d'articles
+//  - Suggestions de vente basées sur l'IA
+//  - Gestion des quotas d'abonnement
+//
+//  Architecture : MVVM avec ObservableObject (Combine)
+//  Dépendances : Foundation, Combine, SwiftUI, StoreService
+//
+
 import Foundation
 import Combine
 import SwiftUI
 
+/**
+ * ViewModel pour l'écran Store (marketplace)
+ * 
+ * Cette classe gère toute la logique métier de l'écran Store, où les
+ * utilisateurs peuvent vendre et acheter des vêtements. Elle est marquée
+ * @MainActor pour garantir que toutes les opérations se déroulent sur le
+ * thread principal.
+ * 
+ * Fonctionnalités :
+ * - Récupération des articles du store (mes articles + découverte)
+ * - Ajout de nouveaux articles à vendre depuis la garde-robe
+ * - Recherche textuelle en temps réel
+ * - Suggestions de vente basées sur l'IA (vêtements peu utilisés)
+ * - Gestion des quotas d'abonnement (affichage de paywalls)
+ * - Gestion des tailles et conditions de produits
+ * - Filtrage et tri des articles
+ * 
+ * Les suggestions de vente sont générées par l'IA pour identifier les
+ * vêtements qui sont peu utilisés et pourraient être vendus.
+ * 
+ * @see ObservableObject pour la réactivité avec SwiftUI
+ * @see @MainActor pour l'exécution sur le thread principal
+ * @see StoreService pour les opérations backend
+ */
 @MainActor
 class StoreViewModel: ObservableObject {
     @Published var storeItems: [Store] = []

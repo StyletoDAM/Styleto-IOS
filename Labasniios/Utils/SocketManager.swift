@@ -1,7 +1,44 @@
+//
+//  SocketManager.swift
+//  Labasniios
+//
+//  Gestionnaire WebSocket pour le chat en temps réel
+//
+//  Ce fichier gère la connexion WebSocket pour le chat en temps réel
+//  dans l'application Labasni. Il utilise Socket.IO pour établir une
+//  connexion bidirectionnelle avec le serveur et recevoir les messages
+//  instantanément sans polling.
+//
+//  Architecture : Singleton avec ObservableObject (Combine)
+//  Dépendances : Foundation, SocketIO, Combine
+//
+
 import Foundation
 import SocketIO
 import Combine
 
+/**
+ * Gestionnaire WebSocket pour le chat en temps réel
+ * 
+ * Cette classe gère la connexion WebSocket pour le chat en temps réel
+ * dans le contexte du marketplace. Elle est marquée @MainActor pour
+ * garantir que toutes les opérations se déroulent sur le thread principal.
+ * 
+ * Fonctionnalités :
+ * - Connexion/déconnexion au serveur WebSocket
+ * - Réception de messages en temps réel
+ * - Gestion automatique de la reconnexion
+ * - Publication des messages via Combine Publishers
+ * - Authentification via token JWT
+ * 
+ * Le WebSocket est utilisé pour recevoir les messages instantanément
+ * sans avoir besoin de polling régulier, améliorant ainsi l'expérience
+ * utilisateur et réduisant la charge serveur.
+ * 
+ * @see ObservableObject pour la réactivité avec SwiftUI
+ * @see @MainActor pour l'exécution sur le thread principal
+ * @see SocketIO pour la bibliothèque WebSocket
+ */
 @MainActor
 final class ChatSocketManager: ObservableObject {
     static let shared = ChatSocketManager()

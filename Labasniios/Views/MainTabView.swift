@@ -29,9 +29,6 @@ struct MainTabView: View {
                 case .avatar:
                     AvatarView()
                         .environmentObject(avatarVM)
-                        .onAppear {
-                                    avatarVM.startCamera()  // ← Assure-toi que la caméra et WebSocket démarrent
-                                }
                 case .store:
                     StoreView()
                 case .profil:

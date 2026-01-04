@@ -1,5 +1,38 @@
+//
+//  CategoryColors.swift
+//  Labasniios
+//
+//  Utilitaires pour les couleurs de catégories de vêtements
+//
+//  Ce fichier fournit des fonctions utilitaires pour obtenir des couleurs
+//  adaptées aux différentes catégories de vêtements. Les couleurs varient
+//  selon le mode clair/sombre pour maintenir un bon contraste et une
+//  lisibilité optimale.
+//
+//  Architecture : Structure utilitaire statique
+//  Dépendances : SwiftUI
+//
+
 import SwiftUI
 
+/**
+ * Utilitaires pour les couleurs de catégories de vêtements
+ * 
+ * Cette structure fournit des méthodes statiques pour obtenir des couleurs
+ * adaptées aux différentes catégories de vêtements. Les couleurs sont
+ * automatiquement ajustées selon le ColorScheme (clair/sombre) pour
+ * maintenir un bon contraste.
+ * 
+ * Catégories supportées :
+ * - Tops (tshirt, haut, chemise)
+ * - Pants (pantalon, jean, bas)
+ * - Dresses (robe, dress)
+ * - Shoes (chaussure, basket)
+ * - Accessories (accessoire, sac, bijou)
+ * 
+ * Les couleurs sont normalisées (pluriels supprimés, espaces trimmés)
+ * pour garantir une correspondance cohérente.
+ */
 struct CategoryColors {
     // Public API that adapts to the provided color scheme.
     // Pass `colorScheme` from your views using `@Environment(\.colorScheme)`.

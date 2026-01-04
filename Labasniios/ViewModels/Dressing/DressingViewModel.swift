@@ -1,6 +1,42 @@
+//
+//  DressingViewModel.swift
+//  Labasniios
+//
+//  ViewModel pour l'écran Dressing (garde-robe)
+//
+//  Ce fichier gère la logique métier de l'écran Dressing :
+//  - Récupération des vêtements de l'utilisateur
+//  - Filtrage par catégorie
+//  - Recherche textuelle
+//  - Gestion des états de chargement
+//
+//  Architecture : MVVM avec ObservableObject (Combine)
+//  Dépendances : Foundation, Combine, ClothesService
+//
+
 import Foundation
 import Combine
 
+/**
+ * ViewModel pour l'écran Dressing (garde-robe)
+ * 
+ * Cette classe gère toute la logique métier de l'écran Dressing, où
+ * l'utilisateur peut voir et gérer sa garde-robe de vêtements scannés.
+ * 
+ * Fonctionnalités :
+ * - Récupération des vêtements depuis ClothesService
+ * - Filtrage en temps réel par catégorie
+ * - Recherche textuelle avec debounce
+ * - Combinaison des filtres (catégorie + recherche)
+ * - Gestion des états de chargement
+ * 
+ * Les filtres sont combinés en temps réel via Combine Publishers
+ * pour une expérience utilisateur fluide et réactive.
+ * 
+ * @see ObservableObject pour la réactivité avec SwiftUI
+ * @see ClothesService pour la récupération des vêtements
+ * @see Combine pour la gestion réactive des filtres
+ */
 class DressingViewModel: ObservableObject {
     @Published var clothes: [Clothe] = []
     @Published var filteredClothes: [Clothe] = []

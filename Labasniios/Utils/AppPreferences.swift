@@ -1,7 +1,38 @@
+//
+//  AppPreferences.swift
+//  Labasniios
+//
+//  Gestionnaire centralisé des préférences de l'application
+//
+//  Ce fichier gère toutes les préférences persistantes de l'application :
+//  - L'état de connexion de l'utilisateur
+//  - Les informations de l'utilisateur connecté
+//  - Le mode de thème sélectionné
+//  - La synchronisation avec le serveur pour les données à jour
+//
+//  Architecture : Singleton avec ObservableObject (Combine)
+//  Dépendances : Foundation, Combine, UserDefaults
+//
+
 import Foundation
 
-/// Gestionnaire centralisé des préférences de l'application
-/// Sauvegarde l'état de connexion, l'utilisateur connecté et le thème
+/**
+ * Gestionnaire centralisé des préférences de l'application
+ * 
+ * Cette classe gère toutes les préférences persistantes de l'application
+ * en utilisant UserDefaults. Elle est marquée @MainActor pour garantir
+ * que toutes les opérations se déroulent sur le thread principal, ce qui
+ * est nécessaire pour les mises à jour de l'UI via les @Published properties.
+ * 
+ * Fonctionnalités :
+ * - Sauvegarde et restauration de l'état de connexion
+ * - Gestion du profil utilisateur avec synchronisation serveur
+ * - Gestion du thème de l'application
+ * - Migration automatique des données (ex: conversion balance centimes → TND)
+ * 
+ * @see ObservableObject pour la réactivité avec SwiftUI
+ * @see @MainActor pour l'exécution sur le thread principal
+ */
 @MainActor
 final class AppPreferences: ObservableObject {
     static let shared = AppPreferences()

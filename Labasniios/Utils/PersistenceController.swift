@@ -1,6 +1,37 @@
-// PersistenceController.swift
+//
+//  PersistenceController.swift
+//  Labasniios
+//
+//  Contrôleur de persistance Core Data
+//
+//  Ce fichier gère la configuration et l'accès à Core Data pour
+//  la persistance locale des données de l'application. Core Data
+//  est utilisé pour stocker les favoris et autres données locales.
+//
+//  Architecture : Structure avec singleton pattern
+//  Dépendances : CoreData, Foundation
+//
+
 import CoreData
 
+/**
+ * Contrôleur de persistance Core Data
+ * 
+ * Cette structure gère la configuration et l'accès au stack Core Data.
+ * Elle fournit un singleton pour un accès global au contexte de persistance.
+ * 
+ * Fonctionnalités :
+ * - Initialisation du NSPersistentContainer avec le modèle de données
+ * - Configuration de la politique de merge pour éviter les conflits
+ * - Support du mode in-memory pour les tests
+ * - Méthodes pour sauvegarder les changements
+ * 
+ * Le contexte de vue (viewContext) est utilisé pour toutes les opérations
+ * de lecture/écriture et est automatiquement synchronisé avec le parent.
+ * 
+ * @see NSPersistentContainer pour la configuration Core Data
+ * @see NSMergeByPropertyObjectTrumpMergePolicy pour la résolution de conflits
+ */
 struct PersistenceController {
     static let shared = PersistenceController()
 

@@ -1,9 +1,41 @@
+//
+//  ChatService.swift
+//  Labasniios
+//
+//  Service pour la gestion du chat en temps réel
+//
+//  Ce fichier gère toutes les opérations liées au chat dans le contexte
+//  du marketplace. Il inclut :
+//  - Création et récupération de conversations
+//  - Envoi et récupération de messages
+//  - Gestion des participants aux conversations
+//
+//  Architecture : Singleton pattern avec méthodes async/await
+//  Dépendances : Foundation, URLSession, SocketManager (pour le temps réel)
+//
+
 import Foundation
 
+/**
+ * Service pour la gestion du chat en temps réel
+ * 
+ * Cette classe implémente le pattern Singleton pour fournir un accès
+ * global aux opérations de chat. Elle utilise async/await pour les
+ * opérations asynchrones et gère l'authentification automatique.
+ * 
+ * Le chat est utilisé dans le contexte du marketplace pour permettre
+ * aux utilisateurs de communiquer avec les vendeurs avant d'acheter.
+ * Les messages sont également synchronisés en temps réel via WebSocket
+ * (géré par SocketManager).
+ */
 class ChatService {
+    /// Instance singleton partagée
     static let shared = ChatService()
+    
+    /// URL de base du backend
     private let baseURL = APIConstants.baseURL
     
+    /// Initialiseur privé pour garantir le pattern Singleton
     private init() {}
     
     // Créer ou récupérer une conversation avec un vendeur

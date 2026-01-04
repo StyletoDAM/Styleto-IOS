@@ -259,8 +259,16 @@ struct SettingsView: View {
             } message: {
                 Text(viewModel.errorMessage ?? "An error has occurred.")
             }
-            .onChange(of: viewModel.successMessage) { _ in showSuccessAlert = true }
-            .onChange(of: viewModel.errorMessage) { _ in showErrorAlert = true }
+            .onChange(of: viewModel.successMessage) { oldValue, newValue in
+                if newValue != nil {
+                    showSuccessAlert = true
+                }
+            }
+            .onChange(of: viewModel.errorMessage) { oldValue, newValue in
+                if newValue != nil {
+                    showErrorAlert = true
+                }
+            }
             .alert("Logout", isPresented: $showLogoutConfirmation) {
                 Button("Cancel", role: .cancel) {}
                 Button("Logout", role: .destructive) { performLogout() }

@@ -1,12 +1,43 @@
+//
+//  StoreService.swift
+//  Labasniios
+//
+//  Service pour la gestion du store (marketplace)
+//
+//  Ce fichier gère toutes les opérations liées au marketplace dans l'application :
+//  - Récupération des articles du store (tous ou ceux de l'utilisateur)
+//  - Création, mise à jour et suppression d'articles
+//  - Gestion des paiements Stripe
+//  - Confirmation des achats
+//
+//  Architecture : Singleton pattern avec Combine Publishers
+//  Dépendances : Foundation, Combine, URLSession
+//
 
 import Foundation
 import Combine
 
+/**
+ * Service pour la gestion du store (marketplace)
+ * 
+ * Cette classe implémente le pattern Singleton pour fournir un accès
+ * global aux opérations du marketplace. Elle utilise Combine Publishers
+ * pour une gestion réactive des données et des erreurs.
+ * 
+ * Les méthodes retournent des AnyPublisher pour permettre la composition
+ * et la transformation des données de manière déclarative.
+ */
 class StoreService {
+    /// Instance singleton partagée
     static let shared = StoreService()
+    
+    /// Initialiseur privé pour garantir le pattern Singleton
     private init() {}
 
+    /// URL de base du backend
     private let baseURL = APIConstants.baseURL
+    
+    /// Gestionnaire de tokens pour l'authentification
     private let tokenManager = TokenManager.shared
 
     // MARK: - Fetch My Store Items

@@ -1,7 +1,40 @@
+//
+//  FavoritesService.swift
+//  Labasniios
+//
+//  Service pour la gestion des favoris (tenues)
+//
+//  Ce fichier gère toutes les opérations liées aux favoris :
+//  - Stockage local des favoris avec Core Data
+//  - Ajout et suppression de favoris
+//  - Synchronisation avec l'utilisateur connecté
+//  - Gestion du cache local
+//
+//  Architecture : Singleton avec ObservableObject (Combine) + Core Data
+//  Dépendances : Foundation, CoreData, Combine
+//
+
 import Foundation
 import CoreData
 import Combine
 
+/**
+ * Gestionnaire de favoris avec Core Data
+ * 
+ * Cette classe gère les favoris de l'utilisateur en utilisant Core Data
+ * pour le stockage local. Elle est marquée @MainActor pour garantir que
+ * toutes les opérations se déroulent sur le thread principal.
+ * 
+ * Fonctionnalités :
+ * - Stockage persistant des favoris avec Core Data
+ * - Synchronisation automatique avec l'utilisateur connecté
+ * - Observation des changements d'utilisateur
+ * - Gestion automatique du logout (vidage des favoris)
+ * 
+ * @see ObservableObject pour la réactivité avec SwiftUI
+ * @see @MainActor pour l'exécution sur le thread principal
+ * @see CoreDataManager pour l'accès au contexte Core Data
+ */
 class FavoritesManager: ObservableObject {
     static let shared = FavoritesManager()
     
@@ -172,15 +205,37 @@ class FavoritesManager: ObservableObject {
     }
 }
 
+/**
+ * Service de favoris (wrapper pour FavoritesManager)
+ * 
+ * Cette classe fournit une interface simplifiée pour accéder aux fonctionnalités
+ * de FavoritesManager. Elle permet d'utiliser les favoris sans avoir besoin
+ * d'accéder directement à FavoritesManager.
+ * 
+ * @see FavoritesManager pour l'implémentation complète
+ */
 class FavoritesService {
+    /// Instance singleton partagée
     static let shared = FavoritesService()
     
+    /// Initialiseur privé pour garantir le pattern Singleton
     private init() {}
     
+    /**
+     * Bascule l'état favori d'une tenue
+     * 
+     * @param outfitId Identifiant de la tenue
+     */
     func toggleFavorite(outfitId: String) {
         FavoritesManager.shared.toggleFavorite(outfitId: outfitId)
     }
     
+    /**
+     * Vérifie si une tenue est marquée comme favorite
+     * 
+     * @param outfitId Identifiant de la tenue
+     * @return true si la tenue est favorite, false sinon
+     */
     func isFavorite(outfitId: String) -> Bool {
         return FavoritesManager.shared.isFavorite(outfitId: outfitId)
     }
