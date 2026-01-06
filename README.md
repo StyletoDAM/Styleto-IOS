@@ -258,7 +258,7 @@ Edit `Utils/APIConstants.swift`:
 ```swift
 struct APIConstants {
     static let baseURL = "http://localhost:3000" // Development
-    // static let baseURL = "https://api.styleto.com" // Production
+    // static let baseURL = "https://labasni-backend-mh3j.onrender.com" // Production
 }
 ```
 
